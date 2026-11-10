@@ -49,6 +49,12 @@ if (command === 'serve') {
   const trusted = createCarrierTrust({ publicOrigins })
   const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf', '.txt': 'text/plain', '.svg': 'image/svg+xml', '.map': 'application/json' }
   const ownerCookie = bootEnabled ? (await readFile(process.env.DSH_COOKIE_FILE, 'utf8')).trim() : undefined
+  const downloadTargets = process.env.DSH_DOWNLOAD_TARGETS_FILE
+    ? JSON.parse(await readFile(process.env.DSH_DOWNLOAD_TARGETS_FILE, 'utf8')) : []
+  if (!Array.isArray(downloadTargets)) throw Error('Download targets must be an array of exact Session/path grants')
+  const downloadCarrier = bootEnabled ? (await import('./dsh-download-carrier.mjs')).createDownloadCarrier({
+    origin: process.env.DSH_ORIGIN, cookie: ownerCookie, publicOrigins, targets: downloadTargets,
+  }) : undefined
   const terminalReadCarrier = bootEnabled ? (await import('./dsh-terminal-carrier.mjs')).createTerminalReadCarrier({
     origin: process.env.DSH_ORIGIN, cookie: ownerCookie, publicOrigins,
   }) : undefined
@@ -75,6 +81,7 @@ if (command === 'serve') {
       if (lazyCarrier && await lazyCarrier(request, response)) return
       if (sessionCarrier && await sessionCarrier.handle(request, response)) return
       if (uploadCarrier && await uploadCarrier(request, response)) return
+      if (downloadCarrier && await downloadCarrier(request, response)) return
       if (terminalReadCarrier && await terminalReadCarrier(request, response)) return
       if (inventoryRpcCarrier && await inventoryRpcCarrier(request, response)) return
       if (SESSION_ASSETS.has(request.url.slice(1)) && carrier) {

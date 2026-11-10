@@ -9,6 +9,12 @@ files are unchanged. Parent owns integration and issue updates.
 
 ## Capability and exact parent wiring
 
+Parent integration now mounts this handler in startup. Set
+`DSH_DOWNLOAD_TARGETS_FILE` to a trusted local JSON file containing the exact
+`[{"sessionId":"...","path":"..."}]` grants. Without that configuration the
+handler grants no files. Restart after changing grants. The retained demo has
+not been updated by this integration; the evidence below is the isolated run.
+
 The confirmed path family is the original file-context-menu Remote pair:
 POST `/api/workspaceFiles/stat` and POST `/api/workspaceFiles/readBytes`.
 `ui-file-actions/src/client/context-menus.tsx` resolves metadata using the former,
