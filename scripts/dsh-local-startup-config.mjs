@@ -5,6 +5,11 @@ export function validateLocalStartup(value) {
   if (value?.schemaVersion !== 1 || !Array.isArray(value.entries) || value.entries.length > 64) {
     throw Error('Expected local startup schemaVersion 1 and at most 64 entries')
   }
+  const selected = value.selectedInstance
+  if (!selected || !['id', 'authenticationViewId'].every(key =>
+    typeof selected[key] === 'string' && /^[a-zA-Z0-9_-]{1,128}$/.test(selected[key]))) {
+    throw Error('Expected explicit selectedInstance id and authenticationViewId')
+  }
   const ids = new Set()
   for (const entry of value.entries) {
     if (!entry || typeof entry.id !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(entry.id) || ids.has(entry.id)

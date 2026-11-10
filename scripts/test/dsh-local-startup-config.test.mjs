@@ -1,6 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { validateLocalStartup, readLocalStartup } from '../dsh-local-startup-config.mjs'
+import { validateLocalStartup as validate, readLocalStartup } from '../dsh-local-startup-config.mjs'
+const selectedInstance = { id: 'test-instance', authenticationViewId: 'owner' }
+const validateLocalStartup = value => validate({ selectedInstance, ...value })
 
 test('local composition selects distinct Loader entries without changing the base', async () => {
   const first = await readLocalStartup(process.cwd(), 'entries/dsh-startup/local/startup.json')
@@ -17,4 +19,10 @@ test('startup rejects remote entries, traversal, duplicate ids and unsupported s
   }
   assert.throws(() => validateLocalStartup({ schemaVersion: 1, entries: [valid, valid] }))
   assert.throws(() => validateLocalStartup({ schemaVersion: 2, entries: [] }))
+})
+
+test('instance and authentication view are explicit local identities, not endpoint URLs', () => {
+  for (const selectedInstance of [undefined, {}, { id: 'https://host.invalid', authenticationViewId: 'owner' }, { id: 'test' }]) {
+    assert.throws(() => validate({ schemaVersion: 1, entries: [], selectedInstance }))
+  }
 })

@@ -1,5 +1,6 @@
 {
   "schemaVersion": 1,
+  "selectedInstance": { "id": "local-test-dsh", "authenticationViewId": "owner" },
   "entries": [
     { "id": "local-shell", "name": "./plugins/focus.js", "config": { "label": "Focus" } }
   ]

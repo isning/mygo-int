@@ -1,4 +1,4 @@
-# Tickets 42–43: trusted local startup and replaceable shells
+# Tickets 42–44: local startup, shells and concrete entry ownership
 
 Authenticated startup selects `MYGO_STARTUP_CONFIG` (workspace-relative or an
 absolute path inside this workspace), defaulting to
@@ -6,7 +6,7 @@ absolute path inside this workspace), defaulting to
 `alternate.json` selects a different actual plugin module and shell layout.
 An empty `entries` array is supported; neither example is a mandatory feature.
 Ticket 42 supplies startup loading; ticket 43 supplies the shell examples below.
-Remote contribution ownership (44) remains separate.
+Ticket 44 adds concrete entry ownership as described below.
 
 ## Runtime boundary
 
@@ -32,8 +32,8 @@ Local entries use Loader's existing relative ESM import path with
 `baseUrl = <presentation-origin>/mygo-local/`. Names are restricted to
 `./plugins/<name>.js`, served from `entries/dsh-startup/local/plugins/` with
 realpath containment. Remote bootstrap cannot select these entries. This is
-trusted local code in the same browser realm, **not a sandbox** or implementation
-of ticket 44. Remote ClientEntries still owns only the original remote tree.
+trusted local code in the same browser realm, **not a sandbox**.
+Remote ClientEntries still owns only the original remote tree.
 
 The base has no marker or shell semantics. Example plugins own their DOM,
 labels, placement and `ctx.effect` cleanup. Local presentation surrounds
@@ -63,7 +63,7 @@ labels, **not enforcement or a remote-entry owner ledger**. Both trees still
 execute in one trusted compatibility realm. Remote UI can access the DOM; no
 sandbox or protection against hostile plugins is claimed.
 
-## Interface for ticket 44
+## Baseline interface from tickets 42–43
 
 Keep schema 1's `entries` as ordinary Loader `{id,name,config,disabled,inject}`
 options. Add local modules under the local plugin directory and select them in
@@ -168,3 +168,121 @@ T3 preview was attempted first and reported missing browser libraries. The
 repository's Nix Chromium/CDP helper supplied the browser checks. Only owned port
 4187 and this workspace's scratch artifacts were used. Owned listeners were
 stopped normally; no GitHub mutation, push, PR or deployment was performed.
+
+## Ticket 44: ownership of original Loader entries
+
+Both startup examples now explicitly select
+`selectedInstance: { "id": "local-test-dsh", "authenticationViewId": "owner" }`.
+Schema 1 requires these nonempty local identifiers in addition to `entries`;
+existing startup files must add this field. They identify this selected association,
+not a server verified by URL. Route changes do not rewrite them. A different
+private authentication view must select a distinct `authenticationViewId`;
+this ticket supplies no account merging, instance catalog or identity verification.
+The entry options and original package IDs remain untouched.
+
+`entry-ownership.js` creates one attribution registry shared by the two original
+Loader trees. The local tree is attached before its entries are created. After
+ordered remote bootstrap, a wrapper around the original facade's `create()`
+attaches the remote Loader at the concrete `modules.entries.start(loader, manifest)`
+seam, before original ClientEntries creates its roster. It forwards the original
+arguments, receiver and return value. No upstream file or core class is patched.
+The original ClientEntries object still owns its queue, graph/revision matching,
+release gate, retry, replacement, dependency import and removal behavior.
+
+Attribution uses Loader's original `loader/entry-init` event and a WeakMap keyed
+by concrete Entry objects. `scope.entries()` enumerates the original Loader's
+current entries, so removal drops membership, replacement retains the Entry's
+owner and reports its current fiber, and failed/disabled entries remain distinguishable
+from active entries. Context disposal retires the scope. A snapshot reports
+`owner`, `entryId`, `packageId`, `disabled` and numeric original `fiberState`
+(`2` is active; no fiber is `null`). `__MYGO_ENTRY_OWNERSHIP__.snapshot()` exposes
+only these diagnostic records, not mutation handles or a second entry controller.
+The registry is independent of shell DOM labels and does not derive ownership
+from package names, URLs, Slot labels or server-provided owner claims.
+
+This is **attribution, not security isolation**. Both trees still execute in one
+trusted browser realm and share the preserved official framework objects.
+No sandbox, multiple module realms, durable private-state partitioning, new
+SessionManager, Loader or plugin format is implemented.
+
+### Interface for ticket 45 (not implemented here)
+
+`startLocalComposition()` returns `ownership` and `localEntries` alongside its
+existing `ctx` and `dispose`. `ownership.ownerOf(entry)` resolves a concrete
+Entry's immutable owner. `ownership.attach(loader, owner)` returns an immutable
+scope with `owner` and `entries()`; after scope disposal `entries()` is empty.
+`bindRemoteEntryOwnership()` returns a handle whose `scope` becomes available
+when the original `ClientEntries.start()` runs. That scope has
+`{ kind: 'instance', instanceId, authenticationViewId }`, while the local scope
+has `{ kind: 'local' }`. Keep the returned remote handle inside the integration
+when implementing scoped removal. Use original ClientEntries/Loader lifecycle
+and cleanup paths over that scope; never dispose the local composition to refresh
+or remove remote contributions. This ticket adds no remote-removal command,
+reconciliation policy, security boundary or navigation framework.
+
+## Ticket 44 validation (2026-11-10)
+
+This worktree acquired its own original tree, frozen-installed it and built all
+8 original artifact gates (98.06s). Verification still reports unmodified pin
+`fcc0ad462172522aaf5c93a7b2e01f6b9f0b0159`. The adapted entry rebuilt at each
+owned Host start. Focused startup/bootstrap/lazy/Terminal/upload/download tests
+passed 14/14, and syntax and diff checks passed.
+
+Nix Chromium reached `http://100.97.207.47:4188/` for both Workbench and Focus.
+Each showed its configured shell before remote acquisition and attributed the
+actual active local Loader entry separately from all 74 original remote entries.
+73 remote entries were active, including the original session UI; the optional
+`@deepseek-ai/dsh-client-ui-settings-account` entry had no fiber. The registry
+reports that distinction rather than treating every declared row as loaded.
+The original session opened with visible retained MODEL MOCK history, original
+`#root` identity and working editor. Lazy bootstrap and original Terminal chunk
+both returned 200. Local disposal removed its shell and registry scope while
+leaving all 74 remote ownership records and the mounted original session intact.
+Screenshots were inspected. Private evidence is in this worktree's ignored
+`.scratch/test-dsh/local-{workbench,focus}.{json,png}`.
+
+A fresh Host's original composer completed one deterministic MODEL MOCK request:
+one durable user message, one durable assistant message, three streamed text
+chunks, matching original receipt identity, preserved usage/stop framing, cleared
+draft and no duplicate. No API key or real inference was used. The prior
+`gateway/internal` history-stream failure did not recur in these fresh-Host
+checks; repeated connections to one retained Host were not validated or repaired.
+No remote graph removal/replacement, ticket 45 behavior, sandbox, independent
+authentication-view isolation or full upload/download browser workflow is claimed.
+
+T3 preview was attempted first and explicitly reported missing browser libraries;
+the documented Nix Chromium/CDP helper supplied browser proof. Only this
+workspace's scratch artifacts and owned port 4188 were used; retained port 4181
+was untouched. All owned listeners were stopped normally. No GitHub mutation,
+push, PR or deployment ran.
+
+Commands used, from this worktree (source the environment before pnpm or browser
+provisioning; the preparation and Host helpers also set it internally):
+
+```bash
+source scripts/dsh-test-env.sh
+bash scripts/dsh-test-prepare.sh acquire
+bash scripts/dsh-test-prepare.sh install
+bash scripts/dsh-test-prepare.sh build
+node --test scripts/test/dsh-{local-startup-config,bootstrap-carrier,lazy-carrier,terminal-carrier,upload-carrier,download-carrier}.test.mjs
+DSH_CLIENT_PORT=4188 DSH_CLIENT_BIND=0.0.0.0 \
+  DSH_CLIENT_PUBLIC_ORIGIN=http://100.97.207.47:4188 \
+  node scripts/dsh-test-host.mjs start
+node scripts/dsh-test-browser.mjs check-local
+node scripts/dsh-test-host.mjs stop
+MYGO_STARTUP_CONFIG=entries/dsh-startup/local/alternate.json \
+  DSH_CLIENT_PORT=4188 DSH_CLIENT_BIND=0.0.0.0 \
+  DSH_CLIENT_PUBLIC_ORIGIN=http://100.97.207.47:4188 \
+  node scripts/dsh-test-host.mjs start
+MYGO_EXPECT_LOCAL_PLUGIN=focus node scripts/dsh-test-browser.mjs check-local
+node scripts/dsh-test-host.mjs stop
+DSH_CLIENT_PORT=4188 DSH_CLIENT_BIND=0.0.0.0 \
+  DSH_CLIENT_PUBLIC_ORIGIN=http://100.97.207.47:4188 \
+  node scripts/dsh-test-host.mjs start
+node scripts/dsh-test-host.mjs check-submit
+node scripts/dsh-test-host.mjs stop
+bash scripts/dsh-upstream.sh verify
+node --check entries/dsh-startup/entry-ownership.js
+node --check scripts/dsh-test-browser.mjs
+git diff --check
+```

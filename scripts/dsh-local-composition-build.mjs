@@ -26,11 +26,14 @@ await build({
 import Loader from ${JSON.stringify(loader)};
 import { FIBER_STATE as FiberState } from ${JSON.stringify(upstream + '/packages/client/web/src/loader-status.ts')};
 import { startLocalComposition } from ${JSON.stringify(local)};
+import { bindRemoteEntryOwnership } from ${JSON.stringify(resolve(root, 'entries/dsh-startup/entry-ownership.js'))};
 const staticModules = getStaticModules();
 const { Context } = staticModules['@deepseek-ai/cordis'];
-await startLocalComposition({ Context, Loader, FiberState, staticModules });
+const composition = await startLocalComposition({ Context, Loader, FiberState, staticModules });
+Object.defineProperty(globalThis, '__MYGO_ENTRY_OWNERSHIP__', { value: Object.freeze({ snapshot: composition.ownership.snapshot }) });
 const bootstrapUrl = '/mygo-boot/bootstrap.js';
 await import(/* @vite-ignore */ bootstrapUrl);
+if (globalThis.__ModuleLoader__) bindRemoteEntryOwnership(globalThis.__ModuleLoader__, composition.ownership, composition.selectedInstance);
 ${original}`
     },
   }],

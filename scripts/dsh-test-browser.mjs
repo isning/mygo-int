@@ -65,6 +65,17 @@ try{
   const current=await evaluate("[...document.querySelectorAll('[data-mygo-local-plugin]')].map(x=>({plugin:x.dataset.mygoLocalPlugin,text:x.querySelector('.mygo-shell-chrome').textContent}))");
   assert.deepEqual(current,observation.markers,'local plugin survives original remote activation');
   assert.deepEqual(lazyResponses,[200],'combined startup serves the lazy resource boot module');
+  const ownership=await evaluate('globalThis.__MYGO_ENTRY_OWNERSHIP__.snapshot()');
+  const localEntries=ownership.filter(row=>row.owner.kind==='local');
+  const remoteEntries=ownership.filter(row=>row.owner.kind==='instance');
+  assert.equal(localEntries.length,1,'concrete local Loader entry');
+  assert.equal(localEntries[0].packageId,'./plugins/'+expected+'.js');
+  assert.equal(localEntries[0].fiberState,2,'local entry is actually active');
+  assert.ok(remoteEntries.length>0,'original ClientEntries created remote entries');
+  assert.ok(remoteEntries.some(row=>row.packageId==='@deepseek-ai/dsh-client-ui-session'&&row.fiberState===2),'original session entry is active');
+  assert.ok(remoteEntries.every(row=>row.owner.instanceId==='local-test-dsh'&&row.owner.authenticationViewId==='owner'),'selected local identity owns actual remote graph');
+  const graphIds=await evaluate('globalThis.__DSH_BOOT__.entries.map(row=>row.id).sort()');
+  assert.deepEqual(remoteEntries.map(row=>row.packageId).sort(),graphIds,'original package IDs and complete graph roster preserved');
   const layout=await evaluate(`(() => {
     const shell=document.querySelector('[data-mygo-shell]');
     const outlet=shell.querySelector('[data-ui-owner="connected-instance"]');
@@ -93,7 +104,10 @@ try{
   await evaluate("dispatchEvent(new PageTransitionEvent('pagehide'))");
   await until(()=>evaluate("document.querySelectorAll('[data-mygo-local-plugin]').length===0"));
   assert.equal(await evaluate("document.getElementById('root')===globalThis.__MYGO_ORIGINAL_OUTLET__ && !!document.querySelector('#root [contenteditable=true]')"),true,'local disposal retains mounted original session UI');
-  await writeFile(scratch+'/local-'+expected+'.json',JSON.stringify({officialUIReady:ready,...observation,layout,lazyResponses,terminalChunks,sessionOpened:true,disposed:true},null,2));
+  const afterDisposal=await evaluate('globalThis.__MYGO_ENTRY_OWNERSHIP__.snapshot()');
+  assert.equal(afterDisposal.filter(row=>row.owner.kind==='local').length,0,'disposed local scope releases registry membership');
+  assert.deepEqual(afterDisposal,remoteEntries,'local lifecycle leaves remote entries and owners intact');
+  await writeFile(scratch+'/local-'+expected+'.json',JSON.stringify({officialUIReady:ready,...observation,layout,ownership,afterDisposal,lazyResponses,terminalChunks,sessionOpened:true,disposed:true},null,2));
   console.log('Configured shell owns layout before remote boot; original outlet, session, lazy boot and Cordis disposal passed');
  }
  if(submit){
