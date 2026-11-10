@@ -63,7 +63,7 @@ export XDG_STATE_HOME="$PWD/.scratch/status-package/state"
 export PNPM_HOME="$PWD/.scratch/status-package/pnpm"
 export npm_config_cache="$PWD/.scratch/status-package/npm-cache"
 export npm_config_store_dir="$PWD/.scratch/status-package/pnpm-store"
-pnpm --dir packages/dsh-host-status pack --pack-destination ../../.scratch/status-package
+pnpm --config.auto-install-peers=false --dir packages/dsh-host-status pack --pack-destination ../../.scratch/status-package
 ```
 
 For a separately authorized installation later, add the resulting
@@ -77,12 +77,13 @@ this package from that runtime. The three services must already be provided by
 the Host composition. No issue 27 artifacts are needed to author or pack this
 package; launching a real Host still needs its normal build/runtime prerequisites.
 
-Live acceptance still required on an authorized pinned Host: authenticate through
+For live acceptance on another authorized pinned Host: authenticate through
 its normal flow, GET the route with that access context and verify 200/schema;
 verify missing credentials yield 401 and rejected origin/host yields 403; unload
 the plugin and confirm the adapter route is gone. Use existing secure credential
-handling; do not paste credentials into scripts or commit them. No live Host was
-installed, started or contacted for this implementation.
+handling; do not paste credentials into scripts or commit them. The initial
+implementation did not start a Host; the later local validation round is recorded
+below.
 
 ## Evidence and limits
 
@@ -100,9 +101,11 @@ handler, with small doubles for admission, routing and Cordis effects. They cove
 success, denied admission, admitted non-owner denial, method/path restriction,
 release projection and registration disposal. They do **not** prove live Host
 authentication, its fences, Loader resolution or actual Cordis dependency teardown.
-The declarations reference real Host types but have not been typechecked against
-built upstream packages. Runtime integration remains unverified until a suitable
-Host and authorized connection exist. No upstream implementation was copied.
+A fresh local round subsequently passed against the real pinned Host, Loader,
+Connection and Cordis, including declaration typechecking. See the
+[live-validation handoff](../../docs/upstream/dsh-status-live-validation.md) for
+reproduction, actual statuses, lifecycle evidence and the Node runtime caveat.
+No upstream implementation was copied.
 
 Bootstrap export (issue 30), full authentication, proxy/gateway and UI behavior
 are outside this package. This status route cannot independently boot a client.
