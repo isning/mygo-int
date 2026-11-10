@@ -37,10 +37,14 @@ export function createEntryOwnership() {
 // release gate, create/remove/reload methods, package IDs and dependency semantics.
 export function bindRemoteEntryOwnership(facade, registry, selectedInstance) {
   let scope
+  let clientEntries
+  let removedGraph
+  let inactiveBefore
   const create = facade.create
   facade.create = function (...args) {
     const modules = create.apply(this, args)
     const entries = modules.entries
+    clientEntries = entries
     const start = entries.start
     entries.start = function (loader, manifest) {
       scope ??= registry.attach(loader, {
@@ -52,5 +56,39 @@ export function bindRemoteEntryOwnership(facade, registry, selectedInstance) {
     }
     return modules
   }
-  return Object.freeze({ get scope() { return scope } })
+  // A deliberately bounded diagnostic case, not a general graph controller.
+  // ClientEntries.sync owns serialization, Loader removal, fiber settlement and pruning.
+  async function removeTerminalContribution() {
+    const id = '@deepseek-ai/dsh-client-ui-sidebar-terminal'
+    if (!scope || !clientEntries) throw Error('Remote entries have not started')
+    const candidates = scope.entries().filter(entry => entry.options.name === id)
+    if (!removedGraph) {
+      if (candidates.length !== 1) throw Error('Expected one original Terminal entry')
+      const entry = candidates[0]
+      if (registry.ownerOf(entry) !== scope.owner || entry.fiber?.state !== 2) {
+        throw Error('Terminal entry is not active in the selected instance scope')
+      }
+      const graph = globalThis.__DSH_BOOT__
+      if (!graph || graph.entries.some(row => row.id !== id &&
+        [...(row.inject ?? []), ...(row.external ?? [])].some(dep => dep.replace(/\/client$/, '') === id))) {
+        throw Error('Terminal removal would affect a dependent entry or graph is unavailable')
+      }
+      inactiveBefore = new Set(scope.entries().filter(row => !row.fiber).map(row => row.options.name))
+      removedGraph = {
+        ...graph,
+        entries: graph.entries.filter(row => row.id !== id),
+        batches: graph.batches.map(batch => ({ ...batch, entries: batch.entries.filter(key => key !== id) }))
+          .filter(batch => batch.entries.length),
+      }
+    }
+    await clientEntries.sync(removedGraph)
+    const failures = clientEntries.state.getSnapshot().failures
+    // Reconciliation also retries already-unmounted optional entries. Preserve their
+    // diagnostics without attributing that pre-existing absence to this removal.
+    const newFailures = failures.filter(failure => !inactiveBefore.has(failure.id))
+    if (newFailures.length) throw Error(`Terminal removal failed: ${JSON.stringify(newFailures)}`)
+    if (scope.entries().some(entry => entry.options.name === id)) throw Error('Terminal entry remains after reconciliation')
+    return { removed: id, remaining: scope.entries().length, preexistingInactiveFailures: failures }
+  }
+  return Object.freeze({ get scope() { return scope }, removeTerminalContribution })
 }

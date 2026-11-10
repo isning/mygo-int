@@ -1,4 +1,4 @@
-# Tickets 42–44: local startup, shells and concrete entry ownership
+# Tickets 42–45: local composition, ownership and scoped removal
 
 Authenticated startup selects `MYGO_STARTUP_CONFIG` (workspace-relative or an
 absolute path inside this workspace), defaulting to
@@ -205,7 +205,7 @@ trusted browser realm and share the preserved official framework objects.
 No sandbox, multiple module realms, durable private-state partitioning, new
 SessionManager, Loader or plugin format is implemented.
 
-### Interface for ticket 45 (not implemented here)
+### Ownership interface consumed by ticket 45
 
 `startLocalComposition()` returns `ownership` and `localEntries` alongside its
 existing `ctx` and `dispose`. `ownership.ownerOf(entry)` resolves a concrete
@@ -286,3 +286,94 @@ node --check entries/dsh-startup/entry-ownership.js
 node --check scripts/dsh-test-browser.mjs
 git diff --check
 ```
+
+## Ticket 45: remove one used original remote contribution (2026-11-10)
+
+Parent `43e0e43`. The retained original ClientEntries handle at the ticket 44
+`start(loader, manifest)` seam now supplies the bounded diagnostic
+`__MYGO_REMOTE_CONTRIBUTION_CASE__.removeTerminal()`. It selects the one active
+`@deepseek-ai/dsh-client-ui-sidebar-terminal` concrete Entry from
+`remoteScope.entries()`, checks `ownership.ownerOf(entry) === remoteScope.owner`,
+and rejects graph dependents. It passes the same-release boot graph minus that
+one row (and its batch membership) to original `ClientEntries.sync()`. No ID,
+revision, dependency, upstream class, Host configuration or original graph global
+is rewritten. Original ClientEntries owns its queue, Loader.remove, fiber cleanup
+settlement and module pruning. No DOM removal simulates disposal.
+
+This is a page-local diagnostic case, not a Host graph update or persistent
+suppression policy: a subsequent authoritative full graph can restore the entry.
+A new page restores the full original graph. The second identical removal uses
+original reconciliation semantics. There is no all-resource cleanup, release
+upgrade, rollback, generic registry redesign or sandbox/security claim.
+
+The browser `check-remove` case opens the real Terminal Shell menu (one original
+`/api/terminal/shells` response, HTTP 200, visible bash choice), then uses the
+original lazy Terminal face (chunk HTTP 200, nonzero mounted width). It removes
+the contribution, requires its mounted `[data-sidebar-terminal]` face to vanish,
+and checks the concrete ownership snapshot loses exactly that remote Entry.
+The same local Workbench shell and `#root` node remain, all other entries retain
+their recorded IDs/states, and the original session composer submits afterwards.
+The sidebar's existing open-tab record/title may remain with its original
+“Nothing here can view this kind of content yet” fallback: the removed plugin's
+face is gone, not the independent sidebar service's navigation state.
+Terminal creation/execution remains denied; the discovery action creates no shell.
+
+Fresh frozen install and original artifact build passed all 8 gates (100.75s).
+Focused startup/bootstrap/lazy/Terminal/upload/download tests passed 14/14.
+The combined removal/composer case passed twice on one Host, including repeated
+removal each time: 75 ownership records became 74 (one local plus 73 remote),
+and one durable user/assistant pair, three streamed chunks, original receipt
+identity, usage/stop framing and empty draft were verified after each disposal.
+No history-stream error recurred in those two connections; this is bounded
+repeated-connection evidence, not a general reliability guarantee.
+
+The first case attempt correctly reported an original reconciliation failure for
+the already-unmounted optional account-settings entry: its onboarding asset is
+outside the existing asset allowlist. The case now retains this pre-existing
+inactive-entry diagnostic in its result; new failures remain fatal. All unrelated
+entry states must still match in the live assertion. This ticket does not broaden
+that asset grant or repair account settings. Existing upload handler unit tests
+ran; the full upload/download browser workflows were not rerun, and no download
+target grant was added.
+
+T3 preview status/open was attempted first; open explicitly failed with
+“This host is missing libraries T3's browser needs”. Documented Nix Chromium/CDP
+supplied actual browser evidence. Screenshots were inspected. Private evidence,
+cookies, logs and browser profiles stay in ignored `.scratch/test-dsh/`:
+`remove.json`, `remove-before.png`, `remove.png`, `remove-submit.png`,
+`remove-submit-browser.json`, and `remove-submit-validation.json`.
+Only this worktree's helpers/listeners and public port 4189 were used; retained
+4181 was untouched. The owned Host was stopped normally after disposal testing
+and restarted with the full default composition and MODEL MOCK for final review.
+
+Exact commands (workspace root; environment sourced before all pnpm/provisioning):
+
+```bash
+source scripts/dsh-test-env.sh
+bash scripts/dsh-test-prepare.sh acquire
+bash scripts/dsh-test-prepare.sh install
+bash scripts/dsh-test-prepare.sh build
+node --test scripts/test/dsh-{local-startup-config,bootstrap-carrier,lazy-carrier,terminal-carrier,upload-carrier,download-carrier}.test.mjs
+DSH_BROWSER_CHECK=check-remove DSH_CLIENT_PORT=4189 DSH_CLIENT_BIND=0.0.0.0 \
+  DSH_CLIENT_PUBLIC_ORIGIN=http://100.97.207.47:4189 \
+  node scripts/dsh-test-host.mjs start
+node scripts/dsh-test-host.mjs check-submit
+node scripts/dsh-test-host.mjs check-submit
+node scripts/dsh-test-host.mjs stop
+DSH_CLIENT_PORT=4189 DSH_CLIENT_BIND=0.0.0.0 \
+  DSH_CLIENT_PUBLIC_ORIGIN=http://100.97.207.47:4189 \
+  node scripts/dsh-test-host.mjs start
+node scripts/dsh-test-host.mjs check-submit
+node scripts/dsh-test-browser.mjs check-local
+node scripts/dsh-test-host-network.mjs
+node scripts/dsh-test-host.mjs status
+bash scripts/dsh-upstream.sh verify
+node --check entries/dsh-startup/entry-ownership.js
+node --check scripts/dsh-local-composition-build.mjs
+node --check scripts/dsh-test-browser.mjs
+node --check scripts/dsh-test-host-runner.mjs
+git diff --check
+```
+
+Host runtime uses pnpm `node-linux-x64@24.21.0`; artifacts/adapted entry use
+Nix Node. Final review URL: `http://100.97.207.47:4189/` (bind `0.0.0.0`).

@@ -65,7 +65,7 @@ try {
  process.on('SIGUSR1',async()=>{
   if(checking||stopping)return;checking=true;
   try{
-   const browser=spawn(process.execPath,[root+'/scripts/dsh-test-browser.mjs','check-submit'],{stdio:'inherit',env:process.env});
+   const browser=spawn(process.execPath,[root+'/scripts/dsh-test-browser.mjs',process.env.DSH_BROWSER_CHECK==='check-remove'?'check-remove':'check-submit'],{stdio:'inherit',env:process.env});
    assert.equal(await new Promise(r=>browser.once('exit',r)),0,'browser composer assertions');
    const observation=await ctx.sessionQuery.observeSession(fixtureId,{projectionMode:'none'});
    let events;try{events=[...observation.events];}finally{observation[Symbol.dispose]();}

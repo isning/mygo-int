@@ -33,7 +33,10 @@ const composition = await startLocalComposition({ Context, Loader, FiberState, s
 Object.defineProperty(globalThis, '__MYGO_ENTRY_OWNERSHIP__', { value: Object.freeze({ snapshot: composition.ownership.snapshot }) });
 const bootstrapUrl = '/mygo-boot/bootstrap.js';
 await import(/* @vite-ignore */ bootstrapUrl);
-if (globalThis.__ModuleLoader__) bindRemoteEntryOwnership(globalThis.__ModuleLoader__, composition.ownership, composition.selectedInstance);
+if (globalThis.__ModuleLoader__) {
+  const remote = bindRemoteEntryOwnership(globalThis.__ModuleLoader__, composition.ownership, composition.selectedInstance);
+  Object.defineProperty(globalThis, '__MYGO_REMOTE_CONTRIBUTION_CASE__', { value: Object.freeze({ removeTerminal: remote.removeTerminalContribution }) });
+}
 ${original}`
     },
   }],

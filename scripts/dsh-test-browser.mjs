@@ -4,8 +4,9 @@ import {spawn} from 'node:child_process';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import {openSync} from 'node:fs';
 import {resolve} from 'node:path';
-const submit=process.argv[2]==='check-submit';
-const checkLocal=process.argv[2]==='check-local';
+const checkRemoval=process.argv[2]==='check-remove';
+const submit=process.argv[2]==='check-submit'||checkRemoval;
+const checkLocal=process.argv[2]==='check-local'||checkRemoval;
 const scratch=resolve('.scratch/test-dsh'),interactive=process.argv[2]==='open',authenticated=interactive||process.argv[2]==='check-auth';
 const profile=scratch+'/browser-'+Date.now();await mkdir(profile,{recursive:true,mode:0o700});
 const log=openSync(scratch+'/browser.log','a',0o600);
@@ -20,7 +21,7 @@ try{
  ws=new WebSocket(page.webSocketDebuggerUrl);await new Promise((r,j)=>{ws.onopen=r;ws.onerror=j;});
  let sequence=0;const pending=new Map();ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.id){pending.get(m.id)?.(m);pending.delete(m.id);}};
  const send=(method,params)=>new Promise((r,j)=>{const id=++sequence;pending.set(id,m=>m.error?j(Error(m.error.message)):r(m.result));ws.send(JSON.stringify({id,method,params}));});
- const promptCalls=[],receipts=[],frames=[],responseJobs=[],socketUrls=[],lazyResponses=[],terminalChunks=[];
+ const promptCalls=[],receipts=[],frames=[],responseJobs=[],socketUrls=[],lazyResponses=[],terminalChunks=[],shellResponses=[];
  const previous=ws.onmessage;
  ws.onmessage=e=>{const m=JSON.parse(e.data),p=m.params;
   if(m.method==='Network.requestWillBeSent'&&new URL(p.request.url).pathname==='/api/session/prompt')promptCalls.push(JSON.parse(p.request.postData));
@@ -29,11 +30,13 @@ try{
   if(m.method==='Network.webSocketCreated')socketUrls.push(p.url);
   if(m.method==='Network.responseReceived'&&new URL(p.response.url).pathname==='/mygo-boot/lazy-resources.js')lazyResponses.push(p.response.status);
   if(m.method==='Network.responseReceived'&&new URL(p.response.url).pathname==='/plugins/@deepseek-ai/dsh-client-ui-sidebar-terminal/client.terminal.js')terminalChunks.push(p.response.status);
+  if(m.method==='Network.responseReceived'&&new URL(p.response.url).pathname==='/api/terminal/shells')shellResponses.push(p.response.status);
   if(m.method==='Network.webSocketFrameReceived')frames.push(p.response.payloadData);
   previous(e);
  };
  await send('Network.enable',{});
  await send('Page.enable',{});
+ await send('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
  if(checkLocal) await send('Page.addScriptToEvaluateOnNewDocument',{source:`{
    const originalFetch = globalThis.fetch;
    globalThis.fetch = function(input, ...args) {
@@ -49,7 +52,7 @@ try{
    };
  }`});
  await send('Page.navigate',{url});
- evaluate=expression=>new Promise((r,j)=>{const id=++sequence;pending.set(id,m=>m.error?j(Error('CDP evaluation failed')):r(m.result.result.value));ws.send(JSON.stringify({id,method:'Runtime.evaluate',params:{expression,returnByValue:true}}));});
+ evaluate=expression=>new Promise((r,j)=>{const id=++sequence;pending.set(id,m=>m.error?j(Error('CDP evaluation failed')):r(m.result.result.value));ws.send(JSON.stringify({id,method:'Runtime.evaluate',params:{expression,returnByValue:true,awaitPromise:true}}));});
  await until(async()=>await evaluate("globalThis.__ModuleLoader__?.mode==='live' && (document.body.innerText.includes('Choose workspace')||document.body.innerText.includes('Local test DSH'))"));
  await evaluate("[...document.querySelectorAll('button')].find(x=>x.getAttribute('aria-label')==='Open sidebar')?.click()");
  if(!submit)await evaluate("[...document.querySelectorAll('button')].find(x=>x.innerText.includes('Choose workspace'))?.click()");
@@ -98,9 +101,35 @@ try{
   await until(()=>evaluate("!!document.querySelector('[data-sidebar-right-expand]')"));
   await evaluate("document.querySelector('[data-sidebar-right-expand]').click()");
   await until(()=>evaluate("!!document.querySelector('[data-sidebar-right-guide-entry=terminal] button')"));
+  if(checkRemoval){
+   await evaluate("document.querySelector('[data-sidebar-right-guide-entry=terminal] button[aria-haspopup=menu]').click()");
+   await until(()=>evaluate("[...document.querySelectorAll('[role=menuitem]')].some(el=>el.innerText.includes('bash') && el.getBoundingClientRect().width>0)"));
+   assert.deepEqual(shellResponses,[200],'one successful original shell discovery');
+   await writeFile(scratch+'/remove-before.png',Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'));
+   await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+   await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+  }
   await evaluate("document.querySelector('[data-sidebar-right-guide-entry=terminal] button').click()");
   await until(()=>evaluate("(()=>{const el=document.querySelector('[data-sidebar-terminal]');return !!el&&el.getBoundingClientRect().width>0})()"));
   assert.deepEqual(terminalChunks,[200],'original Terminal chunk loads with both local shell routes enabled');
+  if(checkRemoval){
+   // Preserve concrete DOM identities for observation only; disposal never edits DOM here.
+   await evaluate("globalThis.__MYGO_SHELL_BEFORE__=document.querySelector('[data-mygo-shell]')");
+   const before=await evaluate('globalThis.__MYGO_ENTRY_OWNERSHIP__.snapshot()');
+   const result=await evaluate("globalThis.__MYGO_REMOTE_CONTRIBUTION_CASE__.removeTerminal().then(value=>({value}),error=>({error:String(error)}))");
+   assert.ok(!result.error,result.error);
+   await until(()=>evaluate("!document.querySelector('[data-sidebar-terminal]') && !document.querySelector('[data-sidebar-right-guide-entry=terminal]')"));
+   const after=await evaluate('globalThis.__MYGO_ENTRY_OWNERSHIP__.snapshot()');
+   assert.deepEqual(after,before.filter(row=>row.packageId!=='@deepseek-ai/dsh-client-ui-sidebar-terminal'),'exactly one remote contribution removed; all other entry identities/states retained');
+   const repeated=await evaluate("globalThis.__MYGO_REMOTE_CONTRIBUTION_CASE__.removeTerminal().then(value=>({value}),error=>({error:String(error)}))");
+   assert.ok(!repeated.error,repeated.error);
+   assert.deepEqual(repeated,result,'original graph reconciliation is idempotent');
+   assert.deepEqual(await evaluate('globalThis.__MYGO_ENTRY_OWNERSHIP__.snapshot()'),after);
+   assert.equal(await evaluate("document.querySelector('[data-mygo-shell]')===globalThis.__MYGO_SHELL_BEFORE__ && document.getElementById('root')===globalThis.__MYGO_ORIGINAL_OUTLET__ && !!document.querySelector('#root [contenteditable=true]') && document.body.innerText.includes('Hello! This is a deterministic local model mock reply.') && !document.body.innerText.includes('Failed to load history')"),true,'same local shell, original outlet and unrelated session remain usable');
+   await writeFile(scratch+'/remove.json',JSON.stringify({before,after,result,repeated,terminalChunks,shellResponses,layout},null,2));
+   await writeFile(scratch+'/remove.png',Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'));
+   console.log('Original used Terminal contribution removed twice; same local shell/outlet and unrelated session retained');
+  } else {
   await evaluate("dispatchEvent(new PageTransitionEvent('pagehide'))");
   await until(()=>evaluate("document.querySelectorAll('[data-mygo-local-plugin]').length===0"));
   assert.equal(await evaluate("document.getElementById('root')===globalThis.__MYGO_ORIGINAL_OUTLET__ && !!document.querySelector('#root [contenteditable=true]')"),true,'local disposal retains mounted original session UI');
@@ -108,15 +137,18 @@ try{
   assert.equal(afterDisposal.filter(row=>row.owner.kind==='local').length,0,'disposed local scope releases registry membership');
   assert.deepEqual(afterDisposal,remoteEntries,'local lifecycle leaves remote entries and owners intact');
   await writeFile(scratch+'/local-'+expected+'.json',JSON.stringify({officialUIReady:ready,...observation,layout,ownership,afterDisposal,lazyResponses,terminalChunks,sessionOpened:true,disposed:true},null,2));
-  console.log('Configured shell owns layout before remote boot; original outlet, session, lazy boot and Cordis disposal passed');
+  }
+  console.log('Configured shell, original outlet, session and lazy boot passed');
  }
  if(submit){
   const status=JSON.parse(await readFile(scratch+'/status.json','utf8'));
   assert.equal(status.model.mode,'mock','check-submit is explicitly model mock validation');
+  if(!checkRemoval){
   await until(()=>evaluate("[...document.querySelectorAll('[role=treeitem]')].some(x=>x.innerText==='Local test DSH')"));
   await evaluate("[...document.querySelectorAll('[role=treeitem]')].find(x=>x.innerText==='Local test DSH')?.click()");
   await until(()=>evaluate("document.body.innerText.includes('Local MODEL MOCK reply')"));
   await evaluate("[...document.querySelectorAll('[role=treeitem],button,[role=button]')].find(x=>x.innerText==='Local MODEL MOCK reply')?.click()");
+  }
   await until(()=>evaluate("!!document.querySelector('[contenteditable=true]') && !document.body.innerText.includes('Loading history') && !document.body.innerText.includes('Reconnecting')"));
   // The fixture already has a warm-up turn; wait for its history before counting replies.
   await until(()=>evaluate("document.body.innerText.includes('Hello! This is a deterministic local model mock reply.')"));
