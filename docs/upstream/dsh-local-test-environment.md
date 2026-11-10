@@ -1,5 +1,10 @@
 # Persistent local test DSH (model mock by default)
 
+**Active authentication update:** the anonymous scoped carrier described below is
+retired from the active path. See [browser authentication and retained 4190 entry](dsh-browser-auth-validation.md)
+for current startup, private login, permission checks and browser port requirements.
+The earlier validation records below remain historical evidence.
+
 No API key or account setup is needed. The default starts a deterministic local
 **MODEL MOCK HTTP server** and configures the original `dsh-llm-pi-ai` provider
 through its existing profile patch seam. This is not a real LLM. The original

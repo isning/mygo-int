@@ -1,10 +1,5 @@
 // The deferred exists before the unchanged official entry starts running.
 import { applyIndexInjections } from '/mygo-boot/apply-injections.js'
-import { graphBundleReferences } from '/mygo-boot/bundle-references.js'
-import { lazyBundleReferences } from '/mygo-boot/lazy-resources.js'
-
-import { SESSION_ASSETS } from '/mygo-boot/session-assets.js'
-
 const gate = globalThis.__DSH_BOOT_READY__
 try {
   const response = await fetch('/mygo/index-injections', { credentials: 'same-origin', cache: 'no-store' })
@@ -15,26 +10,9 @@ try {
   }
   const graphs = payload.injections.filter(row => row.kind === 'global' && row.name === '__DSH_BOOT__')
   if (graphs.length !== 1) throw new Error('mygo boot: expected one boot graph')
-  const references = graphBundleReferences(graphs[0].value)
-  for (const reference of lazyBundleReferences(graphs[0].value)) references.add(reference)
-  // Preserve independently installed RPC hooks; the original module system owns
-  // factory registration, dependency arrival and static singleton resolution.
-  globalThis.__DSH_TRANSPORT__ = {
-    ...globalThis.__DSH_TRANSPORT__,
-    loadBundle: src => new Promise((resolve, reject) => {
-      if (!references.has(src)) return reject(new Error(`mygo boot: undeclared bundle ${src}`))
-      const script = document.createElement('script')
-      script.src = src
-      script.async = true
-      script.onload = () => { script.remove(); resolve() }
-      script.onerror = () => { script.remove(); reject(new Error(`mygo boot: failed to load ${src}`)) }
-      document.head.append(script)
-    }),
-    resolveAsset: reference => {
-      if (!SESSION_ASSETS.has(reference)) throw new Error(`mygo boot: undeclared package asset ${reference}`)
-      return '/' + reference
-    },
-  }
+  // Original browser-relative bundle and asset resolution uses this authenticated
+  // authority. Original ModuleSystem/Remote own loading and access decisions.
+  globalThis.__DSH_TRANSPORT__ = { ...globalThis.__DSH_TRANSPORT__, ownsHost: false }
   await applyIndexInjections(payload.injections, src => new Promise((resolve, reject) => {
     const script = document.createElement('script')
     script.src = src

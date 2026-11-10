@@ -5,14 +5,13 @@ import { readFile, writeFile, mkdir, realpath } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { resolve, dirname, extname, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { SESSION_ASSETS } from '../entries/dsh-startup/session-assets.js'
 import { execFileSync } from 'node:child_process'
 import { readLocalStartup } from './dsh-local-startup-config.mjs'
 
 const workspace = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const upstream = resolve(workspace, '.scratch/upstream/deepseek-harness')
 const bootEnabled = Boolean(process.env.DSH_ORIGIN)
-if (bootEnabled !== Boolean(process.env.DSH_COOKIE_FILE)) throw new Error('Set both DSH_ORIGIN and DSH_COOKIE_FILE')
+if (process.env.DSH_COOKIE_FILE) throw new Error('Server-side DSH_COOKIE_FILE is retired; use original browser login')
 const localStartup = bootEnabled ? await readLocalStartup(workspace,
   process.env.MYGO_STARTUP_CONFIG ?? 'entries/dsh-startup/local/startup.json') : undefined
 const dist = bootEnabled ? resolve(workspace, '.scratch/dsh-local-composition/dist') : resolve(upstream, 'apps/web/dist')
@@ -52,46 +51,18 @@ if (command === 'serve') {
   if (bindHost !== '127.0.0.1' && publicOrigins.length === 0) throw Error('Non-loopback bind requires DSH_CLIENT_PUBLIC_ORIGIN')
   const trusted = createCarrierTrust({ publicOrigins })
   const types = { '.json': 'application/json', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf', '.txt': 'text/plain', '.svg': 'image/svg+xml', '.map': 'application/json' }
-  const ownerCookie = bootEnabled ? (await readFile(process.env.DSH_COOKIE_FILE, 'utf8')).trim() : undefined
-  const downloadTargets = process.env.DSH_DOWNLOAD_TARGETS_FILE
-    ? JSON.parse(await readFile(process.env.DSH_DOWNLOAD_TARGETS_FILE, 'utf8')) : []
-  if (!Array.isArray(downloadTargets)) throw Error('Download targets must be an array of exact Session/path grants')
-  const downloadCarrier = bootEnabled ? (await import('./dsh-download-carrier.mjs')).createDownloadCarrier({
-    origin: process.env.DSH_ORIGIN, cookie: ownerCookie, publicOrigins, targets: downloadTargets,
-  }) : undefined
-  const terminalReadCarrier = bootEnabled ? (await import('./dsh-terminal-carrier.mjs')).createTerminalReadCarrier({
-    origin: process.env.DSH_ORIGIN, cookie: ownerCookie, publicOrigins,
-  }) : undefined
-  const lazyCarrier = bootEnabled ? (await import('./dsh-lazy-carrier.mjs')).createLazyCarrier({
-    origin: process.env.DSH_ORIGIN, cookie: ownerCookie, publicOrigins,
-  }) : undefined
-  const uploadCarrier = bootEnabled ? (await import('./dsh-upload-carrier.mjs')).createUploadCarrier({
-    origin: process.env.DSH_ORIGIN, cookie: ownerCookie, publicOrigins,
-  }) : undefined
-  const carrier = bootEnabled ? (await import('./dsh-bootstrap-carrier.mjs')).createBootstrapCarrier({
-    origin: process.env.DSH_ORIGIN, cookie: ownerCookie, publicOrigins,
-  }) : undefined
-  const inventoryRpcCarrier = bootEnabled ? (await import('./dsh-rpc-carrier.mjs')).createInventoryRpcCarrier({
-    origin: process.env.DSH_ORIGIN, cookie: ownerCookie, publicOrigins,
-  }) : undefined
-  const { createSessionCarrier, loadOriginalSocketLibrary } = await import('./dsh-session-carrier.mjs')
-  const socketLibrary = bootEnabled ? loadOriginalSocketLibrary(workspace) : undefined
-  const sessionCarrier = bootEnabled ? createSessionCarrier({ origin: process.env.DSH_ORIGIN, cookie: ownerCookie, publicOrigins, WebSocket: socketLibrary.WebSocket, WebSocketServer: socketLibrary.WebSocketServer }) : undefined
+  const carrier = bootEnabled ? (await import('./dsh-authenticated-carrier.mjs')).createAuthenticatedCarrier({ origin: process.env.DSH_ORIGIN, publicOrigins }) : undefined
   const assetRoot = await realpath(resolve(dist, 'assets'))
   const server = createServer(async (request, response) => {
     try {
       if (!trusted(request)) { response.writeHead(403).end(); return }
-      if (carrier && await carrier(request, response)) return
-      if (lazyCarrier && await lazyCarrier(request, response)) return
-      if (sessionCarrier && await sessionCarrier.handle(request, response)) return
-      if (uploadCarrier && await uploadCarrier(request, response)) return
-      if (downloadCarrier && await downloadCarrier(request, response)) return
-      if (terminalReadCarrier && await terminalReadCarrier(request, response)) return
-      if (inventoryRpcCarrier && await inventoryRpcCarrier(request, response)) return
-      if (SESSION_ASSETS.has(request.url.slice(1)) && carrier) {
-        if (request.method !== 'GET') { response.writeHead(405).end(); return }
-        const result = await fetch(new URL(request.url, process.env.DSH_ORIGIN), { headers: { cookie: ownerCookie }, redirect: 'error', signal: AbortSignal.timeout(15000) })
-        response.writeHead(result.status, { 'Content-Type': result.headers.get('content-type') ?? 'application/octet-stream', 'Cache-Control': 'no-store', 'Content-Security-Policy': "script-src 'none'", 'X-Content-Type-Options': 'nosniff' }).end(new Uint8Array(await result.arrayBuffer()))
+      const requestPath = new URL(request.url, 'http://localhost').pathname
+      if (carrier && (requestPath === '/' || requestPath === '/index.html')) {
+        carrier.handle(request, response, html)
+        return
+      }
+      if (carrier && !requestPath.startsWith('/assets/') && !requestPath.startsWith('/mygo-local/') && !requestPath.startsWith('/mygo-boot/')) {
+        carrier.handle(request, response)
         return
       }
       if (!['GET', 'HEAD'].includes(request.method)) {
@@ -134,8 +105,8 @@ if (command === 'serve') {
       response.writeHead(404).end('Not found')
     }
   })
-  if (sessionCarrier) server.on('upgrade', (request, socket, head) => sessionCarrier.upgrade(request, socket, head))
+  if (carrier) server.on('upgrade', (request, socket, head) => carrier.upgrade(request, socket, head))
   server.listen(port, bindHost, () => console.log(`DSH startup: ${publicOrigins[0] ?? 'http://127.0.0.1:' + port} (bind ${bindHost}; Ctrl-C to stop)`))
   server.on('error', error => { console.error(error); process.exitCode = 1 })
-  for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { sessionCarrier?.close(); server.close() })
+  for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { carrier?.close(); server.close() })
 }
