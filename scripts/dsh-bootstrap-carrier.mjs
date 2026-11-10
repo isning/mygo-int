@@ -1,5 +1,34 @@
-// Explicit loopback owner capability: only injections and their blocking scripts.
-// No arbitrary path forwarding, redirects, browser cookies, RPC or application bundles.
+// Explicit loopback owner capability: injections and exact graph-declared bundles.
+// No arbitrary path forwarding, redirects, browser cookies, RPC or package assets.
+export function graphBundleReferences(graph) {
+  if (!graph || !Array.isArray(graph.entries) || !Array.isArray(graph.batches)) throw new Error('Invalid boot graph')
+  const ids = new Set()
+  const references = new Set()
+  const add = (row, entries) => {
+    if (typeof row.rev !== 'string' || !/^[A-Za-z0-9_-]+$/.test(row.rev) ||
+        row.url !== `plugins/??${entries.map(id => `${id}/client.js`).join(',')}&rev=${row.rev}`) {
+      throw new Error('Unsupported graph bundle reference')
+    }
+    references.add(row.url)
+  }
+  for (const row of graph.entries) {
+    if (typeof row.id !== 'string' || !/^(?:@[a-z0-9._-]+\/)?[a-z0-9._-]+$/.test(row.id) || ids.has(row.id)) throw new Error('Invalid graph package identity')
+    ids.add(row.id)
+    add(row, [row.id])
+  }
+  const batched = new Set()
+  for (const batch of graph.batches) {
+    if (!['bootstrap', 'application'].includes(batch.phase) || !Array.isArray(batch.entries) || !batch.entries.length) throw new Error('Invalid graph batch')
+    for (const id of batch.entries) {
+      if (!ids.has(id) || batched.has(id)) throw new Error('Invalid graph batch membership')
+      batched.add(id)
+    }
+    add(batch, batch.entries)
+  }
+  if (batched.size !== ids.size) throw new Error('Incomplete graph batches')
+  return references
+}
+
 export function createBootstrapCarrier({ origin, cookie }) {
   const remote = new URL(origin)
   if (remote.protocol !== 'http:' || remote.hostname !== '127.0.0.1' || remote.pathname !== '/' || remote.search || remote.hash || remote.username || remote.password) {
@@ -40,6 +69,9 @@ export function createBootstrapCarrier({ origin, cookie }) {
           if (row.src !== `plugins/${url.search}`) throw new Error('Unsupported blocking bootstrap reference')
           next.add(url.pathname + url.search)
         }
+        const graphs = payload.injections.filter(row => row.kind === 'global' && row.name === '__DSH_BOOT__')
+        if (graphs.length !== 1) throw new Error('Expected one boot graph')
+        for (const reference of graphBundleReferences(graphs[0].value)) next.add(`/${reference}`)
         scripts = next
       }
       response.writeHead(result.status, {

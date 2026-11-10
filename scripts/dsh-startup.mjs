@@ -58,10 +58,12 @@ if (command === 'serve') {
       if (path === '/' || path === '/index.html') {
         data = html
         extension = '.html'
-      } else if (bootEnabled && ['/mygo-boot/bootstrap.js', '/mygo-boot/apply-injections.js'].includes(path)) {
+      } else if (bootEnabled && ['/mygo-boot/bootstrap.js', '/mygo-boot/apply-injections.js', '/mygo-boot/bundle-references.js'].includes(path)) {
         data = await readFile(path.endsWith('/bootstrap.js')
           ? resolve(workspace, 'entries/dsh-startup/bootstrap.js')
-          : resolve(upstream, 'packages/client/web/lib/apply-injections.js'))
+          : path.endsWith('/bundle-references.js')
+            ? resolve(workspace, 'scripts/dsh-bootstrap-carrier.mjs')
+            : resolve(upstream, 'packages/client/web/lib/apply-injections.js'))
         extension = '.js'
       } else if (path.startsWith('/assets/')) {
         const file = await realpath(resolve(dist, `.${path}`))
