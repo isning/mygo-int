@@ -57,6 +57,10 @@ if (command === 'serve') {
     try {
       if (!trusted(request)) { response.writeHead(403).end(); return }
       const requestPath = new URL(request.url, 'http://localhost').pathname
+      if (carrier && requestPath === '/mygo-local/admission') {
+        carrier.admit(request, response)
+        return
+      }
       if (carrier && (requestPath === '/' || requestPath === '/index.html')) {
         carrier.handle(request, response, html)
         return

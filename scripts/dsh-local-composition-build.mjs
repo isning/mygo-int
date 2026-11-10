@@ -19,15 +19,27 @@ await build({
   plugins: [...loaded.config.plugins, {
     name: 'mygo-local-startup-entry',
     enforce: 'pre',
+    async generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'assets/DSH-LICENSE.txt', source: await readFile(upstream + '/LICENSE', 'utf8') })
+    },
+    resolveId(source, importer) {
+      if (importer?.startsWith(resolve(root, 'entries/dsh-startup/local/management-ui.tsx')) && !source.startsWith('.')) {
+        return require.resolve(source)
+      }
+    },
     async load(id) {
+      if (id.endsWith('?mygo-rows')) return (await readFile(id.slice(0, -'?mygo-rows'.length), 'utf8')) + '\nexport { RowsSection };'
+      if (id.endsWith('?mygo-panel')) return (await readFile(id.slice(0, -'?mygo-panel'.length), 'utf8')) + '\nexport { SettingsPanel };'
       if (id !== web + '/src/main.ts') return
       const original = await readFile(id, 'utf8')
       return `import { getStaticModules } from '@deepseek-ai/dsh-client-web';
 import Loader from ${JSON.stringify(loader)};
 import { FIBER_STATE as FiberState } from ${JSON.stringify(upstream + '/packages/client/web/src/loader-status.ts')};
 import { startLocalComposition } from ${JSON.stringify(local)};
+import * as managementUI from ${JSON.stringify(resolve(root, 'entries/dsh-startup/local/management-ui.tsx'))};
 import { bindRemoteEntryOwnership } from ${JSON.stringify(resolve(root, 'entries/dsh-startup/entry-ownership.js'))};
 const staticModules = getStaticModules();
+staticModules['mygo/dsh-management-ui'] = managementUI;
 const { Context } = staticModules['@deepseek-ai/cordis'];
 const composition = await startLocalComposition({ Context, Loader, FiberState, staticModules });
 Object.defineProperty(globalThis, '__MYGO_ENTRY_OWNERSHIP__', { value: Object.freeze({ snapshot: composition.ownership.snapshot }) });

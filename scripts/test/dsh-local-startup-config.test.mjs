@@ -7,8 +7,10 @@ const validateLocalStartup = value => validate({ selectedInstance, ...value })
 test('local composition selects distinct Loader entries without changing the base', async () => {
   const first = await readLocalStartup(process.cwd(), 'entries/dsh-startup/local/startup.json')
   const second = await readLocalStartup(process.cwd(), 'entries/dsh-startup/local/alternate.json')
-  assert.notEqual(first.entries[0].name, second.entries[0].name)
-  assert.notEqual(first.entries[0].config.label, second.entries[0].config.label)
+  const firstShell = first.entries.find(entry => entry.id === 'local-shell')
+  const secondShell = second.entries.find(entry => entry.id === 'local-shell')
+  assert.notEqual(firstShell.name, secondShell.name)
+  assert.notEqual(firstShell.config.label, secondShell.config.label)
   assert.deepEqual(validateLocalStartup({ schemaVersion: 1, entries: [] }).entries, [])
 })
 

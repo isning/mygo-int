@@ -1,5 +1,13 @@
 # Independent official DSH startup
 
+Current local management: the default composition includes replaceable
+composition, instance-catalog and UI plugins. `Local client settings` reuses the
+original DSH manager rows and Settings panel for the actual local Loader, with
+device persistence and original browser admission. See
+[local management](../../docs/upstream/dsh-local-management.md) for current
+port 4200 commands, provenance, recovery and connection limits. The connected
+Host's original `Plugins` page remains separate.
+
 The diagnostic mode of this mygo-owned document loads the **unchanged original Web entry bundle** from
 DSH `fcc0ad462172522aaf5c93a7b2e01f6b9f0b0159`. That entry constructs the real
 `AppWebEntry`, which renders its real `BootPage`. No Host-generated application

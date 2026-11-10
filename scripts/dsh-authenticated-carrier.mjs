@@ -29,6 +29,20 @@ export function createAuthenticatedCarrier({ origin, publicOrigins = [], maxBody
   }
   function track(socket) { active.add(socket); socket.once('close', () => active.delete(socket)) }
   return {
+    // Read-only admission probe for device-local management. Original DSH decides
+    // whether this exact browser credential is admitted; Host/Origin stay intact.
+    admit(req, res) {
+      if (!valid(req) || req.method !== 'GET') { res.writeHead(403).end(); return }
+      const upstream = httpRequest(target, { path: '/', method: 'GET', headers: headers(req), agent: false }, reply => {
+        reply.resume()
+        res.writeHead(reply.statusCode === 200 ? 204 : reply.statusCode === 401 ? 401 : 403,
+          { 'cache-control': 'no-store' }).end()
+      })
+      upstream.on('socket', track)
+      upstream.setTimeout(15000, () => upstream.destroy())
+      upstream.on('error', () => { if (!res.headersSent) res.writeHead(502); res.end() })
+      upstream.end()
+    },
     handle(req, res, indexHTML) {
       if (!valid(req)) { res.writeHead(403).end(); return }
       let size = 0

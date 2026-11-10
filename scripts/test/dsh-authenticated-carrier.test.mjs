@@ -17,7 +17,7 @@ test('original browser credential, Host/Origin and arbitrary Remote envelopes re
   }) })
   const origin=await listen(upstream)
   let carrier
-  const server=createServer((req,res)=>carrier.handle(req,res,req.url==='/'?'local shell':undefined))
+  const server=createServer((req,res)=>req.url.startsWith('/mygo-local/admission') ? carrier.admit(req,res) : carrier.handle(req,res,req.url==='/'?'local shell':undefined))
   const publicOrigin=await listen(server)
   carrier=createAuthenticatedCarrier({origin,maxBodyBytes:256})
   const cookieName='dsh-auth-'+createHash('sha256').update(new URL(publicOrigin).host).digest('base64url')
@@ -25,6 +25,11 @@ test('original browser credential, Host/Origin and arbitrary Remote envelopes re
     assert.equal((await get(publicOrigin)).status,401)
     const login=await get(publicOrigin+'/?token=private-test-token');assert.equal(login.status,303);assert.equal(login.headers.location,'./');assert.ok(login.headers['set-cookie'])
     const cookie=cookieName+'=browser-owned'
+    assert.equal((await get(publicOrigin+'/mygo-local/admission')).status,401,'local changes need original browser admission')
+    assert.equal((await get(publicOrigin+'/mygo-local/admission?token=private-test-token')).status,401,'probe never exchanges launch tokens')
+    assert.equal((await get(publicOrigin+'/mygo-local/admission',{cookie})).status,204)
+    assert.equal((await get(publicOrigin+'/mygo-local/admission',{cookie,origin:'http://evil.invalid'})).status,403)
+    assert.equal((await get(publicOrigin+'/mygo-local/admission',{cookie},'POST')).status,403)
     assert.equal((await get(publicOrigin,{cookie})).body,'local shell')
     const envelope=JSON.stringify({method:'session/create',payload:{args:{arbitrary:'untouched'}}})
     const result=await get(publicOrigin+'/api/session/create',{cookie:cookie+'; unrelated=secret',origin:publicOrigin,authorization:'not-forwarded','x-forwarded-host':'evil.invalid'},'POST',envelope)
