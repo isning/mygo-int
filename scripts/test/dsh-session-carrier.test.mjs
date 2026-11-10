@@ -13,6 +13,31 @@ test('session capability excludes writes, arbitrary fields, and non-session addr
   for (const change of [{ address: { kind: 'subagent', childSessionId: 'x' } }, { extra: true }, { maxMessages: 1001 }, { turnWindow: {} }]) assert.equal(allowedSessionCall('session/follow', { args: { request: { ...request, ...change } } }, true), false)
 })
 
+const promptRequest = {
+  sessionId: 'owned-session', requestId: 'client-minted-request', mode: 'queue',
+  content: [{ type: 'text', text: 'Reply with a short greeting. 你好。' }], clientTimeZone: 'Asia/Shanghai',
+}
+
+test('only bounded ordinary text submission is admitted over HTTP', () => {
+  const allowed = request => allowedSessionCall('session/prompt', { args: { request } })
+  assert.equal(allowed(promptRequest), true)
+  const { clientTimeZone, ...withoutTimeZone } = promptRequest
+  assert.equal(allowed(withoutTimeZone), true)
+  assert.equal(allowed({ ...promptRequest, mode: 'steer' }), true)
+  assert.equal(allowedSessionCall('session/prompt', { args: { request: promptRequest } }, true), false)
+  for (const change of [
+    { requestId: '' }, { sessionId: 's'.repeat(257) }, { mode: 'execute' },
+    { address: { kind: 'subagent', childSessionId: 'child' } }, { extra: true },
+    { clientTimeZone: 'x'.repeat(129) }, { content: [] },
+    { content: [{ type: 'text', text: '   ' }] },
+    { content: [{ type: 'text', text: 'x'.repeat(8193) }] },
+    { content: Array.from({ length: 9 }, () => ({ type: 'text', text: 'x' })) },
+    { content: [{ type: 'file', receiptId: 'file' }] },
+    { content: [{ type: 'image', data: 'untrusted', mediaType: 'image/png' }] },
+    { content: [{ type: 'text', text: 'x', extra: true }] }, { content: [null] },
+  ]) assert.equal(allowed({ ...promptRequest, ...change }), false)
+})
+
 test('browser socket validates origin and frames and keeps the credential server-side', async () => {
   const { WebSocket, WebSocketServer } = loadOriginalSocketLibrary(process.cwd())
   const upstream = http.createServer()
@@ -78,6 +103,45 @@ test('session HTTP capability preserves original response and rejects malformed 
     assert.equal(await result.text(), '{"original":true}')
     assert.equal(result.headers.get('set-cookie'), null)
     assert.deepEqual(seen, [{ body: JSON.stringify(wire), cookie: 'owner=test', authorization: undefined }])
+  } finally {
+    carrier.close(); await new Promise(r => local.close(r)); await new Promise(r => upstream.close(r))
+  }
+})
+
+// Transport test doubles below prove byte preservation, never a real model reply.
+test('prompt forwards original identity and receipts/errors once without retry', async () => {
+  const { WebSocket, WebSocketServer } = loadOriginalSocketLibrary(process.cwd())
+  const seen = []
+  let reply = '{"type":"server-response","rpcId":"wire-id","result":{"ok":true,"value":{"accepted":true}}}'
+  const upstream = http.createServer(async (req, res) => {
+    let body = ''; for await (const chunk of req) body += chunk
+    seen.push({ path: req.url, body, cookie: req.headers.cookie, authorization: req.headers.authorization })
+    res.writeHead(200, { 'content-type': 'application/json', 'set-cookie': 'private=ignored' }).end(reply)
+  })
+  await new Promise(r => upstream.listen(0, '127.0.0.1', r))
+  const carrier = createSessionCarrier({ origin: `http://127.0.0.1:${upstream.address().port}`, cookie: 'owner=test', WebSocket, WebSocketServer })
+  const local = http.createServer((req, res) => { void carrier.handle(req, res).then(handled => { if (!handled) res.writeHead(404).end() }) })
+  await new Promise(r => local.listen(0, '127.0.0.1', r))
+  const base = `http://127.0.0.1:${local.address().port}`
+  const wire = { type: 'client-request', rpcId: 'wire-id', method: 'session/prompt', payload: { args: { request: promptRequest } } }
+  const body = JSON.stringify(wire, null, 2)
+  const call = (value = body, path = '/api/session/prompt', headers = {}) => fetch(base + path, { method: 'POST', headers: { 'content-type': 'application/json', origin: base, cookie: 'browser=ignored', authorization: 'Bearer ignored', ...headers }, body: value })
+  try {
+    assert.equal((await call(body, '/api/session/prompt?extra=1')).status, 404)
+    assert.equal((await call(body, undefined, { origin: 'http://foreign.invalid' })).status, 403)
+    assert.equal((await call(JSON.stringify({ ...wire, method: 'session/create' }))).status, 400)
+    assert.equal((await call(JSON.stringify({ ...wire, extra: true }))).status, 400)
+    assert.equal((await call('x'.repeat(65537))).status, 413)
+    assert.equal(seen.length, 0)
+    for (const responseBody of [reply, '{"type":"server-response","rpcId":"wire-id","result":{"ok":false,"error":{"code":"session/agent-busy","message":"prompt rejected","details":{}}}}']) {
+      reply = responseBody
+      const response = await call()
+      assert.equal(response.status, 200)
+      assert.equal(response.headers.get('set-cookie'), null)
+      assert.equal(response.headers.get('cache-control'), 'no-store')
+      assert.equal(await response.text(), responseBody)
+    }
+    assert.deepEqual(seen, Array.from({ length: 2 }, () => ({ path: '/api/session/prompt', body, cookie: 'owner=test', authorization: undefined })))
   } finally {
     carrier.close(); await new Promise(r => local.close(r)); await new Promise(r => upstream.close(r))
   }

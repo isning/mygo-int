@@ -10,6 +10,18 @@ export function allowedSessionCall(endpoint, payload, stream = false) {
   if (stream && ['$events', 'session/control', 'workspace/follow', 'remoteAccess/follow'].includes(endpoint)) return empty(args)
   if (!stream && endpoint === 'session/list') return keys(args) === '_request' && empty(args._request)
   if (!stream && endpoint === 'session/projections') return keys(args) === 'request' && keys(args.request) === 'sessionId' && id(args.request.sessionId)
+  if (!stream && endpoint === 'session/prompt' && keys(args) === 'request') {
+    const r = args.request
+    // Text-only ordinary Session submission. The original client owns identity,
+    // receipt reconciliation, and errors; forward the admitted envelope verbatim.
+    return keys(r) !== undefined &&
+      ['content,mode,requestId,sessionId', 'clientTimeZone,content,mode,requestId,sessionId'].includes(keys(r)) &&
+      id(r.sessionId) && id(r.requestId) && ['queue', 'steer'].includes(r.mode) &&
+      (r.clientTimeZone === undefined || typeof r.clientTimeZone === 'string' && r.clientTimeZone.length > 0 && r.clientTimeZone.length <= 128) &&
+      Array.isArray(r.content) && r.content.length > 0 && r.content.length <= 8 &&
+      r.content.every(part => keys(part) === 'text,type' && part.type === 'text' && typeof part.text === 'string') &&
+      r.content.reduce((size, part) => size + part.text.length, 0) <= 8192 && r.content.some(part => part.text.trim().length > 0)
+  }
   if (stream && endpoint === 'session/follow' && keys(args) === 'request') {
     const r = args.request
     return keys(r) !== undefined && Object.keys(r).every(k => ['address', 'activate', 'assistantStream', 'maxMessages', 'turnWindow'].includes(k)) &&
@@ -33,14 +45,16 @@ export function createSessionCarrier({ origin, cookie, WebSocket, WebSocketServe
   const wss = new WebSocketServer({ noServer: true, maxPayload: 16384 })
   return {
     async handle(request, response) {
-      if (!['/api/session/list', '/api/session/projections'].includes(request.url)) return false
+      if (!['/api/session/list', '/api/session/projections', '/api/session/prompt'].includes(request.url)) return false
       const fail = status => { response.writeHead(status, { 'Cache-Control': 'no-store' }).end(); return true }
       if (!trusted(request)) return fail(403)
       if (request.method !== 'POST') return fail(405)
       if (request.headers['content-type']?.split(';')[0] !== 'application/json') return fail(415)
-      let body = '', size = 0
+      const chunks = []; let size = 0
       try {
-        for await (const chunk of request) { size += chunk.length; if (size > 4096) return fail(413); body += chunk }
+        for await (const chunk of request) { size += chunk.length; if (size > (request.url === '/api/session/prompt' ? 65536 : 4096)) return fail(413); chunks.push(chunk) }
+        // Decode once so a text character split across HTTP chunks stays intact.
+        const body = Buffer.concat(chunks).toString('utf8')
         const m = JSON.parse(body)
         if (keys(m) !== 'method,payload,rpcId,type' || m.type !== 'client-request' || !id(m.rpcId) || request.url !== '/api/' + m.method || !allowedSessionCall(m.method, m.payload)) return fail(400)
         const result = await fetch(new URL(request.url, remote), { method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body, redirect: 'error', signal: AbortSignal.timeout(15000) })
