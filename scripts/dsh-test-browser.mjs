@@ -11,7 +11,7 @@ const checkLocal=process.argv[2]==='check-local'||checkRemoval;
 const scratch=resolve('.scratch/test-dsh'),interactive=process.argv[2]==='open',authenticated=process.argv[2]==='check-auth';
 const profile=scratch+'/browser-'+Date.now();await mkdir(profile,{recursive:true,mode:0o700});
 const log=openSync(scratch+'/browser.log','a',0o600);
-const child=spawn('nix',['shell','nixpkgs#chromium','-c','chromium',...interactive?[]:['--headless','--disable-gpu'],'--explicitly-allowed-ports=4190','--no-first-run','--no-default-browser-check','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'],{stdio:['ignore',log,log]});
+const child=spawn('nix',['shell','nixpkgs#chromium','-c','chromium',...interactive?[]:['--headless','--disable-gpu'],'--no-first-run','--no-default-browser-check','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'],{stdio:['ignore',log,log]});
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
 async function until(fn){for(let i=0;i<240;i++){if(child.exitCode!==null)throw Error('Chromium exited; inspect private browser.log');try{const x=await fn();if(x)return x;}catch{}await pause(250);}throw Error('Browser readiness timed out');}
 let ws,evaluate,stage='boot',initialCreates=0;
@@ -56,6 +56,14 @@ try{
      return originalFetch.call(this, input, ...args);
    };
  }`});
+ // Verify ordinary Chromium reaches the clean origin without port exceptions,
+ // and original DSH rejects this fresh, unauthenticated browser.
+ const cleanOrigin=new URL(url).origin;
+ await send('Page.navigate',{url:cleanOrigin+'/'});
+ await until(async()=>{const state=await send('Runtime.evaluate',{expression:'location.origin === '+JSON.stringify(cleanOrigin)+' && document.readyState === "complete"',returnByValue:true});return state.result.value;});
+ const anonymous=await send('Runtime.evaluate',{expression:"fetch('/').then(r=>r.status)",returnByValue:true,awaitPromise:true});
+ assert.equal(anonymous.result.value,401,'fresh browser clean URL requires original authentication');
+ await writeFile(scratch+'/browser-admission.json',JSON.stringify({origin:cleanOrigin,anonymousHTTP:401,specialPortOverride:false}),{mode:0o600});
  await send('Page.navigate',{url});
  evaluate=expression=>new Promise((r,j)=>{const id=++sequence;pending.set(id,m=>m.error?j(Error('CDP evaluation failed')):r(m.result.result.value));ws.send(JSON.stringify({id,method:'Runtime.evaluate',params:{expression,returnByValue:true,awaitPromise:true}}));});
  await until(async()=>await evaluate("globalThis.__ModuleLoader__?.mode==='live' && (document.body.innerText.includes('Choose workspace')||document.body.innerText.includes('Local test DSH'))"));

@@ -31,9 +31,9 @@ composition; it does not claim concurrent multi-account sandboxing in one docume
 From this workspace only:
 
 ```bash
-bash scripts/dsh-test-prepare.sh all
-DSH_CLIENT_PORT=4190 DSH_CLIENT_BIND=0.0.0.0 \
-DSH_CLIENT_PUBLIC_ORIGIN=http://100.97.207.47:4190 \
+nix shell nixpkgs#nodejs_24 -c bash scripts/dsh-test-prepare.sh all
+DSH_CLIENT_PORT=4191 DSH_CLIENT_BIND=0.0.0.0 \
+DSH_CLIENT_PUBLIC_ORIGIN=http://100.97.207.47:4191 \
 node scripts/dsh-test-host.mjs start
 node scripts/dsh-test-host-network.mjs
 node scripts/dsh-test-host.mjs check-submit
@@ -41,19 +41,19 @@ node scripts/dsh-test-host.mjs status
 node scripts/dsh-test-host.mjs open
 ```
 
-Retained clean URL: <http://100.97.207.47:4190/>. It intentionally returns 401
+Retained clean URL: <http://100.97.207.47:4191/>. It intentionally returns 401
 before login. The private authenticated presentation entry is in the ignored
 `.scratch/test-dsh/client-launch-url` (0600), never in status output or this doc.
 `open` reads that entry privately into an isolated Nix Chromium profile, with no
 URL/token output. `check-auth` separately tests the original Host UI.
 
-**4190 is a browser/Node fetch prohibited port (Sieve).** The owned Chromium
-helper passes `--explicitly-allowed-ports=4190`. A user opening the entry in their
-own Chromium must launch that browser with the same flag; ordinary navigation
-without it fails with `ERR_UNSAFE_PORT` before HTTP authentication. Node lifecycle
-and network probes use `node:http` for this port. A separate device's routing,
-tailnet ACL and browser configuration have not been verified. HTTP over the
-explicit tailnet origin provides no TLS/Secure-cookie claim.
+Port 4191 works with ordinary Chromium; the helper uses no special port flag.
+For another Tailscale device, privately transfer the launch entry to that device
+and open it in its browser. Do not paste it into chat, logs, or a shared terminal.
+The clean URL remains 401 until that browser authenticates. The pinned original
+DSH has no public non-owner token-entry login UI. A separate device's routing and
+tailnet ACL have not been verified. HTTP over the explicit tailnet origin provides
+no TLS/Secure-cookie claim.
 
 Stop with `node scripts/dsh-test-host.mjs stop`; it verifies the exact owned runner
 and uses SIGTERM. Restart with all three listener variables above. The private
@@ -62,7 +62,7 @@ secret retains its original cookie behavior. To end browser access, close its
 sockets/tabs and clear this origin's DSH cookie. Upstream supplies no logout API;
 global revocation requires removing the upstream owner credential by its supported
 operator workflow and restarting. Do not reuse credentials or homes for another
-instance. The old 4189 environment is outside this workspace and is not managed.
+instance. The old 4190/4189 environments are outside this workspace and are not managed.
 
 ## Permission scope and proof
 
@@ -81,7 +81,7 @@ original New session control, sends a fresh prompt through the original composer
 and verifies the deterministic **MODEL MOCK** reply. It does not seed assistant
 history or call session/create from test JavaScript. All results are mock inference.
 
-## Verified in this workspace (2026-11-10)
+## Original implementation verification (2026-11-10)
 
 Fresh acquisition and frozen installation completed; the unmodified original
 artifact runner passed all **8/8** gates (99.42s). All **34/34** focused local and
@@ -108,8 +108,40 @@ Screenshots were inspected. Workbench and Focus retain the original outlet,
 selected-instance/owner entry ownership, original session and Terminal lazy chunk;
 local scope disposal leaves original remote entries and session UI intact.
 
+## Port 4191 delivery verification (2026-11-10)
+
+Fresh workspace acquisition and frozen installation completed. Nix Node built the
+unmodified pinned source: **8/8** artifact gates passed in 97.17s. All **34/34**
+focused local and historical fixture tests passed. Source verification, browser
+script syntax and `git diff --check` passed. The Host runs with the isolated
+`pnpm`-provided `node-linux-x64@24.21.0`; all pnpm operations use workspace-local
+XDG/cache/data/state and pnpm homes from `scripts/dsh-test-env.sh`.
+
+Real Nix Chromium, with no special port override, first navigated to the clean
+public origin and confirmed anonymous HTTP 401. Private original login then
+loaded Workbench. The original New session button and composer produced one
+correlated durable user message and one assistant reply, three streamed mock text
+chunks, 26-token usage and completed stop framing. Settings/catalog/inventory
+checks passed and the reply screenshot was inspected. Public HTTP/WS 401,
+authenticated HTTP 200/WS 101, forged/authority-cookie 401, Host/Origin 403 and
+original restricted in-process Peer checks passed again. This delivery pass did
+not repeat the original Focus/disposal browser checks above.
+
 Normal SIGTERM closed all three owned listeners. Restart retained the fixture
 session and made zero startup model requests. The final Workbench environment is
-retained on `0.0.0.0:4190` with the public origin stated above. Preview automation
-was attempted first and returned missing host libraries; the repository's Nix
-Chromium/CDP workflow supplied the browser proof instead.
+retained on `0.0.0.0:4191` with the public origin stated above. Automated browsers
+were stopped normally; only the intentional mock server environment remains.
+Preview automation was attempted first and returned missing host libraries; the
+repository's Nix Chromium/CDP workflow supplied the browser proof instead.
+
+From `/home/isning/.t3/worktrees/mygo/t3-6873705b`, open the current private entry
+without printing its secret:
+
+```bash
+node scripts/dsh-test-host.mjs open
+```
+
+The current ignored `.scratch/test-dsh/client-launch-url` is mode 0600. Use this
+workspace's lifecycle commands above; restart regenerates this entry. No API key
+is needed for MODEL MOCK. Another device must receive that entry privately and
+open it in its own browser; cross-device access remains unverified.
