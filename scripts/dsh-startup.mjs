@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Serve the official compiled entry in a mygo-owned document, without bootstrap.
+// Serve the unchanged official entry, with an optional narrow bootstrap carrier.
 import { readFile, writeFile, mkdir, realpath } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { resolve, dirname, extname, sep } from 'node:path'
@@ -31,7 +31,10 @@ for (const tag of assets) {
   await readFile(resolve(dist, path))
 }
 const template = await readFile(resolve(workspace, 'entries/dsh-startup/index.html'), 'utf8')
-const html = template.replace('<!-- DSH_ASSETS -->', assets.join('\n    '))
+const bootEnabled = Boolean(process.env.DSH_ORIGIN)
+if (bootEnabled !== Boolean(process.env.DSH_COOKIE_FILE)) throw new Error('Set both DSH_ORIGIN and DSH_COOKIE_FILE')
+const bootTags = bootEnabled ? '<script>globalThis.__DSH_BOOT_READY__ = Promise.withResolvers()</script>\n    <script type="module" src="/mygo-boot/bootstrap.js"></script>' : ''
+const html = template.replace('<!-- DSH_ASSETS -->', bootTags + '\n    ' + assets.join('\n    '))
 await mkdir(output, { recursive: true })
 await writeFile(resolve(output, 'index.html'), html)
 console.log(`Built ${output}/index.html using the original DSH entry (${assets.length} asset tags)`)
@@ -39,9 +42,13 @@ if (command === 'serve') {
   const port = Number(process.env.PORT ?? 4178)
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Invalid PORT')
   const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf', '.txt': 'text/plain', '.svg': 'image/svg+xml', '.map': 'application/json' }
+  const carrier = bootEnabled ? (await import('./dsh-bootstrap-carrier.mjs')).createBootstrapCarrier({
+    origin: process.env.DSH_ORIGIN, cookie: (await readFile(process.env.DSH_COOKIE_FILE, 'utf8')).trim(),
+  }) : undefined
   const assetRoot = await realpath(resolve(dist, 'assets'))
   const server = createServer(async (request, response) => {
     try {
+      if (carrier && await carrier(request, response)) return
       if (!['GET', 'HEAD'].includes(request.method)) {
         response.writeHead(405, { Allow: 'GET, HEAD' }).end()
         return
@@ -51,6 +58,11 @@ if (command === 'serve') {
       if (path === '/' || path === '/index.html') {
         data = html
         extension = '.html'
+      } else if (bootEnabled && ['/mygo-boot/bootstrap.js', '/mygo-boot/apply-injections.js'].includes(path)) {
+        data = await readFile(path.endsWith('/bootstrap.js')
+          ? resolve(workspace, 'entries/dsh-startup/bootstrap.js')
+          : resolve(upstream, 'packages/client/web/lib/apply-injections.js'))
+        extension = '.js'
       } else if (path.startsWith('/assets/')) {
         const file = await realpath(resolve(dist, `.${path}`))
         if (!file.startsWith(assetRoot + sep)) throw new Error('Outside assets')

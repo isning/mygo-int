@@ -3,7 +3,8 @@
 This mygo-owned document loads the **unchanged original Web entry bundle** from
 DSH `fcc0ad462172522aaf5c93a7b2e01f6b9f0b0159`. That entry constructs the real
 `AppWebEntry`, which renders its real `BootPage`. No Host-generated application
-HTML, preview-worker bootstrap, manifest, transport or replacement UI is supplied.
+HTML or replacement UI is supplied. The optional issue 31 mode acquires the real
+ordered injection table through a narrow loopback carrier; see below.
 
 First acquire and build artifacts in this worktree using the exact commands in
 [the artifact handoff](../../docs/upstream/dsh-artifact-build.md). Keep the full
@@ -42,11 +43,9 @@ Failed to load plugins
 web boot: window.__ModuleLoader__ bootstrap facade is missing
 ```
 
-This failure is the intended issue 28 boundary, not a connected client. Issue 31
-owns supplying real bootstrap and the later resource/auth/transport contracts.
-Do not inject an empty plugin manifest or set readiness/module-loader globals to
-make this page look successful. That integration must happen before the original
-entry executes; it must retain the same official module graph.
+This remains the default issue 28 diagnostic mode. Issue 31 mode below supplies
+real bootstrap; application bundles, RPC and event transport remain later tickets.
+Neither mode claims a connected session.
 
 For distribution, retain upstream LICENSE/THIRD_PARTY_NOTICES and selected asset
 licenses (including `assets/fonts/Montserrat-OFL.txt`) and inspect the selected
@@ -82,3 +81,43 @@ XDG_CACHE_HOME="$PWD/.scratch/browser-cache" nix shell nixpkgs#chromium -c chrom
   http://127.0.0.1:4178 \
   > .scratch/dsh-startup/browser-dom.html 2> .scratch/dsh-startup/browser.log
 ```
+
+## Apply real injections (issue 31)
+
+Use [the live boot handoff](../../docs/upstream/dsh-startup-live-validation.md)
+for the complete real Host/browser reproduction. For an already authenticated local
+Host, start this carrier with an owner cookie obtained by the original login flow:
+
+```bash
+DSH_ORIGIN=http://127.0.0.1:HOST_PORT \
+DSH_COOKIE_FILE="$PWD/.scratch/dsh-startup/owner-cookie" \
+node scripts/dsh-startup.mjs serve
+```
+
+The file is an explicit owner capability, never a tracked configuration value.
+Keep it private (mode 0600); the live preparer writes it without printing it.
+The carrier accepts only a fixed HTTP 127.0.0.1 Host origin, forwards no browser
+credentials, follows no redirects and emits no CORS grants. It rejects mismatched
+Host/Origin and cross-site Fetch metadata before attaching its owner cookie.
+Only exact GET `/mygo/index-injections` and the exact blocking `script-src`
+combo URLs declared by its successful response can use that capability. It does
+not carry application preloads, arbitrary `/plugins` paths, RPC or event streams.
+This is a local development bootstrap capability, not a production gateway or
+an external Host authentication solution.
+
+Before the unchanged official entry executes, the document installs the original
+`Promise.withResolvers()` readiness shape. `bootstrap.js` fetches the table and
+calls the original public `@deepseek-ai/dsh-client-web/injections` compiled export,
+served byte-for-byte at `/mygo-boot/apply-injections.js`. Rows remain unchanged
+and in order; blocking scripts are awaited through normal DOM script elements.
+The carrier only admits the pinned document-relative bootstrap URL form.
+Readiness resolves after the last row, or rejects on acquisition/application
+failure into the original `AppWebEntry` BootPage. Module-loader creation, graph
+parsing, static React/Cordis seeds and plugin activation remain upstream-owned.
+No custom BootSeams, Session/client framework, raw HTML tap replay, fake graph
+or duplicate framework bundle is introduced.
+
+A successful issue 31 run reaches the original live module loader with the actual
+Host graph, then displays the original activation diagnostic while application
+bundles remain unavailable. Issue 32 owns their graph/resource carriage; issues
+33 and 34 own RPC and event transport.
