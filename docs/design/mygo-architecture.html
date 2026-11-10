@@ -1,0 +1,50 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+*{box-sizing:border-box}body{margin:0;color:var(--foreground,#202632);font:14px/1.5 var(--font-sans,system-ui)}button{font:inherit;cursor:pointer}nav{display:flex;gap:7px;flex-wrap:wrap;margin:0 0 18px}button{border:1px solid var(--border,#d8dce4);border-radius:8px;padding:6px 12px;background:transparent;color:inherit}button[aria-selected=true]{background:var(--foreground,#202632);color:var(--background,#fff)}.caption{font-size:12px;color:var(--muted-foreground,#697386);margin:7px 0 12px}.zone{padding:18px;border:1px solid var(--border,#d8dce4);border-radius:12px}.device{border:2px solid var(--chart-1,#6689ca)}.head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}.head strong{font-size:15px}.tag{font-size:11px;color:var(--muted-foreground,#697386);font-weight:400}.config{padding:10px 14px;background:var(--muted,#f0f2f5);border-radius:8px;text-align:center}.flow{padding:7px;text-align:center;color:var(--muted-foreground,#697386);font-size:12px}.flow b{display:inline-block;margin:0 7px;font-size:17px}.trusted{border-left:4px solid var(--chart-1,#6689ca)}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.tile{background:var(--muted,#f0f2f5);padding:10px;border-radius:8px;font-size:12px;text-align:center}.tile strong{display:block;font-size:13px}.sub{font-size:12px;color:var(--muted-foreground,#697386)}.domain{border-style:dashed;border-color:var(--chart-3,#a28b50)}.domain .body{padding:12px;border-radius:8px;background:var(--muted,#f0f2f5)}.body strong{display:block;margin-bottom:5px}.line{margin:6px 0;font-size:12px}.boundary{margin-top:9px;font-size:11px;color:var(--muted-foreground,#697386)}.slot{margin-top:10px;padding:8px;border:1px solid var(--border,#d8dce4);border-radius:7px;font-size:12px;text-align:center}.base{border-left:4px solid var(--chart-2,#54a38a);margin-top:4px}.remote{border-top:3px solid var(--chart-4,#a27ec1)}.legend{font-size:12px;color:var(--muted-foreground,#697386);margin:12px 0}.notes{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.pill{padding:4px 8px;border-radius:6px;background:var(--muted,#f0f2f5);font-size:11px}.first{border-color:var(--chart-1,#6689ca)}.future{border-style:dashed}.renderbox{padding:16px;border:1px solid var(--border,#d8dce4);border-radius:10px;text-align:center}.renderbox strong{display:block}.callout{padding:14px 16px;margin-top:14px;background:var(--muted,#f0f2f5);border-radius:10px;font-size:12px}.hidden{display:none}.selection{color:var(--muted-foreground,#697386);font-size:12px;margin:8px 0}.foot{font-size:12px;margin:14px 0 2px;color:var(--muted-foreground,#697386)}@media(max-width:520px){.grid{grid-template-columns:1fr}.tiles{grid-template-columns:1fr 1fr}.zone{padding:14px}.head{align-items:flex-start;flex-direction:column}.tag{line-height:1.4}}
+@media print{nav{display:none}.hidden{display:block;margin-top:30px}.zone{break-inside:avoid}}
+</style></head><body>
+<nav aria-label="架构视图"><button id="overallTab" aria-selected="true" aria-controls="overall">整体架构</button><button id="renderTab" aria-selected="false" aria-controls="rendering">统一 Slot 呈现</button></nav>
+<section id="overall">
+<div class="zone device">
+<div class="head"><strong>mygo · 设备端</strong><span class="tag">Linux / Windows / macOS / Android</span></div>
+<div class="config">本地启动配置 <span class="sub">→ 选择可替换插件组合</span></div>
+<div class="flow">加载 <b>↓</b></div>
+<div class="zone trusted">
+<div class="head"><strong>受信任的本地 Cordis 插件组合</strong><span class="tag">拥有应用 Root</span></div>
+<div class="tiles"><div class="tile"><strong>外壳与导航</strong>页面语义 · 各端布局</div><div class="tile"><strong>实例与连接</strong>身份 · 账号 · 多通道</div><div class="tile"><strong>Harness 集成</strong>DSH / ACP / 其他</div><div class="tile"><strong>状态与分发</strong>草稿 · 缓存 · 更新</div><div class="tile"><strong>Provider</strong>环境 · 租约 · 显式本地核心</div><div class="tile"><strong>Carrier</strong>直连 · 网关 · 隧道</div></div>
+</div>
+<div class="flow">按实例 / 认证视图挂载 <b>↓ ↑</b> 显式授权的服务与状态桥</div>
+<div class="grid">
+<div class="zone domain first"><div class="head"><strong>实例 A · DSH 兼容域</strong></div><div class="body"><strong>复用官方 React/Cordis 客户端树</strong><div class="line">Loader · 服务 · 状态 · UI · 生成 Remote</div><div class="line">实例提供的 client 插件在设备端执行</div></div><div class="slot">统一 Slot 接口<br><span class="sub">React/Web 面 · native 面</span></div><div class="boundary">独立模块 / DOM / 存储 / 权限边界</div></div>
+<div class="zone domain"><div class="head"><strong>实例 B · 其他 Harness 域</strong></div><div class="body"><strong>由对应集成提供领域服务与 UI</strong><div class="line">例如 ACP 协议适配与实际能力</div><div class="line">无需模拟 DSH 私有模型</div></div><div class="slot">同一套 Slot 契约<br><span class="sub">按能力提供 Web / native 面</span></div><div class="boundary">独立模块与授权 · 多实例同时保留状态</div></div>
+</div>
+<div class="flow">渲染挂载 · 存储 / I/O · 生命周期 <b>↓ ↑</b></div>
+<div class="zone base"><div class="head"><strong>最小基座 + 各平台载体</strong><span class="tag">提供机制，业务语义留在插件中</span></div><div class="line">Cordis / 模块执行环境 · 受限桥接 · Web / 原生挂载 · 平台原语</div><div class="sub">各平台分别实现；Tauri / SwiftUI 等具体后端按计划选型</div></div>
+</div>
+<div class="flow">通过集成与 Carrier 跨网络通信 <b>↓ ↑</b><br>RPC / 事件 / 资源；DSH 还提供启动清单与 client 包</div>
+<div class="grid">
+<div class="zone remote"><div class="head"><strong>远端 DSH Host</strong></div><div class="line">Agent · Session · Workspace · Host 插件后端</div><div class="sub">可选薄 remote 适配插件：启动 / 认证 / 资源</div></div>
+<div class="zone remote"><div class="head"><strong>其他远端 / 托管环境</strong></div><div class="line">对应 Harness / Agent · 文件 · 终端</div><div class="sub">按需接 Carrier / Gateway；不要求统一中心</div></div>
+</div>
+<div class="legend">虚线框表示隔离环境，不表示每实例必须独占一个 OS 进程。Slot 接口统一，各域账本与权限仍有归属。</div>
+</section>
+<section id="rendering" class="hidden">
+<div class="renderbox"><strong>插件：一条 Slot 注册，多个呈现面</strong><span class="sub">共享 identity · children 声明 · store · inject · locale · 生命周期</span></div>
+<div class="flow">按当前挂载的授权、渲染器和能力筛选 <b>↓</b></div>
+<div class="renderbox"><strong>沿用原 Slot 的 cell / priority / order 选举</strong><span class="sub">先筛选，再选举；旧 register(options, Component) 仍是 React 面</span></div>
+<div class="flow"><b>↓</b></div>
+<div class="grid">
+<div class="renderbox first"><strong>React / Web 面</strong><div class="flow">真实 React DOM renderer <b>↓</b></div><div>完整浏览器 / WebView</div><div class="sub">原有 DOM 插件继续使用</div></div>
+<div class="renderbox future"><strong>Native 面</strong><div class="flow">真实 React host renderer <b>↓</b></div><div>受限渲染 / 事件桥</div><div class="flow"><b>↓</b></div><div>平台接收器 → 预编译原生控件</div><div class="sub">Android · 后续 PC 原生后端</div></div>
+</div>
+<div class="flow">native 父布局可挂载有明确入口的 Web 子内容</div>
+<div class="callout"><strong>同一接口，不代表同一棵跨环境 React 树。</strong><br>独立原生/Web 环境通过显式状态与服务桥协作；context、hooks、refs 和组件闭包不会自动跨过去。业务与草稿状态由明确的模型持有。</div>
+<div class="callout">Root 也遵循所属域的 Slot 规则。实例插件可以扩展实例 UI，但不会因此获得全局应用 Root 或其他实例的权限。</div>
+</section>
+<div class="notes"><span class="pill">实现先从官方 React 独立启动开始</span><span class="pill">原生能力统一进入 Slot</span><span class="pill">PC 原生后做，SwiftUI 留作候选</span></div>
+<div class="foot">已确认的目标架构 · 尚未实现客户端</div>
+<script>
+const a=document.getElementById('overallTab'),b=document.getElementById('renderTab');
+function select(render){document.getElementById('overall').classList.toggle('hidden',render);document.getElementById('rendering').classList.toggle('hidden',!render);a.setAttribute('aria-selected',String(!render));b.setAttribute('aria-selected',String(render));}
+a.onclick=()=>select(false);b.onclick=()=>select(true);
+console.assert(document.querySelectorAll('.domain').length===2,'Two example domains');console.log('Architecture views ready');
+</script></body></html>
