@@ -45,7 +45,9 @@ web boot: window.__ModuleLoader__ bootstrap facade is missing
 
 This remains the default issue 28 diagnostic mode. Issue 31 mode below supplies
 real bootstrap; application bundles, RPC and event transport remain later tickets.
-Neither mode claims a connected session.
+These historical issue 28/31 results do not establish a connected session.
+The current authenticated mode additionally supports the scoped issue 35
+list/open flow documented below.
 
 For distribution, retain upstream LICENSE/THIRD_PARTY_NOTICES and selected asset
 licenses (including `assets/fonts/Montserrat-OFL.txt`) and inspect the selected
@@ -99,9 +101,11 @@ Keep it private (mode 0600); the live preparer writes it without printing it.
 The carrier accepts only a fixed HTTP 127.0.0.1 Host origin, forwards no browser
 credentials, follows no redirects and emits no CORS grants. It rejects mismatched
 Host/Origin and cross-site Fetch metadata before attaching its owner cookie.
-Only exact GET `/mygo/index-injections` and the exact blocking `script-src`
-combo URLs declared by its successful response can use that capability. It does
-not carry application preloads, arbitrary `/plugins` paths, RPC or event streams.
+The bootstrap handler admits exact GET `/mygo/index-injections` and exact
+graph-declared bootstrap/application combo URLs. Separate, explicitly scoped
+handlers carry inventory and session reads, selected socket streams and two
+pinned package images; see the current capability list below. Arbitrary
+`/plugins` paths and undeclared API endpoints remain denied.
 This is a local development bootstrap capability, not a production gateway or
 an external Host authentication solution.
 
@@ -124,7 +128,16 @@ bundles remain unavailable. Issue 32 owns their graph/resource carriage; issues
 
 The current server also mounts the exact inventory RPC capability from
 `scripts/dsh-rpc-carrier.mjs`, using the same explicit private Host credential.
-Only the original empty `pluginInventory/list` call is admitted; other API paths
-remain denied. Its generated-client live proof is documented in
-`docs/upstream/dsh-rpc-live-validation.md`. Combined browser RPC execution remains
-to be verified after the remaining activation dependencies are available.
+The original empty `pluginInventory/list` call remains separately scoped. Its
+generated-client proof is in `docs/upstream/dsh-rpc-live-validation.md`.
+
+## Original session list/open (issue 35)
+
+The current authenticated mode mounts the original UI and supports listing and
+opening an existing ordinary session. See [the browser validation and exact
+capability list](../../docs/upstream/dsh-sessions-live-validation.md) for
+reproduction, credential custody, allowed Remote/socket endpoints and the two
+exact image references. This combined browser proof uses the original
+SessionManager and a real Host fixture entirely in ignored local scratch.
+Send/reply, creation, pagination and other UI actions remain unsupported;
+the original controls may surface denied-call errors.

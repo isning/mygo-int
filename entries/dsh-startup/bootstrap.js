@@ -2,6 +2,8 @@
 import { applyIndexInjections } from '/mygo-boot/apply-injections.js'
 import { graphBundleReferences } from '/mygo-boot/bundle-references.js'
 
+import { SESSION_ASSETS } from '/mygo-boot/session-assets.js'
+
 const gate = globalThis.__DSH_BOOT_READY__
 try {
   const response = await fetch('/mygo/index-injections', { credentials: 'same-origin', cache: 'no-store' })
@@ -26,9 +28,10 @@ try {
       script.onerror = () => { script.remove(); reject(new Error(`mygo boot: failed to load ${src}`)) }
       document.head.append(script)
     }),
-    // The graph advertises code, not package assets. Keep those failures local
-    // until a separate resource capability declares their exact content paths.
-    resolveAsset: reference => { throw new Error(`mygo boot: undeclared package asset ${reference}`) },
+    resolveAsset: reference => {
+      if (!SESSION_ASSETS.has(reference)) throw new Error(`mygo boot: undeclared package asset ${reference}`)
+      return '/' + reference
+    },
   }
   await applyIndexInjections(payload.injections, src => new Promise((resolve, reject) => {
     const script = document.createElement('script')
