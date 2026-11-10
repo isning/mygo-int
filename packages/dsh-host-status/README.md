@@ -1,6 +1,7 @@
 # DSH Host status plugin
 
-Issue [29](https://github.com/isning/mygo-int/issues/29). Provisional package
+Issues [29](https://github.com/isning/mygo-int/issues/29) and
+[30](https://github.com/isning/mygo-int/issues/30). Provisional package
 name: `@mygo/dsh-host-status`; no registry publication or namespace ownership is
 implied. This is a Host-only Cordis function plugin with no client entry or build
 step. It has no runtime imports and uses the Host's injected services. The peer
@@ -47,7 +48,54 @@ general Host health assertion. `release` selects only version and optional commi
 from `ctx.clientModules.graph().release`. It is null when the public graph has no
 release, and omits commit when none was recorded. Release metadata is **not
 durable instance identity**, a capability inventory or an authentication view.
-No graph, bootstrap, private config, credentials or peer data is exported.
+The status response exports no graph, bootstrap, private config, credentials or
+peer data. The separate injection endpoint below intentionally exports the
+original owner bootstrap contributions.
+
+## Ordered index injections
+
+`GET /mygo/index-injections` is a second exact pathname route with the same
+admission, owner-only authorization, method, cache and lifecycle rules. It returns
+`Content-Type: application/json; charset=utf-8` and:
+
+```json
+{ "schemaVersion": 1, "injections": [] }
+```
+
+`injections` is the **entire** result of one synchronous call to
+`ctx.webServer.collectIndexInjections(admission.peer)` per successful request.
+The exact admitted Peer is passed through, retaining the current permission
+context. No browser Peer, index authorization or substitute Peer is used. The
+original `webserver/index-inject` listeners collect fresh state on every request;
+the adapter neither filters to `__DSH_BOOT__` nor sorts, deduplicates, renders or
+executes the rows. Listener table order (including theme's prepend behavior),
+duplicates, placements, text and URLs are preserved. All six pinned upstream row
+kinds are carried: `global`, `script`, `script-src`, `script-preload`, `style`,
+and `html`. `IndexInjectionsResponse` reuses upstream's `IndexInjection` type.
+The status endpoint and its response remain unchanged.
+
+The pinned upstream contract describes rows as JSON-serializable data, although
+`global.value` is typed `unknown`. Before JSON encoding, the adapter checks for
+plain JSON data without invoking property accessors or `toJSON` hooks. Non-finite
+numbers, negative zero, undefined, functions, symbols, bigint, sparse arrays,
+cycles, accessors and non-plain objects fail closed with empty **500** and
+`Cache-Control: no-store`; collection failures also return empty 500. No partial
+or silently coerced table is returned. Shared acyclic values are supported.
+Contributor scripts and globals remain data; this endpoint never evaluates them.
+This is a pinned data contract, not a cross-version parser or sanitizer of trusted
+owner-supplied executable contributions.
+
+This table is **not the complete served HTML**. The original
+`webServer.renderIndex` renders rows and then applies raw `tapIndex` string
+transforms; those arbitrary transformations are not collector rows and are not
+exported. The pinned non-test source currently registers no raw taps outside the
+webserver API itself, but installed extensions may do so. The generated
+`__DSH_BOOT_READY__` readiness tail belongs to `renderIndexInjections`, not the
+collector. Frontend-static's original base document (entry module, styles, root
+markup and other assets), fallback/page handling and HTML transforms are likewise
+not rows. This endpoint does not parse HTML to reconstruct those contributions,
+resolve relative resource URLs for another origin, apply rows in a client, or
+implement independent-client boot (issue 31).
 
 ## Local checks and later installation
 
@@ -107,5 +155,7 @@ Connection and Cordis, including declaration typechecking. See the
 reproduction, actual statuses, lifecycle evidence and the Node runtime caveat.
 No upstream implementation was copied.
 
-Bootstrap export (issue 30), full authentication, proxy/gateway and UI behavior
-are outside this package. This status route cannot independently boot a client.
+Full authentication, proxy/gateway and UI consumption remain outside this
+package. Neither route alone boots an independent client. See the
+[issue 30 validation handoff](../../docs/upstream/dsh-injections-live-validation.md)
+for the ordered export evidence and reproduction.

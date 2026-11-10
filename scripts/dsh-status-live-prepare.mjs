@@ -1,4 +1,4 @@
-// Prepare an ignored local install anchor for the issue 29 live smoke.
+// Prepare an ignored local install anchor for the status and index-injections live smoke.
 // Requires the unmodified pinned artifact build; never edits upstream files.
 import {mkdirSync,cpSync,readdirSync,symlinkSync,existsSync,writeFileSync,readFileSync} from 'node:fs';
 import {resolve,join} from 'node:path';
@@ -39,11 +39,63 @@ try {
  await check('crossSite','/mygo/status',{cookie,'sec-fetch-site':'cross-site'},403);
  const post=await check('post','/mygo/status',{cookie},405,'POST');assert.equal(post.headers.allow,'GET');
  await check('query','/mygo/status?probe=1',{cookie},200);
+ // Observe the real admission and collector without changing either result.
+ const originalAdmit=ctx.connection.admit.bind(ctx.connection);
+ const originalCollect=ctx.webServer.collectIndexInjections.bind(ctx.webServer);
+ let admittedPeer, collectedRows, collectionCount=0;
+ ctx.connection.admit=req=>{const admission=originalAdmit(req);admittedPeer=admission.peer;return admission;};
+ ctx.webServer.collectIndexInjections=peer=>{assert.equal(peer,admittedPeer,'exact admitted Peer');collectionCount++;collectedRows=originalCollect(peer);return collectedRows;};
+ const injectionPath='/mygo/index-injections';
+ await check('injectionsMissingAuth',injectionPath,{},401);
+ await check('injectionsTokenOnly',injectionPath+launch.search,{},401);
+ await check('injectionsBadHost',injectionPath,{cookie,host:'untrusted.invalid'},403);
+ await check('injectionsBadOrigin',injectionPath,{cookie,origin:'http://untrusted.invalid'},403);
+ await check('injectionsCrossSite',injectionPath,{cookie,'sec-fetch-site':'cross-site'},403);
+ const injectionPost=await check('injectionsPost',injectionPath,{cookie},405,'POST');assert.equal(injectionPost.headers.allow,'GET');
+ assert.equal(collectionCount,0,'denials never collect');
+ const verifyInjections=async(name,path=injectionPath)=>{
+   const before=collectionCount;
+   const response=await check(name,path,{cookie,origin},200);
+   assert.equal(collectionCount,before+1,'one synchronous collection per request');
+   assert.equal(response.headers['cache-control'],'no-store');
+   assert.equal(response.headers['content-type'],'application/json; charset=utf-8');
+   const payload=JSON.parse(response.body);
+   assert.deepEqual(payload,{schemaVersion:1,injections:collectedRows});
+   assert.equal(admittedPeer.principal.kind,'owner');
+   assert.ok(payload.injections.some(row=>row.kind==='global'&&row.name==='__DSH_BOOT__'));
+   assert.ok(payload.injections.some(row=>row.kind==='script'));
+   assert.ok(payload.injections.some(row=>row.kind==='script-src'));
+   result[name].rowCount=payload.injections.length;
+   result[name].kinds=payload.injections.map(row=>row.kind);
+   return payload.injections;
+ };
+ await verifyInjections('injectionsOwner');
+ await verifyInjections('injectionsQuery',injectionPath+'?probe=1');
+ // Real event listeners exercise prepend/append, duplicate rows and live state.
+ let generation=1;
+ const stopProbe=ctx.on('webserver/index-inject',(table,peer)=>{
+   assert.equal(peer,admittedPeer);
+   table.unshift({kind:'style',text:':root{--mygo-probe:'+generation+'}'});
+   table.push({kind:'html',placement:'body',html:'<i data-mygo-probe></i>'});
+   table.push({kind:'html',placement:'body',html:'<i data-mygo-probe></i>'});
+ });
+ try {
+   const first=await verifyInjections('injectionsOrdered');
+   assert.deepEqual(first[0],{kind:'style',text:':root{--mygo-probe:1}'});
+   assert.deepEqual(first.slice(-2),[{kind:'html',placement:'body',html:'<i data-mygo-probe></i>'},{kind:'html',placement:'body',html:'<i data-mygo-probe></i>'}]);
+   generation=2;
+   const second=await verifyInjections('injectionsFresh');
+   assert.equal(second[0].text,':root{--mygo-probe:2}');
+ } finally {stopProbe();}
+
  const entry=[...ctx.loader.entries()].find(e=>e.options.name==='@mygo/dsh-host-status');assert.ok(entry?.fiber,'live Loader entry');result.loader={name:entry.options.name,active:true};
  await entry.update({disabled:true});await ctx.loader.await();
  const after=await req('/mygo/status',{cookie});assert.notEqual(after.status,200);assert.ok(!after.body.includes('adapter-ready'));result.unloaded={status:after.status,fiberState:entry.fiber?.state,disabled:entry.disabled};assert.equal(entry.fiber?.state,4);
+ await check('injectionsUnloaded',injectionPath,{cookie},404);
  await entry.update({disabled:false});await ctx.loader.await();
  await check('reloaded','/mygo/status',{cookie},200);
+ await verifyInjections('injectionsReloaded');
+ ctx.connection.admit=originalAdmit;ctx.webServer.collectIndexInjections=originalCollect;
  await shutdown.shutdown(0);
  try{await req('/mygo/status',{cookie});throw Error('listener still alive');}catch(e){assert.equal(e.code,'ECONNREFUSED');result.teardown={connectionRefused:true};}
  writeFileSync(${JSON.stringify(resolve('.scratch/status-live/result.json'))},JSON.stringify(result,null,2)+'\\n',{mode:0o600});
@@ -51,9 +103,10 @@ try {
 } catch(e){await shutdown.shutdown(0);throw e;}
 `);
 
-writeFileSync(join(anchor, 'types.ts'), `import { apply, type StatusResponse } from '@mygo/dsh-host-status';
+writeFileSync(join(anchor, 'types.ts'), `import { apply, type StatusResponse, type IndexInjectionsResponse, INDEX_INJECTIONS_PATH } from '@mygo/dsh-host-status';
 import type { Context } from '@deepseek-ai/cordis';
 const plugin: (ctx: Context) => void = apply;
 const response: StatusResponse = {schemaVersion: 1, status: 'adapter-ready', adapterVersion: '0.1.0', release: null};
-void [plugin, response];
+const injections: IndexInjectionsResponse = {schemaVersion: 1, injections: [{kind: 'global', name: 'test', value: null}]};
+void [plugin, response, injections, INDEX_INJECTIONS_PATH];
 `);
