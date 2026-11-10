@@ -1,6 +1,7 @@
 // The deferred exists before the unchanged official entry starts running.
 import { applyIndexInjections } from '/mygo-boot/apply-injections.js'
 import { graphBundleReferences } from '/mygo-boot/bundle-references.js'
+import { lazyBundleReferences } from '/mygo-boot/lazy-resources.js'
 
 import { SESSION_ASSETS } from '/mygo-boot/session-assets.js'
 
@@ -15,6 +16,7 @@ try {
   const graphs = payload.injections.filter(row => row.kind === 'global' && row.name === '__DSH_BOOT__')
   if (graphs.length !== 1) throw new Error('mygo boot: expected one boot graph')
   const references = graphBundleReferences(graphs[0].value)
+  for (const reference of lazyBundleReferences(graphs[0].value)) references.add(reference)
   // Preserve independently installed RPC hooks; the original module system owns
   // factory registration, dependency arrival and static singleton resolution.
   globalThis.__DSH_TRANSPORT__ = {

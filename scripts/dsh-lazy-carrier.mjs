@@ -1,18 +1,17 @@
 // Server-side custody of one current-revision lazy JavaScript resource.
 import { LAZY_PATH, lazyBundleReferences } from '../entries/dsh-startup/lazy-resources.js'
+import { createCarrierTrust } from './dsh-carrier-trust.mjs'
 
-export function createLazyCarrier({ origin, cookie }) {
+export function createLazyCarrier({ origin, cookie, publicOrigins = [] }) {
   const remote = new URL(origin)
   if (remote.protocol !== 'http:' || remote.hostname !== '127.0.0.1' || remote.pathname !== '/' || remote.search || remote.hash || remote.username || remote.password) throw new Error('Lazy origin must be loopback HTTP')
   if (typeof cookie !== 'string' || !cookie || /[\r\n]/.test(cookie)) throw new Error('Invalid owner cookie')
+  const trusted = createCarrierTrust({ publicOrigins })
   return async (request, response) => {
     // Claim only this pathname family, including malformed suffixes, to deny them.
     if (!request.url.startsWith(LAZY_PATH)) return false
     const fail = status => { response.writeHead(status, { 'Cache-Control': 'no-store' }).end(); return true }
-    const localOrigin = `http://127.0.0.1:${request.socket.localPort}`
-    if (request.headers.host !== new URL(localOrigin).host ||
-        (request.headers.origin && request.headers.origin !== localOrigin) ||
-        (request.headers['sec-fetch-site'] && !['same-origin', 'none'].includes(request.headers['sec-fetch-site']))) return fail(403)
+    if (!trusted(request)) return fail(403)
     if (request.method !== 'GET') return fail(405)
     if (!new RegExp(`^${LAZY_PATH.replaceAll('.', '\\.')}\\?rev=[A-Za-z0-9_-]+$`).test(request.url)) return fail(404)
     try {

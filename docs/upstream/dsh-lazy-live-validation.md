@@ -29,6 +29,10 @@ Responses are no-store/nosniff and never forward Set-Cookie.
 Shared startup/carrier trust files and `bootstrap.js` are deliberately untouched.
 The parent integrates these three seams after reconciling the network worker:
 
+Parent integration has now applied the seams below and uses the shared exact
+public-origin trust policy. The retained demo still requires an update/restart;
+the browser evidence here belongs to the isolated harness, not that deployment.
+
 1. Serve `entries/dsh-startup/lazy-resources.js` as the exact local module URL
    `/mygo-boot/lazy-resources.js`.
 2. In bootstrap, import `lazyBundleReferences`; after the existing

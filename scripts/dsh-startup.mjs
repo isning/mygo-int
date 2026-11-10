@@ -49,6 +49,9 @@ if (command === 'serve') {
   const trusted = createCarrierTrust({ publicOrigins })
   const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf', '.txt': 'text/plain', '.svg': 'image/svg+xml', '.map': 'application/json' }
   const ownerCookie = bootEnabled ? (await readFile(process.env.DSH_COOKIE_FILE, 'utf8')).trim() : undefined
+  const lazyCarrier = bootEnabled ? (await import('./dsh-lazy-carrier.mjs')).createLazyCarrier({
+    origin: process.env.DSH_ORIGIN, cookie: ownerCookie, publicOrigins,
+  }) : undefined
   const uploadCarrier = bootEnabled ? (await import('./dsh-upload-carrier.mjs')).createUploadCarrier({
     origin: process.env.DSH_ORIGIN, cookie: ownerCookie, publicOrigins,
   }) : undefined
@@ -66,6 +69,7 @@ if (command === 'serve') {
     try {
       if (!trusted(request)) { response.writeHead(403).end(); return }
       if (carrier && await carrier(request, response)) return
+      if (lazyCarrier && await lazyCarrier(request, response)) return
       if (sessionCarrier && await sessionCarrier.handle(request, response)) return
       if (uploadCarrier && await uploadCarrier(request, response)) return
       if (inventoryRpcCarrier && await inventoryRpcCarrier(request, response)) return
@@ -84,8 +88,8 @@ if (command === 'serve') {
       if (path === '/' || path === '/index.html') {
         data = html
         extension = '.html'
-      } else if (bootEnabled && ['/mygo-boot/dsh-carrier-trust.mjs', '/mygo-boot/session-assets.js', '/mygo-boot/bootstrap.js', '/mygo-boot/apply-injections.js', '/mygo-boot/bundle-references.js'].includes(path)) {
-        data = await readFile(path.endsWith('/dsh-carrier-trust.mjs') ? resolve(workspace, 'scripts/dsh-carrier-trust.mjs') : path.endsWith('/session-assets.js') ? resolve(workspace, 'entries/dsh-startup/session-assets.js') : path.endsWith('/bootstrap.js')
+      } else if (bootEnabled && ['/mygo-boot/lazy-resources.js', '/mygo-boot/dsh-carrier-trust.mjs', '/mygo-boot/session-assets.js', '/mygo-boot/bootstrap.js', '/mygo-boot/apply-injections.js', '/mygo-boot/bundle-references.js'].includes(path)) {
+        data = await readFile(path.endsWith('/lazy-resources.js') ? resolve(workspace, 'entries/dsh-startup/lazy-resources.js') : path.endsWith('/dsh-carrier-trust.mjs') ? resolve(workspace, 'scripts/dsh-carrier-trust.mjs') : path.endsWith('/session-assets.js') ? resolve(workspace, 'entries/dsh-startup/session-assets.js') : path.endsWith('/bootstrap.js')
           ? resolve(workspace, 'entries/dsh-startup/bootstrap.js')
           : path.endsWith('/bundle-references.js')
             ? resolve(workspace, 'scripts/dsh-bootstrap-carrier.mjs')
