@@ -1,3 +1,8 @@
+> Historical real-provider checkpoint. The current authorized default is the
+> [persistent local model mock](dsh-local-test-environment.md), which requires no
+> API key and validates the original composer through an HTTP model boundary.
+> The credential failure below describes the earlier real-provider run only.
+
 # Issue 36: original UI submission, real reply blocked by credentials
 
 Validated 2026-11-10 from parent `dd6d743`, in this worker's own ignored

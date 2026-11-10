@@ -1,98 +1,111 @@
-# Persistent local test DSH
+# Persistent local test DSH (model mock by default)
 
-This environment owns a persistent original Host and the existing narrow mygo
-carrier. It differs from the earlier smoke runners, which shut down in `finally`.
-Source stays pinned and unmodified at `fcc0ad462172522aaf5c93a7b2e01f6b9f0b0159`.
-Run all commands from this repository root. Generated files, credentials, logs,
-profiles and caches stay private under ignored `.scratch`; do not publish logs.
+No API key or account setup is needed. The default starts a deterministic local
+**MODEL MOCK HTTP server** and configures the original `dsh-llm-pi-ai` provider
+through its existing profile patch seam. This is not a real LLM. The original
+HostAgent, Session, Remote, UI composer, receipt and request identities remain
+unchanged. No assistant journal event is seeded by the test helper.
+
+Run from this repository root:
 
 ```bash
 bash scripts/dsh-test-prepare.sh all
-node scripts/dsh-test-host.mjs start
+DSH_CLIENT_PORT=4180 node scripts/dsh-test-host.mjs start
 node scripts/dsh-test-host.mjs status
+node scripts/dsh-test-host.mjs check-submit
 node scripts/dsh-test-host.mjs check-ui
-node scripts/dsh-test-host.mjs check-auth
-node scripts/dsh-test-host.mjs open
 node scripts/dsh-test-host.mjs stop
+DSH_CLIENT_PORT=4180 node scripts/dsh-test-host.mjs start
 ```
 
-Preparation supports separate `acquire`, `install`, and `build` stages and can be
-rerun after interruption. Install is frozen, uses pnpm 11.28.5, and caches are set
-before every pnpm invocation including dlx. Build uses the original eight-gate
-artifact graph. Runtime uses pnpm-provided `node-linux-x64@24.21.0`, because Nix
-Node fails native Host preparation. No upstream sources are patched.
+Open <http://127.0.0.1:4180/>, choose **Local test DSH**, then
+**Local MODEL MOCK reply**, and use the original composer. Replies say:
+“Hello! This is a deterministic local model mock reply.”
 
-`start` detaches its launcher, waits for readiness, and retains the Host after the
-command/agent exits. `status` verifies the recorded PID's exact runner argument,
-checks the Host's unauthenticated 401 and the carrier's 200, and prints only safe
-configuration facts. `stop` verifies ownership and sends SIGTERM; the runner
-terminates its owned carrier and calls original Host shutdown. No force signal
-or deletion is used. Restart with `stop`, then `start`; persisted workspace and
-session are reused. Only one build/start command should run at once.
+`DSH_CLIENT_PORT` defaults to **4180** and must be free. This environment never
+owns the older environment at 4178. Host and mock bind random loopback ports;
+`DSH_MOCK_PORT` optionally selects a free mock port. `status` prints safe origins,
+provider selection, Host authentication fence, client status and mock health.
+The mock serves only `/health` and streaming `/v1/chat/completions`; it has no
+external inference fallback. Official/account providers are disabled in mock
+mode. The OpenAI protocol requires a key, so the launcher automatically supplies
+`nonsecret-local-model-mock`, public dummy test data, through the original
+credential reference seam. No real credential is required or supplied.
 
-The carrier URL is <http://127.0.0.1:4178/>. It retains the existing narrowly
-admitted read/submit capabilities and server-side original owner cookie custody.
-The random original Host origin is printed by `status`; direct unauthenticated
-requests remain rejected. Neither auth policy nor client implementation changes.
+Preparation supports `acquire`, `install`, `build`, and `all`, using a fresh
+workspace-owned ignored `.scratch`. Source stays pinned and unmodified at
+`fcc0ad462172522aaf5c93a7b2e01f6b9f0b0159`. Frozen pnpm 11.28.5 installation
+and the original eight artifact gates are retained. Every pnpm invocation,
+including dlx, receives workspace-local XDG/cache/store/PNPM_HOME settings first.
+Runtime uses pnpm-provided `node-linux-x64@24.21.0`; Nix Node builds artifacts
+but fails original native Host preparation. No other worktree is consulted.
 
-`open` starts visible Nix Chromium with a private fresh profile, then delivers
-the original authenticated Host URL privately over loopback CDP. The URL never
-appears in the terminal or Chromium command line. The official Host exchanges
-its own launch token for its own signed cookie. This opens the **full official
-Host UI**, including Models credential settings; it requires a desktop display.
-`check-ui` instead opens the carrier in headless Nix Chromium, verifies original
-module activation and the retained test workspace, then stops its browser.
-`check-auth` performs the same headless check against the authenticated full
-official Host UI instead of the narrow carrier. T3 preview was attempted first but its host lacks shared browser libraries.
+`start` detaches the owned runner and waits for readiness. `stop` verifies the
+recorded PID's exact workspace runner argument and sends normal SIGTERM. The
+runner stops its owned carrier, shuts down the original Host, and closes the
+mock listener. Restart uses `stop`, then `start`; persisted workspace/session
+are reused. Do not run concurrent lifecycle/validation commands. No force
+signals, resource deletion, or global cleanup are used.
 
-## Provider configuration
+`check-submit` asks the owned runner to run real headless Chromium against the
+carrier. It clicks the original sidebar session and types/presses Enter in the
+original contenteditable composer. It requires one unchanged original prompt
+receipt, durable user request correlation, a durable original assistant message,
+original WebSocket assistant frames, a cleared draft, and one visible prompt.
+It records **model-mock** evidence privately under `.scratch/test-dsh/`:
+`submit-validation.json`, `submit-browser.json`, and `submit.png`.
+On first startup only, the launcher gives its blank session one labeled warm-up
+prompt through the original `sessionController.prompt` and model HTTP adapter.
+This is needed because the original sidebar hides unselected blank sessions.
+It waits for the real HostAgent's assistant event and turn settlement; it never
+appends fabricated history. Browser acceptance then submits a separate prompt.
+Restart reuses the durable conversation without repeating the warm-up.
+`check-ui` and `check-auth` check carrier and authenticated official UI readiness.
+Headless browsers close in `finally`. T3 preview was tried first; this host reports
+`This host is missing libraries T3's browser needs`, so Nix Chromium is used.
+`open` optionally opens visible authenticated official UI with a private profile;
+its owning helper waits for that browser to close. Launch URLs/cookies stay private.
 
-The original web composition registers `deepseek-official` and
-`deepseek-account`, with default `deepseek-official/deepseek-flash`. The official
-API-key adapter uses the credential reference **`DEEPSEEK_API_KEY`** and endpoint
-`https://api.deepseek.com/anthropic`. The supported credential service resolves
-its private managed file before inherited environment and workspace/home `.env`.
-All DSH home state is isolated in `.scratch/test-dsh/home`; this launcher reads
-only `.scratch/test-dsh/.env` and that private home `.env`, plus inherited env.
-No global credential directories or other workspaces are consulted by the helper.
+## Real provider opt-in and historical limits
 
-To supply an authorized key, use the authenticated official UI Models page, or
-copy [the template](dsh-test-provider.env.example) to `.scratch/test-dsh/.env`,
-restrict it to mode 0600, and edit the `DEEPSEEK_API_KEY` field privately. Restart
-after changing `.env`. Never enter the key into chat, a tracked file, shell command
-arguments or a credential URL. No secretRef is requested because these local
-launch tools have no secure secretRef consumption interface.
+`DSH_TEST_PROVIDER=real DSH_CLIENT_PORT=4180 node scripts/dsh-test-host.mjs start`
+retains the original official provider composition. Stop the existing runner
+first. No mock starts in real mode. The official API adapter references
+`DEEPSEEK_API_KEY` and `https://api.deepseek.com/anthropic`. Supply an authorized
+key privately through the authenticated official Models UI or workspace-private
+`.scratch/test-dsh/.env` (mode 0600; see `dsh-test-provider.env.example`). The
+launcher consults only that file, its isolated DSH home `.env`, and inherited
+environment. Do not put real keys in chat, tracked files or command arguments.
+Existing explicitly selected session models may need selection through official
+UI when changing providers. Real-provider validation remains separate.
 
-The source also supports generic providers through `dsh-llm-pi-ai` with explicit
-protocol, endpoint, catalog and credential references. No such provider is
-invented/configured without an available real endpoint/model. Bounded discovery
-of conventional loopback Ollama/LM Studio/OpenAI-compatible endpoints at ports
-11434, 1234, 8080 and 8000 found none in this run. The inherited environment and
-workspace had no legitimate provider credential/configuration available.
-
-Until an authorized credential is supplied, Host readiness and original UI
-readiness do **not** complete issue 36. The required remaining secret field is
-`DEEPSEEK_API_KEY`. Do not claim a real assistant reply from an accepted prompt.
-The existing `dsh-submit-live-prepare.mjs` official-composer checkpoint remains
-the send/reply acceptance check; run it with workspace-isolated DSH state and a
-configured provider, and require `assistant/message` plus the existing receipt,
-durable request identity and composer settlement checks. Stop the retained Host
-before running that old smoke runner because both own carrier port 4178.
+The earlier submit handoff documented a real `MISSING_CREDENTIAL` failure and
+zero assistant messages. That historical result remains accurate; it is no longer
+a blocker for the newly authorized **mock-model** acceptance path. A mock reply
+must never be reported as a real-LLM reply. The parent owns issue 36's criteria
+change and issue operations.
 
 ## Validation (2026-11-10)
 
-Fresh frozen installation passed. All **8/8** original artifact gates passed in
-98.24 seconds; pinned-source verification passed afterward. Existing focused
-carrier/Host tests passed **18/18**. Syntax and whitespace checks passed.
-A detached Host started successfully, original login returned 303, authenticated
-adapter status returned 200, unauthenticated adapter status returned 401, and the
-carrier returned 200. Real headless Chromium verified original live client
-activation and the retained workspace through both the carrier and privately
-authenticated official Host UI. Normal stop closed the previous Host listener;
-restart reused the persisted session. The final owned Host is intentionally left
-running; inspect its current origin/PID using `status`.
+Fresh frozen pnpm 11.28.5 install passed. Its standalone downloader stalled;
+resuming with the same downloaded version's Node entry point reused 815 packages
+and finished in 35.4s. `install` now prefers that entry point on reruns.
+All original artifact gates passed **8/8** (97.30s); a confirmation run passed
+**8/8**, exit 0 (29.08s). The first wrapper returned 127 after reporting all gates
+passed; the unchanged confirmation command resolved that exit uncertainty.
+Focused Host/carrier/model tests passed **19/19**.
 
-The actual credential service reports `DEEPSEEK_API_KEY` unconfigured. No real
-assistant reply was attempted or claimed in this environment; issue 36 remains
-incomplete until the authorized key is supplied and its composer checkpoint
-produces an actual assistant message.
+Real Chromium exercised the original composer through the carrier at 4180.
+The original receipt preserved its transport rpcId and `{accepted:true}` result;
+the requestId correlated to exactly one durable user message and one new durable
+assistant message. Three original text chunks retained the mock's delayed
+streaming, usage was 12 input / 14 output / 26 total, finish was `stop`, and turn
+end was `completed`. The draft cleared and neither prompt nor new reply duplicated.
+The screenshot was inspected. All results are **MODEL MOCK**, not real inference.
+
+Normal SIGTERM closed the owned Host, carrier and mock listeners (all three
+refused connections afterward). Restart reused the same persisted session with
+zero new model requests before the next UI submission. The final validated
+environment is intentionally left running at 4180. Current ports/PID come from
+`status`; private runtime artifacts are not committed. Source-pin verification,
+syntax checks and whitespace checks passed. No other worktree was used.

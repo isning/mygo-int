@@ -10,7 +10,18 @@ case "$stage" in acquire|install|build|all) ;; *) echo 'Usage: bash scripts/dsh-
 if [[ "$stage" == acquire || "$stage" == all ]]; then bash scripts/dsh-upstream.sh acquire; fi
 bash scripts/dsh-upstream.sh verify
 if [[ "$stage" == install || "$stage" == all ]]; then
-  CI=true pnpm dlx pnpm@11.28.5 --dir .scratch/upstream/deepseek-harness install --frozen-lockfile --store-dir "$npm_config_store_dir" > .scratch/upstream/logs/install.log 2>&1
+  # Resume with the downloaded Node entry point when available. The standalone
+  # package-manager downloader can stall on large tarballs on this host.
+  pnpm_entry=.scratch/upstream/deepseek-harness/node_modules/pnpm/bin/pnpm.cjs
+  if [[ ! -f "$pnpm_entry" ]]; then
+    pnpm_entry=.scratch/upstream/deepseek-harness/node_modules/.pnpm/pnpm@11.28.5/node_modules/pnpm/bin/pnpm.cjs
+  fi
+  if [[ -f "$pnpm_entry" ]]; then
+    test "$(node "$pnpm_entry" --version)" = 11.28.5
+    CI=true node "$pnpm_entry" --dir .scratch/upstream/deepseek-harness install --frozen-lockfile --store-dir "$npm_config_store_dir" > .scratch/upstream/logs/install.log 2>&1
+  else
+    CI=true pnpm dlx pnpm@11.28.5 --dir .scratch/upstream/deepseek-harness install --frozen-lockfile --store-dir "$npm_config_store_dir" > .scratch/upstream/logs/install.log 2>&1
+  fi
 fi
 if [[ "$stage" == build || "$stage" == all ]]; then
   test "$(node .scratch/upstream/deepseek-harness/node_modules/pnpm/bin/pnpm.cjs --version)" = 11.28.5

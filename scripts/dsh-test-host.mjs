@@ -4,6 +4,7 @@ import {mkdir,readFile,writeFile,copyFile} from 'node:fs/promises';
 import {openSync,closeSync} from 'node:fs';
 import {spawn,spawnSync} from 'node:child_process';
 import {resolve,dirname} from 'node:path';
+import net from 'node:net';
 import {fileURLToPath} from 'node:url';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');process.chdir(root);process.umask(0o077);
 const scratch=resolve('.scratch/test-dsh'),anchor=resolve('.scratch/status-live/anchor');
@@ -15,6 +16,9 @@ async function owned(){try{const pid=Number(await readFile(scratch+'/pid','utf8'
 const command=process.argv[2];
 if(command==='start'){
  if(await owned())throw Error('Owned Host already running; use status');
+ const clientPort=Number(process.env.DSH_CLIENT_PORT??4180);
+ if(!Number.isInteger(clientPort)||clientPort<1024||clientPort>65535)throw Error('Invalid DSH_CLIENT_PORT');
+ const probe=net.createServer();await new Promise((r,j)=>{probe.once('error',j);probe.listen(clientPort,'127.0.0.1',r);});await new Promise(r=>probe.close(r));
  const p=spawnSync(process.execPath,['scripts/dsh-status-live-prepare.mjs'],{stdio:'inherit'});if(p.status!==0)process.exit(1);
  await copyFile('scripts/dsh-test-host-runner.mjs',anchor+'/test-host.mjs');
  // Clear stale readiness by replacing it with a safe starting marker.
@@ -23,11 +27,18 @@ if(command==='start'){
  const child=spawn('pnpm',['--config.auto-install-peers=false','dlx','--package=node-linux-x64@24.21.0','node',anchor+'/test-host.mjs'],{cwd:root,env:process.env,detached:true,stdio:['ignore',log,log]});child.unref();closeSync(log);
  for(let i=0;i<480;i++){await new Promise(r=>setTimeout(r,250));const status=JSON.parse(await readFile(scratch+'/status.json','utf8'));if(!status.starting&&await owned()){console.log(JSON.stringify(status,null,2));process.exit(0);}}
  throw Error('Startup not ready after 120 seconds; inspect private runtime.log');
+}else if(command==='check-submit'){
+ const pid=await owned();if(!pid)throw Error('Start the Host first');
+ await writeFile(scratch+'/submit-validation.json',JSON.stringify({pending:true}));
+ process.kill(pid,'SIGUSR1');
+ for(let i=0;i<480;i++){await new Promise(r=>setTimeout(r,250));const result=JSON.parse(await readFile(scratch+'/submit-validation.json','utf8'));if(!result.pending){console.log(JSON.stringify(result,null,2));process.exit(result.ok?0:1);}}
+ throw Error('Composer validation still pending; inspect private runtime.log');
 }else if(command==='status'){
  if(!await owned())throw Error('Owned Host is stopped');
  const status=JSON.parse(await readFile(scratch+'/status.json','utf8'));
  const [host,client]=await Promise.all([fetch(status.origin+'/mygo/status'),fetch(status.clientUrl)]);
- console.log(JSON.stringify({...status,unauthenticatedHostStatus:host.status,clientStatus:client.status},null,2));
+ const mockHealth=status.model?.mode==='mock'?await fetch(status.model.origin+'/health').then(r=>r.json()):undefined;
+ console.log(JSON.stringify({...status,unauthenticatedHostStatus:host.status,clientStatus:client.status,mockHealth},null,2));
 }else if(command==='stop'){
  const pid=await owned();if(!pid){console.log('Owned Host is stopped');process.exit(0);}process.kill(pid,'SIGTERM');for(let i=0;i<120;i++){await new Promise(r=>setTimeout(r,250));if(!await owned()){console.log('Owned Host stopped normally');process.exit(0);}}throw Error('Shutdown still pending; no force signal sent');
  }else if(command==='open'||command==='check-ui'||command==='check-auth'){
@@ -36,4 +47,4 @@ if(command==='start'){
  const child=spawn(process.execPath,['scripts/dsh-test-browser.mjs',command==='open'?'open':command==='check-auth'?'check-auth':'check'],{detached:command==='open',stdio:command==='open'?['ignore',log,log]:'inherit',env:process.env});closeSync(log);
  if(command==='open'){child.unref();console.log('Opening authenticated official Host UI in isolated Chromium');}
  else {process.exitCode=await new Promise(r=>child.once('exit',r));}
-}else throw Error('Usage: node scripts/dsh-test-host.mjs {start|status|stop|open|check-ui|check-auth}');
+}else throw Error('Usage: node scripts/dsh-test-host.mjs {start|status|stop|open|check-ui|check-auth|check-submit}');
