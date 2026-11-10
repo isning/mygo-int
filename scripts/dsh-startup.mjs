@@ -49,6 +49,9 @@ if (command === 'serve') {
   const trusted = createCarrierTrust({ publicOrigins })
   const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf', '.txt': 'text/plain', '.svg': 'image/svg+xml', '.map': 'application/json' }
   const ownerCookie = bootEnabled ? (await readFile(process.env.DSH_COOKIE_FILE, 'utf8')).trim() : undefined
+  const uploadCarrier = bootEnabled ? (await import('./dsh-upload-carrier.mjs')).createUploadCarrier({
+    origin: process.env.DSH_ORIGIN, cookie: ownerCookie, publicOrigins,
+  }) : undefined
   const carrier = bootEnabled ? (await import('./dsh-bootstrap-carrier.mjs')).createBootstrapCarrier({
     origin: process.env.DSH_ORIGIN, cookie: ownerCookie, publicOrigins,
   }) : undefined
@@ -64,6 +67,7 @@ if (command === 'serve') {
       if (!trusted(request)) { response.writeHead(403).end(); return }
       if (carrier && await carrier(request, response)) return
       if (sessionCarrier && await sessionCarrier.handle(request, response)) return
+      if (uploadCarrier && await uploadCarrier(request, response)) return
       if (inventoryRpcCarrier && await inventoryRpcCarrier(request, response)) return
       if (SESSION_ASSETS.has(request.url.slice(1)) && carrier) {
         if (request.method !== 'GET') { response.writeHead(405).end(); return }

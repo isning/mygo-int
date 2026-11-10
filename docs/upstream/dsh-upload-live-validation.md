@@ -6,6 +6,13 @@ capability and a standalone verification harness. Shared startup, bootstrap,
 session carrier, test Host helpers, and original upstream sources are unchanged.
 The parent must wire the module into its shared runtime as described below.
 
+Parent integration now mounts this handler in `dsh-startup.mjs`, before the
+inventory API rejection and generic method gate. It uses the shared exact-origin
+trust policy, including an explicitly configured Tailscale origin, while still
+requiring matching Origin for uploads. The retained demo process must be rebuilt
+or restarted from this integrated revision to expose the new capability; the
+original standalone browser evidence below does not verify that deployment.
+
 ## Capability and parent wiring
 
 `scripts/dsh-upload-carrier.mjs` exports `createUploadCarrier({origin,cookie})`.
