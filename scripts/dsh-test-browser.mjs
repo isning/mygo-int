@@ -20,13 +20,15 @@ try{
  ws=new WebSocket(page.webSocketDebuggerUrl);await new Promise((r,j)=>{ws.onopen=r;ws.onerror=j;});
  let sequence=0;const pending=new Map();ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.id){pending.get(m.id)?.(m);pending.delete(m.id);}};
  const send=(method,params)=>new Promise((r,j)=>{const id=++sequence;pending.set(id,m=>m.error?j(Error(m.error.message)):r(m.result));ws.send(JSON.stringify({id,method,params}));});
- const promptCalls=[],receipts=[],frames=[],responseJobs=[],socketUrls=[];
+ const promptCalls=[],receipts=[],frames=[],responseJobs=[],socketUrls=[],lazyResponses=[],terminalChunks=[];
  const previous=ws.onmessage;
  ws.onmessage=e=>{const m=JSON.parse(e.data),p=m.params;
   if(m.method==='Network.requestWillBeSent'&&new URL(p.request.url).pathname==='/api/session/prompt')promptCalls.push(JSON.parse(p.request.postData));
   if(m.method==='Network.responseReceived'&&new URL(p.response.url).pathname==='/api/session/prompt')receipts.push({id:p.requestId,status:p.response.status});
   if(m.method==='Network.loadingFinished'&&receipts.some(x=>x.id===p.requestId))responseJobs.push(send('Network.getResponseBody',{requestId:p.requestId}).then(x=>receipts.find(x=>x.id===p.requestId).body=JSON.parse(x.body)));
   if(m.method==='Network.webSocketCreated')socketUrls.push(p.url);
+  if(m.method==='Network.responseReceived'&&new URL(p.response.url).pathname==='/mygo-boot/lazy-resources.js')lazyResponses.push(p.response.status);
+  if(m.method==='Network.responseReceived'&&new URL(p.response.url).pathname==='/plugins/@deepseek-ai/dsh-client-ui-sidebar-terminal/client.terminal.js')terminalChunks.push(p.response.status);
   if(m.method==='Network.webSocketFrameReceived')frames.push(p.response.payloadData);
   previous(e);
  };
@@ -35,11 +37,14 @@ try{
  if(checkLocal) await send('Page.addScriptToEvaluateOnNewDocument',{source:`{
    const originalFetch = globalThis.fetch;
    globalThis.fetch = function(input, ...args) {
-     if (input === '/mygo/index-injections') globalThis.__MYGO_LOCAL_BOOT_OBSERVATION__ = {
-       markers: [...document.querySelectorAll('[data-mygo-local-plugin]')].map(x => ({plugin:x.dataset.mygoLocalPlugin,text:x.textContent})),
+     if (input === '/mygo/index-injections') {
+      globalThis.__MYGO_ORIGINAL_OUTLET__ = document.getElementById('root');
+      globalThis.__MYGO_LOCAL_BOOT_OBSERVATION__ = {
+       markers: [...document.querySelectorAll('[data-mygo-local-plugin]')].map(x => ({plugin:x.dataset.mygoLocalPlugin,text:x.querySelector('.mygo-shell-chrome').textContent})),
        remoteLoaderPresent: !!globalThis.__ModuleLoader__,
        remoteGraphPresent: !!globalThis.__DSH_BOOT__
-     };
+      };
+     }
      return originalFetch.call(this, input, ...args);
    };
  }`});
@@ -55,15 +60,41 @@ try{
   assert.equal(observation.markers.length,1,'selected local plugin visible before remote bootstrap request');
   assert.equal(observation.remoteLoaderPresent,false,'remote module facade has not started');
   assert.equal(observation.remoteGraphPresent,false,'remote graph has not arrived');
-  const expected=process.env.MYGO_EXPECT_LOCAL_PLUGIN??'marker';
+  const expected=process.env.MYGO_EXPECT_LOCAL_PLUGIN??'workbench';
   assert.equal(observation.markers[0].plugin,expected,'configuration selected actual plugin module');
-  const current=await evaluate("[...document.querySelectorAll('[data-mygo-local-plugin]')].map(x=>({plugin:x.dataset.mygoLocalPlugin,text:x.textContent}))");
+  const current=await evaluate("[...document.querySelectorAll('[data-mygo-local-plugin]')].map(x=>({plugin:x.dataset.mygoLocalPlugin,text:x.querySelector('.mygo-shell-chrome').textContent}))");
   assert.deepEqual(current,observation.markers,'local plugin survives original remote activation');
+  assert.deepEqual(lazyResponses,[200],'combined startup serves the lazy resource boot module');
+  const layout=await evaluate(`(() => {
+    const shell=document.querySelector('[data-mygo-shell]');
+    const outlet=shell.querySelector('[data-ui-owner="connected-instance"]');
+    const root=document.getElementById('root');
+    const chrome=shell.querySelector('.mygo-shell-chrome').getBoundingClientRect();
+    const bounds=outlet.getBoundingClientRect();
+    return {owner:shell.dataset.contributionOwner,sameRoot:root===globalThis.__MYGO_ORIGINAL_OUTLET__,nested:outlet.contains(root),chrome:{x:chrome.x,y:chrome.y,width:chrome.width,height:chrome.height},outlet:{x:bounds.x,y:bounds.y,width:bounds.width,height:bounds.height}};
+  })()`);
+  assert.equal(layout.owner,'trusted-local');
+  assert.equal(layout.sameRoot,true);assert.equal(layout.nested,true);
+  assert.ok(layout.outlet.width>300&&layout.outlet.height>300,'usable instance outlet');
+  if(expected==='workbench')assert.ok(layout.outlet.x>=layout.chrome.width,'rail occupies separate layout space');
+  else assert.ok(layout.outlet.y>=layout.chrome.height,'header occupies separate layout space');
+  await until(()=>evaluate("[...document.querySelectorAll('[role=treeitem]')].some(x=>x.innerText==='Local test DSH')"));
+  await evaluate("[...document.querySelectorAll('[role=treeitem]')].find(x=>x.innerText==='Local test DSH')?.click()");
+  await until(()=>evaluate("document.body.innerText.includes('Local MODEL MOCK reply')"));
+  await evaluate("[...document.querySelectorAll('[role=treeitem],button,[role=button]')].find(x=>x.innerText==='Local MODEL MOCK reply')?.click()");
+  await until(()=>evaluate("!!document.querySelector('#root [contenteditable=true]') && document.body.innerText.includes('Hello! This is a deterministic local model mock reply.') && !document.body.innerText.includes('Failed to load history') && !document.body.innerText.includes('Reconnecting')"));
   await writeFile(scratch+'/local-'+expected+'.png',Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'));
+  await until(()=>evaluate("!!document.querySelector('[data-sidebar-right-expand]')"));
+  await evaluate("document.querySelector('[data-sidebar-right-expand]').click()");
+  await until(()=>evaluate("!!document.querySelector('[data-sidebar-right-guide-entry=terminal] button')"));
+  await evaluate("document.querySelector('[data-sidebar-right-guide-entry=terminal] button').click()");
+  await until(()=>evaluate("(()=>{const el=document.querySelector('[data-sidebar-terminal]');return !!el&&el.getBoundingClientRect().width>0})()"));
+  assert.deepEqual(terminalChunks,[200],'original Terminal chunk loads with both local shell routes enabled');
   await evaluate("dispatchEvent(new PageTransitionEvent('pagehide'))");
   await until(()=>evaluate("document.querySelectorAll('[data-mygo-local-plugin]').length===0"));
-  await writeFile(scratch+'/local-'+expected+'.json',JSON.stringify({officialUIReady:ready,...observation,disposed:true},null,2));
-  console.log('Local configured plugin precedes remote graph, survives official mount, and disposes through Cordis');
+  assert.equal(await evaluate("document.getElementById('root')===globalThis.__MYGO_ORIGINAL_OUTLET__ && !!document.querySelector('#root [contenteditable=true]')"),true,'local disposal retains mounted original session UI');
+  await writeFile(scratch+'/local-'+expected+'.json',JSON.stringify({officialUIReady:ready,...observation,layout,lazyResponses,terminalChunks,sessionOpened:true,disposed:true},null,2));
+  console.log('Configured shell owns layout before remote boot; original outlet, session, lazy boot and Cordis disposal passed');
  }
  if(submit){
   const status=JSON.parse(await readFile(scratch+'/status.json','utf8'));
@@ -73,6 +104,8 @@ try{
   await until(()=>evaluate("document.body.innerText.includes('Local MODEL MOCK reply')"));
   await evaluate("[...document.querySelectorAll('[role=treeitem],button,[role=button]')].find(x=>x.innerText==='Local MODEL MOCK reply')?.click()");
   await until(()=>evaluate("!!document.querySelector('[contenteditable=true]') && !document.body.innerText.includes('Loading history') && !document.body.innerText.includes('Reconnecting')"));
+  // The fixture already has a warm-up turn; wait for its history before counting replies.
+  await until(()=>evaluate("document.body.innerText.includes('Hello! This is a deterministic local model mock reply.')"));
   const before=await evaluate("document.body.innerText.split('Hello! This is a deterministic local model mock reply.').length-1");
   const text='Local model MOCK composer check '+Date.now();
   await evaluate("document.querySelector('[contenteditable=true]').focus()");

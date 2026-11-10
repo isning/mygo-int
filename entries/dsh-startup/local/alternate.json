@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
   "entries": [
-    { "id": "local-alternate", "name": "./plugins/alternate.js", "config": { "label": "Local composition: alternate" } }
+    { "id": "local-shell", "name": "./plugins/focus.js", "config": { "label": "Focus" } }
   ]
 }

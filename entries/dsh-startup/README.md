@@ -50,7 +50,10 @@ The current authenticated mode additionally supports the scoped issue 35
 list/open flow documented below.
 Authenticated startup now prepends a trusted local Cordis composition to the
 official entry using the upstream Vite configuration; see
-[ticket 42 validation and interface](../../docs/upstream/dsh-local-composition-validation.md).
+[tickets 42–43 validation and ownership interface](../../docs/upstream/dsh-local-composition-validation.md).
+The default Workbench plugin places a local rail beside the original instance UI;
+`MYGO_STARTUP_CONFIG=entries/dsh-startup/local/alternate.json` selects the Focus
+plugin's top bar after a carrier restart. Both preserve the original instance Root.
 Its entry bundle is rebuilt, not byte-identical to the original diagnostic
 bundle. Official Web library, framework identities and remote bundles are reused.
 
