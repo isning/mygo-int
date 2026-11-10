@@ -1,8 +1,10 @@
+import { createCarrierTrust } from './dsh-carrier-trust.mjs'
 // Explicit local owner capability for one original read-only Remote endpoint.
 export const INVENTORY_RPC_PATH = '/api/pluginInventory/list'
 const MAX_REQUEST_BYTES = 4096
 
-export function createInventoryRpcCarrier({ origin, cookie }) {
+export function createInventoryRpcCarrier({ origin, cookie, publicOrigins = [] }) {
+  const trusted = createCarrierTrust({ publicOrigins })
   const remote = new URL(origin)
   if (remote.protocol !== 'http:' || remote.hostname !== '127.0.0.1' || remote.pathname !== '/' || remote.search || remote.hash || remote.username || remote.password) {
     throw new Error('RPC origin must be an http://127.0.0.1:port origin')
@@ -16,10 +18,7 @@ export function createInventoryRpcCarrier({ origin, cookie }) {
         .end(JSON.stringify({ error: code }))
       return true
     }
-    const localOrigin = `http://127.0.0.1:${request.socket.localPort}`
-    if (request.headers.host !== new URL(localOrigin).host ||
-        (request.headers.origin && request.headers.origin !== localOrigin) ||
-        (request.headers['sec-fetch-site'] && !['same-origin', 'none'].includes(request.headers['sec-fetch-site']))) return fail(403, 'rpc-carrier/untrusted-request')
+    if (!trusted(request)) return fail(403, 'rpc-carrier/untrusted-request')
     if (request.url !== INVENTORY_RPC_PATH) return fail(403, 'rpc-carrier/endpoint-denied')
     if (request.method !== 'POST') return fail(405, 'rpc-carrier/method-denied', { Allow: 'POST' })
     if (request.headers['content-type']?.split(';')[0].trim().toLowerCase() !== 'application/json') return fail(415, 'rpc-carrier/json-required')

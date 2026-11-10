@@ -1,3 +1,4 @@
+import { createCarrierTrust } from './dsh-carrier-trust.mjs'
 // Scoped loopback browser capability; original Connection/Gateway own all envelopes.
 import { createRequire } from 'node:module'
 import { resolve } from 'node:path'
@@ -32,12 +33,8 @@ export function allowedSessionCall(endpoint, payload, stream = false) {
   }
   return false
 }
-function trusted(request, socket = false) {
-  const origin = `http://127.0.0.1:${request.socket.localPort}`
-  return request.headers.host === new URL(origin).host && (!socket && !request.headers.origin || request.headers.origin === origin) &&
-    (!request.headers['sec-fetch-site'] || ['same-origin', 'none'].includes(request.headers['sec-fetch-site']))
-}
-export function createSessionCarrier({ origin, cookie, WebSocket, WebSocketServer }) {
+export function createSessionCarrier({ origin, cookie, WebSocket, WebSocketServer, publicOrigins = [] }) {
+  const trusted = createCarrierTrust({ publicOrigins })
   const remote = new URL(origin)
   if (remote.protocol !== 'http:' || remote.hostname !== '127.0.0.1' || remote.pathname !== '/' || remote.search || remote.hash || remote.username || remote.password) throw Error('Session origin must be loopback HTTP')
   if (typeof cookie !== 'string' || !cookie || /[\r\n]/.test(cookie)) throw Error('Invalid owner cookie')

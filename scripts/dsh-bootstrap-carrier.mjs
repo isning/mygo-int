@@ -1,3 +1,4 @@
+import { createCarrierTrust } from './dsh-carrier-trust.mjs'
 // Explicit loopback owner capability: injections and exact graph-declared bundles.
 // No arbitrary path forwarding, redirects, browser cookies, RPC or package assets.
 export function graphBundleReferences(graph) {
@@ -29,7 +30,8 @@ export function graphBundleReferences(graph) {
   return references
 }
 
-export function createBootstrapCarrier({ origin, cookie }) {
+export function createBootstrapCarrier({ origin, cookie, publicOrigins = [] }) {
+  const trusted = createCarrierTrust({ publicOrigins })
   const remote = new URL(origin)
   if (remote.protocol !== 'http:' || remote.hostname !== '127.0.0.1' || remote.pathname !== '/' || remote.search || remote.hash || remote.username || remote.password) {
     throw new Error('DSH_ORIGIN must be an http://127.0.0.1:port origin')
@@ -39,10 +41,7 @@ export function createBootstrapCarrier({ origin, cookie }) {
   return async (request, response) => {
     const path = new URL(request.url, 'http://localhost')
     if (path.pathname !== '/mygo/index-injections' && !scripts.has(path.pathname + path.search)) return false
-    const localOrigin = `http://127.0.0.1:${request.socket.localPort}`
-    if (request.headers.host !== new URL(localOrigin).host ||
-        (request.headers.origin && request.headers.origin !== localOrigin) ||
-        (request.headers['sec-fetch-site'] && !['same-origin', 'none'].includes(request.headers['sec-fetch-site']))) {
+    if (!trusted(request)) {
       response.writeHead(403, { 'Cache-Control': 'no-store' }).end()
       return true
     }

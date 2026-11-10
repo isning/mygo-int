@@ -14,7 +14,8 @@ const {prepareTestModel}=await import(root+'/scripts/dsh-test-model.mjs');
 const model=await prepareTestModel(scratch);
 const environment=loadLayeredEnv('dsh',scratch);
 const clientPort=Number(process.env.DSH_CLIENT_PORT??4180);
-const clientUrl='http://127.0.0.1:'+clientPort+'/';
+const localClientUrl='http://127.0.0.1:'+clientPort+'/';
+const clientUrl=process.env.DSH_CLIENT_PUBLIC_ORIGIN ? process.env.DSH_CLIENT_PUBLIC_ORIGIN+'/' : localClientUrl;
 let boot;try{boot=await runProfile({environment,profile:'web',patchFiles:[root+'/packages/dsh-host-status/host.patch.yml',...model.patchFiles],args:['--host','127.0.0.1','--port','0','--no-open']});}catch(e){await model.close();throw e;}
 const {ctx,shutdown}=boot;
 let carrier,stopping=false;
@@ -55,7 +56,7 @@ try {
  let ready=false;for(let i=0;i<120;i++){try{ready=(await fetch(clientUrl)).ok;if(ready)break;}catch{}await new Promise(r=>setTimeout(r,250));}
  if(!ready)throw Error('Carrier did not become ready');
  const credential=await ctx.credentials.describe('DEEPSEEK_API_KEY');
- const status={pid:process.pid,origin,clientUrl,model:{mode:model.mode,origin:model.origin,stats:model.stats},providers:ctx.llm.listProviders().map(x=>x.id),selection:ctx.agentDefaultModel.currentSelection(),credential:{reference:'DEEPSEEK_API_KEY',configured:credential.configured,source:credential.source},sessionId:fixtureId};
+ const status={pid:process.pid,origin,clientUrl,localClientUrl,clientBind:process.env.DSH_CLIENT_BIND??'127.0.0.1',model:{mode:model.mode,origin:model.origin,stats:model.stats},providers:ctx.llm.listProviders().map(x=>x.id),selection:ctx.agentDefaultModel.currentSelection(),credential:{reference:'DEEPSEEK_API_KEY',configured:credential.configured,source:credential.source},sessionId:fixtureId};
  if((await fetch(origin+'/mygo/status')).status!==401)throw Error('Host authentication fence failed');
  if((await fetch(origin+'/mygo/status',{headers:{cookie}})).status!==200)throw Error('Authenticated readiness failed');
  const publish=async()=>{const current=await ctx.credentials.describe('DEEPSEEK_API_KEY');status.credential={reference:'DEEPSEEK_API_KEY',configured:current.configured,source:current.source};await writeFile(scratch+'/status.next.json',JSON.stringify(status,null,2),{mode:0o600});await rename(scratch+'/status.next.json',scratch+'/status.json');};

@@ -109,3 +109,63 @@ zero new model requests before the next UI submission. The final validated
 environment is intentionally left running at 4180. Current ports/PID come from
 `status`; private runtime artifacts are not committed. Source-pin verification,
 syntax checks and whitespace checks passed. No other worktree was used.
+
+## Explicit tailnet presentation
+
+From this worktree, retain the presentation listener on all interfaces with one
+exact public origin:
+
+```bash
+DSH_CLIENT_PORT=4181 DSH_CLIENT_BIND=0.0.0.0 \
+DSH_CLIENT_PUBLIC_ORIGIN=http://100.97.207.47:4181 \
+node scripts/dsh-test-host.mjs start
+node scripts/dsh-test-host.mjs status
+node scripts/dsh-test-host.mjs check-submit
+node scripts/dsh-test-host.mjs stop
+```
+
+Open <http://100.97.207.47:4181/>. Loopback
+<http://127.0.0.1:4181/> remains admitted for local checks. Without these
+variables the default remains loopback. Repeat all three variables after stop
+to restart with the public listener; status records the effective origins/bind.
+
+This is an explicitly authorized test capability for devices able to reach the
+listener, including the user's tailnet. It supplies the existing narrow
+bootstrap/session capabilities without a browser login. Host/Origin checks
+prevent other browser origins from borrowing it; they are not network-client
+authentication. Network access controls remain the operator's responsibility.
+A non-loopback bind requires a configured public origin. All presentation HTTP
+paths and browser sockets check exact Host and matching Origin; socket upgrades
+also require Origin. Missing Origin is allowed for HTTP tools/navigation.
+Cross-site fetch metadata is rejected. Forwarded headers cannot widen trust.
+No wildcard Host, suffix matching, or arbitrary Origin reflection is used.
+The original upstream Host and model mock remain loopback, original Host
+authentication is unchanged, and its cookie/launch token remain server-side.
+Original asset and socket references resolve relative to the browser's public
+origin; the carrier preserves original client Host ownership as false.
+
+### Tailnet validation in t3-202246ac (2026-11-10)
+
+A fresh install and original artifact build in this worktree passed all 8 gates
+(103.28s); the original pin remains unchanged. Focused carrier/trust/model/event
+and Host authentication tests passed 21/21.
+
+`node scripts/dsh-test-host-network.mjs` connected to the actual Tailscale IP:
+HTTP 200, WebSocket 101, bad Host/Origin and missing socket Origin 403,
+loopback HTTP 200, unauthenticated original Host 401. It writes safe evidence
+to ignored `.scratch/test-dsh/network-validation.json`.
+
+`node scripts/dsh-test-host.mjs check-submit` used Nix Chromium at
+`http://100.97.207.47:4181/`, with original sockets at
+`ws://100.97.207.47:4181/api/remote.mux`. Original composer, accepted receipt
+identity, durable request correlation, three streamed mock deltas, one new
+assistant message, usage, stop framing, turn settlement, cleared draft and no
+duplicate prompt/reply passed. Screenshot inspected. This is MODEL MOCK only.
+
+Normal stop closed the original Host, carrier and mock listeners. Restart kept
+the same persisted session and made zero startup model requests; public network
+and composer validation then passed again. The 4181 environment is intentionally
+retained for the user. Evidence proves this host can reach its Tailscale address;
+a separate device's tailnet ACL/routing was not tested. T3 browser automation
+explicitly failed for missing system libraries, so the existing Nix Chromium
+helper provided browser proof. No other worktree/runtime was used.

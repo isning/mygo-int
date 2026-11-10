@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import {createCarrierTrust} from './dsh-carrier-trust.mjs';
 // Persistent owned local Host controller; never prints credentials or launch URLs.
 import {mkdir,readFile,writeFile,copyFile} from 'node:fs/promises';
 import {openSync,closeSync} from 'node:fs';
@@ -18,7 +19,11 @@ if(command==='start'){
  if(await owned())throw Error('Owned Host already running; use status');
  const clientPort=Number(process.env.DSH_CLIENT_PORT??4180);
  if(!Number.isInteger(clientPort)||clientPort<1024||clientPort>65535)throw Error('Invalid DSH_CLIENT_PORT');
- const probe=net.createServer();await new Promise((r,j)=>{probe.once('error',j);probe.listen(clientPort,'127.0.0.1',r);});await new Promise(r=>probe.close(r));
+ const publicOrigin=process.env.DSH_CLIENT_PUBLIC_ORIGIN;
+ createCarrierTrust({publicOrigins:publicOrigin?[publicOrigin]:[]});
+ if((process.env.DSH_CLIENT_BIND??'127.0.0.1')!=='127.0.0.1'&&!publicOrigin)throw Error('Non-loopback bind requires DSH_CLIENT_PUBLIC_ORIGIN');
+ if(publicOrigin&&Number(new URL(publicOrigin).port|| (new URL(publicOrigin).protocol==='https:'?443:80))!==clientPort)throw Error('Public origin port must match DSH_CLIENT_PORT');
+ const probe=net.createServer();await new Promise((r,j)=>{probe.once('error',j);probe.listen(clientPort,process.env.DSH_CLIENT_BIND??'127.0.0.1',r);});await new Promise(r=>probe.close(r));
  const p=spawnSync(process.execPath,['scripts/dsh-status-live-prepare.mjs'],{stdio:'inherit'});if(p.status!==0)process.exit(1);
  await copyFile('scripts/dsh-test-host-runner.mjs',anchor+'/test-host.mjs');
  // Clear stale readiness by replacing it with a safe starting marker.

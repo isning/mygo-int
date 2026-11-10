@@ -98,7 +98,10 @@ node scripts/dsh-startup.mjs serve
 
 The file is an explicit owner capability, never a tracked configuration value.
 Keep it private (mode 0600); the live preparer writes it without printing it.
-The carrier accepts only a fixed HTTP 127.0.0.1 Host origin, forwards no browser
+By default the carrier accepts only its HTTP 127.0.0.1 browser origin. The
+[local test environment](../../docs/upstream/dsh-local-test-environment.md#explicit-tailnet-presentation)
+can explicitly admit one public presentation origin with exact Host/Origin checks.
+The upstream Host remains loopback. The carrier forwards no browser
 credentials, follows no redirects and emits no CORS grants. It rejects mismatched
 Host/Origin and cross-site Fetch metadata before attaching its owner cookie.
 The bootstrap handler admits exact GET `/mygo/index-injections` and exact
