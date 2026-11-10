@@ -80,6 +80,10 @@ uses the actual original Host and subprocess provider, with no API key required.
 Shared startup, bootstrap and local entry files are deliberately untouched for
 the ticket 42 worker. No session-carrier extension is required.
 
+The parent has since applied the server wiring below. The retained demo process
+requires an update/restart; this isolated browser proof does not claim it already
+runs the new handler.
+
 In `scripts/dsh-startup.mjs`, after obtaining the original `ownerCookie` and
 `publicOrigins`, instantiate only when `bootEnabled`:
 
