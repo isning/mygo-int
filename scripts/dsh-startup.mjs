@@ -45,10 +45,14 @@ if (command === 'serve') {
   const carrier = bootEnabled ? (await import('./dsh-bootstrap-carrier.mjs')).createBootstrapCarrier({
     origin: process.env.DSH_ORIGIN, cookie: (await readFile(process.env.DSH_COOKIE_FILE, 'utf8')).trim(),
   }) : undefined
+  const inventoryRpcCarrier = bootEnabled ? (await import('./dsh-rpc-carrier.mjs')).createInventoryRpcCarrier({
+    origin: process.env.DSH_ORIGIN, cookie: (await readFile(process.env.DSH_COOKIE_FILE, 'utf8')).trim(),
+  }) : undefined
   const assetRoot = await realpath(resolve(dist, 'assets'))
   const server = createServer(async (request, response) => {
     try {
       if (carrier && await carrier(request, response)) return
+      if (inventoryRpcCarrier && await inventoryRpcCarrier(request, response)) return
       if (!['GET', 'HEAD'].includes(request.method)) {
         response.writeHead(405, { Allow: 'GET, HEAD' }).end()
         return

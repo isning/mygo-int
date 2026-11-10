@@ -121,3 +121,10 @@ A successful issue 31 run reaches the original live module loader with the actua
 Host graph, then displays the original activation diagnostic while application
 bundles remain unavailable. Issue 32 owns their graph/resource carriage; issues
 33 and 34 own RPC and event transport.
+
+The current server also mounts the exact inventory RPC capability from
+`scripts/dsh-rpc-carrier.mjs`, using the same explicit private Host credential.
+Only the original empty `pluginInventory/list` call is admitted; other API paths
+remain denied. Its generated-client live proof is documented in
+`docs/upstream/dsh-rpc-live-validation.md`. Combined browser RPC execution remains
+to be verified after the remaining activation dependencies are available.
