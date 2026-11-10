@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    { "id": "local-marker", "name": "./plugins/marker.js", "config": { "label": "Local composition: default" } }
+  ]
+}

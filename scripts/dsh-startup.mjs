@@ -1,16 +1,21 @@
 #!/usr/bin/env node
 import { createCarrierTrust } from './dsh-carrier-trust.mjs'
-// Serve the unchanged official entry, with an optional narrow bootstrap carrier.
+// Serve the official Web client, with local composition before authenticated bootstrap.
 import { readFile, writeFile, mkdir, realpath } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { resolve, dirname, extname, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { SESSION_ASSETS } from '../entries/dsh-startup/session-assets.js'
 import { execFileSync } from 'node:child_process'
+import { readLocalStartup } from './dsh-local-startup-config.mjs'
 
 const workspace = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const upstream = resolve(workspace, '.scratch/upstream/deepseek-harness')
-const dist = resolve(upstream, 'apps/web/dist')
+const bootEnabled = Boolean(process.env.DSH_ORIGIN)
+if (bootEnabled !== Boolean(process.env.DSH_COOKIE_FILE)) throw new Error('Set both DSH_ORIGIN and DSH_COOKIE_FILE')
+const localStartup = bootEnabled ? await readLocalStartup(workspace,
+  process.env.MYGO_STARTUP_CONFIG ?? 'entries/dsh-startup/local/startup.json') : undefined
+const dist = bootEnabled ? resolve(workspace, '.scratch/dsh-local-composition/dist') : resolve(upstream, 'apps/web/dist')
 const output = resolve(workspace, '.scratch/dsh-startup')
 const command = process.argv[2]
 if (!['build', 'serve'].includes(command) || process.argv.length !== 3) {
@@ -21,6 +26,7 @@ const { readClientBuildRecord } = await import(resolve(upstream, 'scripts/client
 // Upstream validates the declared artifact closure before reuse.
 const record = readClientBuildRecord(upstream)
 if (!record) throw new Error('Missing original client build record; rebuild artifacts first')
+if (bootEnabled) execFileSync(process.execPath, [resolve(workspace, 'scripts/dsh-local-composition-build.mjs')], { cwd: workspace, stdio: 'inherit' })
 const original = await readFile(resolve(dist, 'index.html'), 'utf8')
 const tags = original.match(/<script\b[^>]*><\/script>|<link\b[^>]*>/g) ?? []
 const assets = tags.filter(tag => /(?:src|href)="\.\/assets\//.test(tag))
@@ -33,9 +39,7 @@ for (const tag of assets) {
   await readFile(resolve(dist, path))
 }
 const template = await readFile(resolve(workspace, 'entries/dsh-startup/index.html'), 'utf8')
-const bootEnabled = Boolean(process.env.DSH_ORIGIN)
-if (bootEnabled !== Boolean(process.env.DSH_COOKIE_FILE)) throw new Error('Set both DSH_ORIGIN and DSH_COOKIE_FILE')
-const bootTags = bootEnabled ? '<script>globalThis.__DSH_BOOT_READY__ = Promise.withResolvers()</script>\n    <script type="module" src="/mygo-boot/bootstrap.js"></script>' : ''
+const bootTags = bootEnabled ? '<script>globalThis.__DSH_BOOT_READY__ = Promise.withResolvers()</script>' : ''
 const html = template.replace('<!-- DSH_ASSETS -->', bootTags + '\n    ' + assets.join('\n    '))
 await mkdir(output, { recursive: true })
 await writeFile(resolve(output, 'index.html'), html)
@@ -47,7 +51,7 @@ if (command === 'serve') {
   const publicOrigins = process.env.DSH_CLIENT_PUBLIC_ORIGIN ? [process.env.DSH_CLIENT_PUBLIC_ORIGIN] : []
   if (bindHost !== '127.0.0.1' && publicOrigins.length === 0) throw Error('Non-loopback bind requires DSH_CLIENT_PUBLIC_ORIGIN')
   const trusted = createCarrierTrust({ publicOrigins })
-  const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf', '.txt': 'text/plain', '.svg': 'image/svg+xml', '.map': 'application/json' }
+  const types = { '.json': 'application/json', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf', '.txt': 'text/plain', '.svg': 'image/svg+xml', '.map': 'application/json' }
   const ownerCookie = bootEnabled ? (await readFile(process.env.DSH_COOKIE_FILE, 'utf8')).trim() : undefined
   const downloadTargets = process.env.DSH_DOWNLOAD_TARGETS_FILE
     ? JSON.parse(await readFile(process.env.DSH_DOWNLOAD_TARGETS_FILE, 'utf8')) : []
@@ -99,6 +103,15 @@ if (command === 'serve') {
       if (path === '/' || path === '/index.html') {
         data = html
         extension = '.html'
+      } else if (bootEnabled && path === '/mygo-local/startup.json') {
+        data = JSON.stringify(localStartup)
+        extension = '.json'
+      } else if (bootEnabled && /^\/mygo-local\/plugins\/[a-zA-Z0-9_-]+\.js$/.test(path)) {
+        const localRoot = await realpath(resolve(workspace, 'entries/dsh-startup/local/plugins'))
+        const file = await realpath(resolve(localRoot, path.split('/').at(-1)))
+        if (!file.startsWith(localRoot + sep)) throw Error('Outside local plugins')
+        data = await readFile(file)
+        extension = '.js'
       } else if (bootEnabled && ['/mygo-boot/lazy-resources.js', '/mygo-boot/dsh-carrier-trust.mjs', '/mygo-boot/session-assets.js', '/mygo-boot/bootstrap.js', '/mygo-boot/apply-injections.js', '/mygo-boot/bundle-references.js'].includes(path)) {
         data = await readFile(path.endsWith('/lazy-resources.js') ? resolve(workspace, 'entries/dsh-startup/lazy-resources.js') : path.endsWith('/dsh-carrier-trust.mjs') ? resolve(workspace, 'scripts/dsh-carrier-trust.mjs') : path.endsWith('/session-assets.js') ? resolve(workspace, 'entries/dsh-startup/session-assets.js') : path.endsWith('/bootstrap.js')
           ? resolve(workspace, 'entries/dsh-startup/bootstrap.js')

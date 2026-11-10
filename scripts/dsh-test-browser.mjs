@@ -5,6 +5,7 @@ import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import {openSync} from 'node:fs';
 import {resolve} from 'node:path';
 const submit=process.argv[2]==='check-submit';
+const checkLocal=process.argv[2]==='check-local';
 const scratch=resolve('.scratch/test-dsh'),interactive=process.argv[2]==='open',authenticated=interactive||process.argv[2]==='check-auth';
 const profile=scratch+'/browser-'+Date.now();await mkdir(profile,{recursive:true,mode:0o700});
 const log=openSync(scratch+'/browser.log','a',0o600);
@@ -15,7 +16,7 @@ let ws,evaluate;
 try{
  const port=await until(async()=>Number((await readFile(profile+'/DevToolsActivePort','utf8')).split('\n')[0]));
  const url=authenticated?(await readFile(scratch+'/launch-url','utf8')):JSON.parse(await readFile(scratch+'/status.json','utf8')).clientUrl;
- const page=await fetch('http://127.0.0.1:'+port+'/json/new?'+encodeURIComponent(url),{method:'PUT'}).then(r=>r.json());
+ const page=await fetch('http://127.0.0.1:'+port+'/json/new?about:blank',{method:'PUT'}).then(r=>r.json());
  ws=new WebSocket(page.webSocketDebuggerUrl);await new Promise((r,j)=>{ws.onopen=r;ws.onerror=j;});
  let sequence=0;const pending=new Map();ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.id){pending.get(m.id)?.(m);pending.delete(m.id);}};
  const send=(method,params)=>new Promise((r,j)=>{const id=++sequence;pending.set(id,m=>m.error?j(Error(m.error.message)):r(m.result));ws.send(JSON.stringify({id,method,params}));});
@@ -30,13 +31,40 @@ try{
   previous(e);
  };
  await send('Network.enable',{});
- await send('Page.reload',{});
+ await send('Page.enable',{});
+ if(checkLocal) await send('Page.addScriptToEvaluateOnNewDocument',{source:`{
+   const originalFetch = globalThis.fetch;
+   globalThis.fetch = function(input, ...args) {
+     if (input === '/mygo/index-injections') globalThis.__MYGO_LOCAL_BOOT_OBSERVATION__ = {
+       markers: [...document.querySelectorAll('[data-mygo-local-plugin]')].map(x => ({plugin:x.dataset.mygoLocalPlugin,text:x.textContent})),
+       remoteLoaderPresent: !!globalThis.__ModuleLoader__,
+       remoteGraphPresent: !!globalThis.__DSH_BOOT__
+     };
+     return originalFetch.call(this, input, ...args);
+   };
+ }`});
+ await send('Page.navigate',{url});
  evaluate=expression=>new Promise((r,j)=>{const id=++sequence;pending.set(id,m=>m.error?j(Error('CDP evaluation failed')):r(m.result.result.value));ws.send(JSON.stringify({id,method:'Runtime.evaluate',params:{expression,returnByValue:true}}));});
  await until(async()=>await evaluate("globalThis.__ModuleLoader__?.mode==='live' && (document.body.innerText.includes('Choose workspace')||document.body.innerText.includes('Local test DSH'))"));
  await evaluate("[...document.querySelectorAll('button')].find(x=>x.getAttribute('aria-label')==='Open sidebar')?.click()");
  if(!submit)await evaluate("[...document.querySelectorAll('button')].find(x=>x.innerText.includes('Choose workspace'))?.click()");
  const ready=await until(async()=>await evaluate("globalThis.__ModuleLoader__?.mode==='live' && document.body.innerText.includes('Local test DSH') && !document.body.innerText.includes('Failed to load plugins')"));
  await writeFile(scratch+'/browser-result.json',JSON.stringify({officialUIReady:ready,authenticatedOriginalUI:authenticated,carrierUI:!authenticated}),{mode:0o600});
+ if(checkLocal){
+  const observation=await evaluate('globalThis.__MYGO_LOCAL_BOOT_OBSERVATION__');
+  assert.equal(observation.markers.length,1,'selected local plugin visible before remote bootstrap request');
+  assert.equal(observation.remoteLoaderPresent,false,'remote module facade has not started');
+  assert.equal(observation.remoteGraphPresent,false,'remote graph has not arrived');
+  const expected=process.env.MYGO_EXPECT_LOCAL_PLUGIN??'marker';
+  assert.equal(observation.markers[0].plugin,expected,'configuration selected actual plugin module');
+  const current=await evaluate("[...document.querySelectorAll('[data-mygo-local-plugin]')].map(x=>({plugin:x.dataset.mygoLocalPlugin,text:x.textContent}))");
+  assert.deepEqual(current,observation.markers,'local plugin survives original remote activation');
+  await writeFile(scratch+'/local-'+expected+'.png',Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'));
+  await evaluate("dispatchEvent(new PageTransitionEvent('pagehide'))");
+  await until(()=>evaluate("document.querySelectorAll('[data-mygo-local-plugin]').length===0"));
+  await writeFile(scratch+'/local-'+expected+'.json',JSON.stringify({officialUIReady:ready,...observation,disposed:true},null,2));
+  console.log('Local configured plugin precedes remote graph, survives official mount, and disposes through Cordis');
+ }
  if(submit){
   const status=JSON.parse(await readFile(scratch+'/status.json','utf8'));
   assert.equal(status.model.mode,'mock','check-submit is explicitly model mock validation');

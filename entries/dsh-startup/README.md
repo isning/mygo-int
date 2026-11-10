@@ -1,6 +1,6 @@
 # Independent official DSH startup
 
-This mygo-owned document loads the **unchanged original Web entry bundle** from
+The diagnostic mode of this mygo-owned document loads the **unchanged original Web entry bundle** from
 DSH `fcc0ad462172522aaf5c93a7b2e01f6b9f0b0159`. That entry constructs the real
 `AppWebEntry`, which renders its real `BootPage`. No Host-generated application
 HTML or replacement UI is supplied. The optional issue 31 mode acquires the real
@@ -48,6 +48,11 @@ real bootstrap; application bundles, RPC and event transport remain later ticket
 These historical issue 28/31 results do not establish a connected session.
 The current authenticated mode additionally supports the scoped issue 35
 list/open flow documented below.
+Authenticated startup now prepends a trusted local Cordis composition to the
+official entry using the upstream Vite configuration; see
+[ticket 42 validation and interface](../../docs/upstream/dsh-local-composition-validation.md).
+Its entry bundle is rebuilt, not byte-identical to the original diagnostic
+bundle. Official Web library, framework identities and remote bundles are reused.
 
 For distribution, retain upstream LICENSE/THIRD_PARTY_NOTICES and selected asset
 licenses (including `assets/fonts/Montserrat-OFL.txt`) and inspect the selected
