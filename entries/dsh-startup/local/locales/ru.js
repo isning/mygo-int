@@ -1,4 +1,10 @@
 export default {
+  "Connect to an instance": "Подключиться к экземпляру",
+  "Open instances": "Открыть экземпляры",
+  "Connection successful": "Подключение выполнено",
+  "Connection failed": "Ошибка подключения",
+  "Check again": "Проверить снова",
+  "Connection failed: {reason}": "Ошибка подключения: {reason}",
   "Instances": "Экземпляры",
   "Client": "Клиент",
   "Local": "Локально",

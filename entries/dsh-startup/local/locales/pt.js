@@ -1,4 +1,10 @@
 export default {
+  "Connect to an instance": "Conectar a uma instância",
+  "Open instances": "Abrir instâncias",
+  "Connection successful": "Conexão bem-sucedida",
+  "Connection failed": "Falha na conexão",
+  "Check again": "Verificar novamente",
+  "Connection failed: {reason}": "Falha na conexão: {reason}",
   "Instances": "Instâncias",
   "Client": "Cliente",
   "Local": "Local",

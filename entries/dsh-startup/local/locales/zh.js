@@ -1,4 +1,10 @@
 export default {
+  "Connect to an instance": "连接到实例",
+  "Open instances": "打开实例",
+  "Connection successful": "连接成功",
+  "Connection failed": "连接失败",
+  "Check again": "重新检查",
+  "Connection failed: {reason}": "连接失败：{reason}",
   "Instances": "实例",
   "Client": "客户端",
   "Local": "本地",

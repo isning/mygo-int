@@ -27,6 +27,16 @@ export function mountLocalShell(ctx) {
   const container = ctx.clientHost.container
   const hasInstanceRoute = /^\/mygo-instance\/[a-f0-9]{64}(?:\/|$)/.test(location.pathname)
   installThemeStyles(ctx)
+  ctx.effect(() => {
+    const media = matchMedia('(prefers-color-scheme: dark)')
+    const update = () => {
+      document.documentElement.style.colorScheme = media.matches ? 'dark' : 'light'
+      document.body.toggleAttribute('data-ds-dark-theme', media.matches)
+    }
+    update()
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
+  }, 'mygo: follow the system DSH palette before an instance is connected')
   let root, error = '', authenticationRequired = false, version = 0
   const listeners = new Set<() => void>()
   const notify = () => { version++; for (const listener of listeners) listener() }
@@ -53,6 +63,7 @@ export function mountLocalShell(ctx) {
       return () => { active = false }
     }, [authenticationRequired])
     return <div data-mygo-local-shell="" className={shellCSS.shell}>
+      <div className={shellCSS.frame}>
       <nav aria-label={t('Client navigation')} className={shellCSS.navigation}>
         <span className={css.title}>mygo</span>
         <div className={shellCSS.actions}>
@@ -60,13 +71,15 @@ export function mountLocalShell(ctx) {
           <Button data-mygo-open-settings="" variant="outline" onClick={() => { setFormError(''); setSettings(true) }}>{t('Instances')}</Button>
         </div>
       </nav>
-      <main className={css.section}>
-        <h1 className={css.title}>{error ? t('Not connected') : t('Connecting…')}</h1>
+      <main className={`${css.section} ${shellCSS.content}`}>
+        <h1 className={css.title}>{!hasInstanceRoute ? t('Connect to an instance') : error ? t('Not connected') : t('Connecting…')}</h1>
         <p className={css.intro}>{t('Your instance profiles and device settings are available here.')}</p>
+        <div className={`${css.rowCard} ${shellCSS.connectionCard}`}>
         <div className={shellCSS.status} role="status">
-          <StateDot state={error ? 'error' : 'ongoing'} size={8} />
+          <StateDot state={!hasInstanceRoute ? 'idle' : error ? 'error' : 'ongoing'} size={8} />
           <span className={css.intro}>{!hasInstanceRoute ? t('Choose an instance to connect.') : authenticationRequired ? t('Sign in required') : error ? t('The instance is unavailable.') : t('Loading the instance client.')}</span>
         </div>
+        {!hasInstanceRoute && <Button variant="primary" onClick={() => { setFormError(''); setSettings(true); setActive('instances') }}>{t('Open instances')}</Button>}
         {hasInstanceRoute && error && (!authenticationRequired || restoreChecked) && <><p role="alert" className={`${authenticationRequired ? css.intro : css.error} ${shellCSS.error}`}>{authenticationRequired ? t('Open the private launch link provided by your instance to sign in.') : error}</p><div><Button variant="outline" onClick={() => location.reload()}>{t('Retry connection')}</Button></div></>}
         {authenticationRequired && restoreChecked && <form className={css.editor} onSubmit={event => {
           event.preventDefault()
@@ -95,11 +108,13 @@ export function mountLocalShell(ctx) {
           {formError && <p role="alert" className={css.error}>{formError}</p>}
           <div className={css.editorActions}><Button variant="primary" type="submit" disabled={signingIn || !token.trim()}>{t('Sign in')}</Button></div>
         </form>}
+        </div>
       </main>
       {settings && <SettingsPanel rows={[{ id: 'instances', label: t('Instances') }, { id: 'client', label: t('Client') }]} activeId={active} onSelect={setActive}
         onClose={() => setSettings(false)} renderSlot={(key) => key === 'settings.header' ? t('Settings')
           : key === 'settings.close' ? t('Close settings')
           : key === 'settings.section' ? <>{formError && <p role="alert" className={css.error}>{formError}</p>}{active === 'instances' ? <Instances ctx={ctx} run={run} /> : <ClientSettings ctx={ctx} run={run} />}</> : null} />}
+      </div>
     </div>
   }
   const show = () => { if (!root) { root = createRoot(container); root.render(<Shell />) } }

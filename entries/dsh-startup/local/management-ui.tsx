@@ -171,7 +171,7 @@ export function Instances({ ctx, run }) {
   const [confirmRemove, setConfirmRemove] = useState(null)
   const status = row => !isConnected(row) ? t('Not connected')
     : snapshot.connectionStatus === 'checking' ? t('Checking…')
-    : snapshot.connectionStatus === 'authenticated' ? t('Available') : t('Unavailable')
+    : snapshot.connectionStatus === 'authenticated' ? t('Connection successful') : t('Connection failed')
   return <div className={modelsCSS.section} data-mygo-instances="">
     <h2 className={modelsCSS.title}>{t('Instances')}</h2>
     <p className={modelsCSS.intro}>{t('Manage your instance connections.')}</p>
@@ -201,8 +201,10 @@ export function Instances({ ctx, run }) {
           <StateDot state={!isConnected(row) ? 'idle' : snapshot.connectionStatus === 'checking' ? 'ongoing' : snapshot.connectionStatus === 'authenticated' ? 'done' : 'error'} size={8} />
           <span className={modelsCSS.editorRoute}>{status(row)}</span>
           {isConnected(row) && <button type="button" className={modelsCSS.linkButton}
-            disabled={snapshot.connectionStatus === 'checking'} onClick={() => run(service.refresh)}>{t('Check connection')}</button>}
+            disabled={snapshot.connectionStatus === 'checking'} onClick={() => run(service.refresh)}>{snapshot.connectionStatus === 'checking' ? t('Checking…') : t('Check again')}</button>}
         </div>
+        {isConnected(row) && snapshot.connectionStatus === 'unavailable' && snapshot.connectionDiagnostic
+          && <p className={modelsCSS.error} role="alert">{t('Connection failed: {reason}', { reason: snapshot.connectionDiagnostic })}</p>}
         {editing?.id === row.id && <InstanceEditor ctx={ctx} key={row.id} service={service} target={editing} onClose={() => setEditing(null)} />}
       </li>)}
     </ul>

@@ -1,4 +1,10 @@
 export default {
+  "Connect to an instance": "インスタンスに接続",
+  "Open instances": "インスタンスを開く",
+  "Connection successful": "接続に成功しました",
+  "Connection failed": "接続に失敗しました",
+  "Check again": "再確認",
+  "Connection failed: {reason}": "接続に失敗しました：{reason}",
   "Instances": "インスタンス",
   "Client": "クライアント",
   "Local": "ローカル",

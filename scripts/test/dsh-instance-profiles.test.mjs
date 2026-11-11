@@ -13,16 +13,29 @@ function fixture(t) {
     t.after(() => previous ? Object.defineProperty(globalThis, key, previous) : delete globalThis[key])
   }
   const key = 'mygo.instances.v2:http://mygo.test:4224'
-  const start = (address = 'http://127.0.0.1:4001') => {
+  const start = (address = 'http://127.0.0.1:4001', admit = async () => {}) => {
     let service
     apply({
-      mygoStartup: { configuration: { selectedInstance: { id: 'first', address, authenticationViewId: 'owner' } }, admit: async () => {} },
+      mygoStartup: { configuration: { selectedInstance: { id: 'first', address, authenticationViewId: 'owner' } }, admit },
       provide(name, value) { assert.equal(name, 'instanceManager'); service = value },
     })
     return service
   }
   return { values, key, start }
 }
+
+test('connection checks expose success and the original failure diagnostic', async t => {
+  const { start } = fixture(t)
+  let service = start()
+  await service.refresh()
+  assert.equal(service.snapshot().connectionStatus, 'authenticated')
+  assert.equal(service.snapshot().connectionDiagnostic, '')
+
+  service = start('http://127.0.0.1:4002', async () => { throw Error('index injections HTTP 502') })
+  await service.refresh()
+  assert.equal(service.snapshot().connectionStatus, 'unavailable')
+  assert.equal(service.snapshot().connectionDiagnostic, 'index injections HTTP 502')
+})
 
 test('connected and added profiles are equally editable; changed profiles do not masquerade as the running connection', async t => {
   const { start, values, key } = fixture(t)

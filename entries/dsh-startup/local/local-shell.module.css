@@ -2,10 +2,16 @@
 .shell {
   box-sizing: border-box;
   width: 100%;
-  max-width: 960px;
-  margin: 0 auto;
+  min-height: 100%;
   padding: 24px;
   color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-bg-base);
+}
+
+.frame {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
 }
 
 .navigation,
@@ -20,6 +26,7 @@
   flex-wrap: wrap;
   gap: 8px 16px;
   margin-bottom: 32px;
+  min-height: 36px;
 }
 
 .actions {
@@ -32,6 +39,19 @@
   gap: 8px;
 }
 
+.content {
+  max-width: 640px;
+  padding-top: clamp(32px, 9vh, 96px);
+}
+
+.connectionCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  margin-top: 24px;
+}
+
 .error {
   overflow-wrap: anywhere;
   white-space: pre-wrap;
@@ -40,6 +60,10 @@
 @media (max-width: 767px) {
   .shell {
     padding: 16px;
+  }
+
+  .content {
+    padding-top: 24px;
   }
 
   .actions {

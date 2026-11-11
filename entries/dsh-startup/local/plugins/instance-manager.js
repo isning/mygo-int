@@ -6,7 +6,7 @@ export function apply(ctx) {
   const key = `mygo.instances.v2:${location.origin}`
   const binding = { id: bound.id, name: bound.name ?? 'Local test DSH', address: bound.address, authenticationViewId: bound.authenticationViewId }
   let catalog = [binding]
-  let selectedId = bound.id, diagnostic = '', revision = 0, connectionStatus = 'checking'
+  let selectedId = bound.id, diagnostic = '', revision = 0, connectionStatus = 'checking', connectionDiagnostic = ''
   const listeners = new Set(), notify = () => { for (const fn of listeners) fn() }
   function validate(row) {
     if (!row || !/^[\w-]{1,128}$/.test(row.id) || typeof row.name !== 'string' || !row.name.trim() || row.name.length > 128 || !/^[\w-]{1,128}$/.test(row.authenticationViewId)) throw Error('Expected stable id, name and authentication view')
@@ -37,15 +37,16 @@ export function apply(ctx) {
     catalog = rows; selectedId = selection; revision++; notify()
   }
   async function refresh() {
-    connectionStatus = 'checking'; notify()
-    try { await boot.admit(); connectionStatus = 'authenticated' } catch { connectionStatus = 'unavailable' }
+    connectionStatus = 'checking'; connectionDiagnostic = ''; notify()
+    try { await boot.admit(); connectionStatus = 'authenticated' }
+    catch (error) { connectionStatus = 'unavailable'; connectionDiagnostic = error instanceof Error ? error.message : String(error) }
     notify()
   }
   void refresh()
   const isConnectedProfile = row => row?.id === binding.id && row.address === binding.address
     && row.authenticationViewId === binding.authenticationViewId
   ctx.provide('instanceManager', {
-    snapshot: () => ({ catalog, selectedId, connectedId: bound.id, connectedProfile: binding, diagnostic, connectionStatus }),
+    snapshot: () => ({ catalog, selectedId, connectedId: bound.id, connectedProfile: binding, diagnostic, connectionStatus, connectionDiagnostic }),
     isConnectedProfile,
     availability: row => isConnectedProfile(row) ? `Bound carrier · ${connectionStatus} (DSH admission probe)` : 'Unavailable · external carrier not configured',
     refresh,
