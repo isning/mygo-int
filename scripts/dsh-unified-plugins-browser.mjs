@@ -1,5 +1,6 @@
 // Original Plugins page and native client-tab acceptance; real Host and authority.
 import assert from 'node:assert/strict'
+import { verifyInstanceSwitch } from './dsh-instance-switch-scenario.mjs'
 import { spawn } from 'node:child_process'
 import { readFile, mkdir, writeFile } from 'node:fs/promises'
 import { openSync } from 'node:fs'
@@ -37,7 +38,7 @@ try {
     if (message.method === 'Runtime.consoleAPICalled' && p.type === 'error') errors.push(p.args)
     if (message.id) { pending.get(message.id)?.(message); pending.delete(message.id) }
     if (message.method === 'Network.requestWillBeSent') {
-      const path = new URL(p.request.url).pathname
+      const path = new URL(p.request.url).pathname.replace(/^\/mygo-instance\/[a-f0-9]{64}(?=\/)/, '')
       if (/^\/api\/(settings|dynamicCordisRunner|pluginManager)\//.test(path) && !/\/(get|list|inventory|schema|snapshot|describe|listBundles|listPlugins|registries|fastest|syncInspectManifest)$/.test(path)) mutations.push(path)
     }
 
@@ -61,6 +62,12 @@ try {
     await evaluate(`[...document.querySelectorAll('[role=menu] [role=menuitem]')].find(item => item.innerText.trim() === ${JSON.stringify(label)}).click()`)
   }
   const url = (await readFile(scratch + '/client-launch-url', 'utf8')).trim()
+  if (process.argv.includes('--switch-instances')) {
+    stage = 'real instance switching'
+    await verifyInstanceSwitch({send,evaluate,until,scratch,launchURL:url})
+    console.log('Two real DSH instances: route, login/cache isolation, original composer and failure recovery passed')
+    await Promise.race([send('Browser.close'),pause(5000)])
+  } else {
   await send('Page.navigate', { url: new URL(url).origin })
   await until(() => evaluate('document.readyState === "complete"'))
   assert.equal(await evaluate("fetch('/').then(r => r.status)"), 200)
@@ -459,6 +466,7 @@ try {
   await writeFile(scratch+'/original-plugins-validation.json',JSON.stringify({ok:true,localCount,markers,builtinDetails:true,componentDetails:true,localGroups:true,originalMain:true,originalRowDetail:true,localToggle:true,localConfig:true,hostMutations:mutations,narrowViewport:true}),{mode:0o600})
   console.log('Original Plugins page, native Local tab and Remote/Client badges, local lifecycle/configuration and narrow viewport passed')
   await Promise.race([send('Browser.close'), pause(5000)])
+  }
   }
   }
 } catch (error) {

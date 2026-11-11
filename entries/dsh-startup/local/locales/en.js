@@ -110,5 +110,11 @@ export default {
   "Another tab changed this device overlay; reload before saving": "Another tab changed this device overlay; reload before saving",
   "Catalog changed during this edit; reload before saving": "Catalog changed during this edit; reload before saving",
   "Sign in required": "Sign in required",
-  "Open the private launch link provided by your instance to sign in.": "Open the private launch link provided by your instance to sign in."
+  "Open the private launch link provided by your instance to sign in.": "Open the private launch link provided by your instance to sign in.",
+  "Connect": "Connect",
+  "Private launch link or token": "Private launch link or token",
+  "Sign in": "Sign in",
+  "Sign in failed": "Sign in failed",
+  "Invalid login link": "Invalid login link",
+  "Connect {name}": "Connect {name}"
 }

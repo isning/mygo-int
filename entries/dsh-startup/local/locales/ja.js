@@ -110,5 +110,11 @@ export default {
   "Another tab changed this device overlay; reload before saving": "他のタブで設定が変更されました。再読み込みしてください",
   "Catalog changed during this edit; reload before saving": "一覧が変更されました。再読み込みして保存してください",
   "Sign in required": "ログインが必要です",
-  "Open the private launch link provided by your instance to sign in.": "インスタンスから提供されたプライベート起動リンクを開いてログインしてください。"
+  "Open the private launch link provided by your instance to sign in.": "インスタンスから提供されたプライベート起動リンクを開いてログインしてください。",
+  "Connect": "接続",
+  "Private launch link or token": "プライベート起動リンクまたはトークン",
+  "Sign in": "ログイン",
+  "Sign in failed": "ログインに失敗しました",
+  "Invalid login link": "ログインリンクが無効です",
+  "Connect {name}": "{name} に接続"
 }

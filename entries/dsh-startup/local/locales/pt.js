@@ -110,5 +110,11 @@ export default {
   "Another tab changed this device overlay; reload before saving": "Outra aba alterou as configurações; recarregue antes de salvar",
   "Catalog changed during this edit; reload before saving": "A lista mudou; recarregue antes de salvar",
   "Sign in required": "É necessário iniciar sessão",
-  "Open the private launch link provided by your instance to sign in.": "Abra o link privado de início fornecido pela sua instância para iniciar sessão."
+  "Open the private launch link provided by your instance to sign in.": "Abra o link privado de início fornecido pela sua instância para iniciar sessão.",
+  "Connect": "Ligar",
+  "Private launch link or token": "Link privado de início ou token",
+  "Sign in": "Iniciar sessão",
+  "Sign in failed": "Falha ao iniciar sessão",
+  "Invalid login link": "Link de início de sessão inválido",
+  "Connect {name}": "Ligar a {name}"
 }

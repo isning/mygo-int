@@ -4,12 +4,14 @@ import { assertEntriesActive } from '../../../../.scratch/upstream/deepseek-harn
 import { mountClient } from '../../../../.scratch/upstream/deepseek-harness/packages/client/web/src/mount.ts'
 import { BootPage } from '../../../../.scratch/upstream/deepseek-harness/packages/client/web/src/boot-page.ts'
 import { createSharedRuntimeDiagnostics } from './shared-runtime-diagnostics.js'
+import { installInstanceRoute, partitionRemoteStorage } from '../../instance-route.js'
 import '../../../../.scratch/upstream/deepseek-harness/packages/client/web/src/base.css'
 import '@deepseek-ai/dsh-client-ui-theme/brand-font.css'
 
 // Local harness integration; never creates a Context or installs another Loader.
 export const inject = ['clientHost', 'loader']
 export function apply(scope) {
+  installInstanceRoute()
   const { root: ctx, container, configuration, modules: staticModules, localEntries } = scope.clientHost
   const bootContainer = document.createElement('div')
   const page = new BootPage(bootContainer)
@@ -32,6 +34,11 @@ export function apply(scope) {
       const bootstrapUrl = '/mygo-boot/bootstrap.js'
       await import(/* @vite-ignore */ bootstrapUrl)
       await globalThis.__DSH_BOOT_READY__?.promise
+      const selected = configuration.selectedInstance
+      Object.defineProperty(window, 'localStorage', { configurable: true,
+        value: partitionRemoteStorage(localStorage, [selected.address, selected.id, selected.authenticationViewId]) })
+      Object.defineProperty(window, 'sessionStorage', { configurable: true,
+        value: partitionRemoteStorage(sessionStorage, [selected.address, selected.id, selected.authenticationViewId]) })
       const facade = globalThis.__ModuleLoader__
       if (!facade) throw Error('web boot: window.__ModuleLoader__ bootstrap facade is missing')
       const transport = globalThis.__DSH_TRANSPORT__

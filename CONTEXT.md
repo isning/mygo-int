@@ -48,6 +48,9 @@ _Avoid_: Client composition, service provider, network connection or JS realm as
 **Connection**:
 An access relationship to an instance through a selected integration and transport.
 Switching the visible instance does not imply disconnecting other instances.
+The current browser adapter uses an explicit route per tab. Switching within a
+tab reloads that document; other tabs retain their routes. Local configuration
+survives navigation while runtime Entries are recreated. See ADR 0007.
 _Avoid_: Instance identity inferred solely from the current screen or URL
 
 **Connection profile**:

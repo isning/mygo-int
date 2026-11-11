@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 import { createCarrierTrust } from './dsh-carrier-trust.mjs'
 // Serve the official Web client, with local composition before authenticated bootstrap.
-import { readFile, writeFile, mkdir, realpath } from 'node:fs/promises'
+import { readFile, writeFile, mkdir, realpath, rename } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { resolve, dirname, extname, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { execFileSync } from 'node:child_process'
 import { readLocalStartup, bindLocalStartup } from './dsh-local-startup-config.mjs'
+import { createInstanceRouter } from './dsh-instance-router.mjs'
 
 const workspace = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const upstream = resolve(workspace, '.scratch/upstream/deepseek-harness')
@@ -56,12 +57,30 @@ if (command === 'serve') {
   if (bindHost !== '127.0.0.1' && publicOrigins.length === 0) throw Error('Non-loopback bind requires DSH_CLIENT_PUBLIC_ORIGIN')
   const trusted = createCarrierTrust({ publicOrigins })
   const types = { '.json': 'application/json', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf', '.txt': 'text/plain', '.svg': 'image/svg+xml', '.map': 'application/json' }
-  const carrier = bootEnabled ? (await import('./dsh-authenticated-carrier.mjs')).createAuthenticatedCarrier({ origin: process.env.DSH_ORIGIN, publicOrigins }) : undefined
+  const seed = bootEnabled ? { name: 'Local test DSH', ...bindLocalStartup(localStartup, process.env.DSH_ORIGIN).selectedInstance } : undefined
+  const routeFile = resolve(output, 'instance-routes.json')
+  let profiles = []
+  try { profiles = JSON.parse(await readFile(routeFile, 'utf8')) } catch (error) { if (error.code !== 'ENOENT') throw error }
+  let routeWrite = Promise.resolve()
+  const router = bootEnabled ? createInstanceRouter({ profile: seed, publicOrigins, profiles, onRegister(values) {
+    routeWrite = routeWrite.then(async () => {
+      await writeFile(routeFile + '.next', JSON.stringify(values), { mode: 0o600 })
+      await rename(routeFile + '.next', routeFile)
+    })
+    return routeWrite
+  } }) : undefined
   const assetRoot = await realpath(resolve(dist, 'assets'))
   const server = createServer(async (request, response) => {
     try {
       if (!trusted(request)) { response.writeHead(403).end(); return }
+      const route = router?.resolve(request)
+      if (router && !route) { response.writeHead(410).end('Instance route unavailable; reopen the client entry'); return }
+      const carrier = route?.carrier
       const requestPath = new URL(request.url, 'http://localhost').pathname
+      if (router && ['/mygo-local/connection', '/mygo-local/login'].includes(requestPath)) {
+        await router.control(request, response, route)
+        return
+      }
       if (carrier && requestPath === '/mygo-local/admission') {
         carrier.admit(request, response)
         return
@@ -84,7 +103,7 @@ if (command === 'serve') {
         data = html
         extension = '.html'
       } else if (bootEnabled && path === '/mygo-local/startup.json') {
-        data = JSON.stringify(bindLocalStartup(localStartup, process.env.DSH_ORIGIN))
+        data = JSON.stringify({ ...localStartup, deviceInstance: seed, selectedInstance: route.profile })
         extension = '.json'
       } else if (bootEnabled && /^\/mygo-local\/plugins\/[a-zA-Z0-9_-]+\.js$/.test(path)) {
         const localRoot = await realpath(resolve(workspace, 'entries/dsh-startup/local/plugins'))
@@ -92,9 +111,9 @@ if (command === 'serve') {
         if (!file.startsWith(localRoot + sep)) throw Error('Outside local plugins')
         data = await readFile(file)
         extension = '.js'
-      } else if (bootEnabled && ['/mygo-boot/lazy-resources.js', '/mygo-boot/dsh-carrier-trust.mjs', '/mygo-boot/session-assets.js', '/mygo-boot/bootstrap.js', '/mygo-boot/apply-injections.js', '/mygo-boot/bundle-references.js'].includes(path)) {
+      } else if (bootEnabled && ['/mygo-boot/instance-route.js', '/mygo-boot/lazy-resources.js', '/mygo-boot/dsh-carrier-trust.mjs', '/mygo-boot/session-assets.js', '/mygo-boot/bootstrap.js', '/mygo-boot/apply-injections.js', '/mygo-boot/bundle-references.js'].includes(path)) {
         data = await readFile(path.endsWith('/lazy-resources.js') ? resolve(workspace, 'entries/dsh-startup/lazy-resources.js') : path.endsWith('/dsh-carrier-trust.mjs') ? resolve(workspace, 'scripts/dsh-carrier-trust.mjs') : path.endsWith('/session-assets.js') ? resolve(workspace, 'entries/dsh-startup/session-assets.js') : path.endsWith('/bootstrap.js')
-          ? resolve(workspace, 'entries/dsh-startup/bootstrap.js')
+          ? resolve(workspace, 'entries/dsh-startup/bootstrap.js') : path.endsWith('/instance-route.js') ? resolve(workspace, 'entries/dsh-startup/instance-route.js')
           : path.endsWith('/bundle-references.js')
             ? resolve(workspace, 'scripts/dsh-bootstrap-carrier.mjs')
             : resolve(upstream, 'packages/client/web/lib/apply-injections.js'))
@@ -114,8 +133,13 @@ if (command === 'serve') {
       response.writeHead(404).end('Not found')
     }
   })
-  if (carrier) server.on('upgrade', (request, socket, head) => carrier.upgrade(request, socket, head))
+  if (router) server.on('upgrade', (request, socket, head) => {
+    if (!trusted(request, true)) { socket.end('HTTP/1.1 403 Forbidden\r\n\r\n'); return }
+    const route = router.resolve(request)
+    if (!route) { socket.end('HTTP/1.1 410 Gone\r\n\r\n'); return }
+    route.carrier.upgrade(request, socket, head)
+  })
   server.listen(port, bindHost, () => console.log(`DSH startup: ${publicOrigins[0] ?? 'http://127.0.0.1:' + port} (bind ${bindHost}; Ctrl-C to stop)`))
   server.on('error', error => { console.error(error); process.exitCode = 1 })
-  for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { carrier?.close(); server.close() })
+  for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { router?.close(); server.close() })
 }

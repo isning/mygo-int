@@ -184,10 +184,10 @@ export function Instances({ ctx, run }) {
             {row.id === snapshot.selectedId && !isConnected(row) && <span className={modelsCSS.rowTag}>{t('Selected')}</span>}
           </span>
           <span className={modelsCSS.rowActions}>
-            {row.id !== snapshot.selectedId && <button type="button" className={modelsCSS.secondaryButton}
-              aria-label={t('Select {name}', { name: row.name })} disabled={selecting} onClick={() => run(async () => {
+            {!isConnected(row) && <button type="button" className={modelsCSS.secondaryButton}
+              aria-label={t('Connect {name}', { name: row.name })} disabled={selecting} onClick={() => run(async () => {
                 setSelecting(true); try { await service.select(row.id) } finally { setSelecting(false) }
-              })}>{t('Select')}</button>}
+              })}>{t('Connect')}</button>}
             <button type="button" className={modelsCSS.secondaryButton} aria-label={t('Edit {name}', { name: row.name })}
               onClick={() => setEditing(editing?.id === row.id ? null : { id: row.id, draft: { ...row } })}>{t('Edit')}</button>
           </span>
@@ -209,7 +209,6 @@ export function Instances({ ctx, run }) {
               id: 'instance-' + Array.from(crypto.getRandomValues(new Uint8Array(12)), value => value.toString(16).padStart(2, '0')).join(''), name: '', address: '', authenticationViewId: snapshot.connectedProfile.authenticationViewId,
             } })}><IconPlusOutlineRegular size={14} />{t('Add instance')}</button></div>}
     </div>
-    <p className={modelsCSS.advancedHint}>{t('Additional profiles can be saved; connecting to them is not available yet.')}</p>
   </div>
 }
 

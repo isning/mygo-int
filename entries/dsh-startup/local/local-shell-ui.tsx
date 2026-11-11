@@ -36,13 +36,15 @@ export function mountLocalShell(ctx) {
     const [settings, setSettings] = useState(false)
     const [active, setActive] = useState('instances')
     const [formError, setFormError] = useState('')
+    const [token, setToken] = useState('')
+    const [signingIn, setSigningIn] = useState(false)
     const run = async operation => { setFormError(''); try { await operation() } catch (reason) { setFormError(clientError(ctx, reason)) } }
     return <div data-mygo-local-shell="" className={shellCSS.shell}>
       <nav aria-label={t('Client navigation')} className={shellCSS.navigation}>
         <span className={css.title}>mygo</span>
         <div className={shellCSS.actions}>
           <LocalLanguage ctx={ctx} />
-          <Button data-mygo-open-settings="" variant="outline" onClick={() => setSettings(true)}>{t('Instances')}</Button>
+          <Button data-mygo-open-settings="" variant="outline" onClick={() => { setFormError(''); setSettings(true) }}>{t('Instances')}</Button>
         </div>
       </nav>
       <main className={css.section}>
@@ -53,6 +55,34 @@ export function mountLocalShell(ctx) {
           <span className={css.intro}>{authenticationRequired ? t('Sign in required') : error ? t('The instance is unavailable.') : t('Loading the instance client.')}</span>
         </div>
         {error && <><p role="alert" className={`${authenticationRequired ? css.intro : css.error} ${shellCSS.error}`}>{authenticationRequired ? t('Open the private launch link provided by your instance to sign in.') : error}</p><div><Button variant="outline" onClick={() => location.reload()}>{t('Retry connection')}</Button></div></>}
+        {authenticationRequired && <form className={css.editor} onSubmit={event => {
+          event.preventDefault()
+          void run(async () => {
+            setSigningIn(true)
+            try {
+              let value = token.trim()
+              if (/^https?:\/\//.test(value)) {
+                const link = new URL(value)
+                const configuration = ctx.clientHost.configuration
+                const prefix = path => /^\/mygo-instance\/[a-f0-9]{64}/.exec(path)?.[0] ?? ''
+                const sameRoute = link.origin === location.origin && (prefix(link.pathname) === prefix(location.pathname)
+                  || (!prefix(link.pathname) && configuration.selectedInstance.address === configuration.deviceInstance?.address))
+                if (link.origin !== configuration.selectedInstance.address && !sameRoute) throw Error(t('Invalid login link'))
+                value = link.searchParams.get('token') ?? ''
+              }
+              const response = await fetch('/mygo-local/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: value }) })
+              if (!response.ok) throw Error(t('Sign in failed'))
+              setToken('')
+              location.reload()
+            } finally { setSigningIn(false) }
+          })
+        }}>
+          <label className={css.field}><span className={css.fieldLabel}>{t('Private launch link or token')}</span>
+            <input className={css.input} type="password" autoComplete="off" value={token} required disabled={signingIn}
+              onChange={event => setToken(event.target.value)} /></label>
+          {formError && <p role="alert" className={css.error}>{formError}</p>}
+          <div className={css.editorActions}><Button variant="primary" type="submit" disabled={signingIn || !token.trim()}>{t('Sign in')}</Button></div>
+        </form>}
       </main>
       {settings && <SettingsPanel rows={[{ id: 'instances', label: t('Instances') }, { id: 'client', label: t('Client') }]} activeId={active} onSelect={setActive}
         onClose={() => setSettings(false)} renderSlot={(key) => key === 'settings.header' ? t('Settings')

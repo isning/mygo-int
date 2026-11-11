@@ -23,6 +23,7 @@ export function registerInstanceNavigation(ctx) {
     const [open, setOpen] = useState(false)
     const trigger = useRef<HTMLButtonElement>(null)
     const [error, setError] = useState('')
+    const [switching, setSwitching] = useState(false)
     const bound = snapshot.catalog.find(row => row.id === snapshot.connectedId)
     // At this pin the original shell explicitly exposes its shared instance
     // through store.create(); no second settings store or DOM clicks are used.
@@ -41,9 +42,13 @@ export function registerInstanceNavigation(ctx) {
         </button>}>
         {snapshot.catalog.map(row => <MenuItemButton key={row.id} current={manager.isConnectedProfile(row)}
           icon={<StateDot state={manager.isConnectedProfile(row) ? dot : 'idle'} size={8} />}
-          disabled={!manager.isConnectedProfile(row)}
-          disabledReason={t('No connection is available for this instance yet.')}
-          onSelect={() => setOpen(false)}>{row.name}</MenuItemButton>)}
+          disabled={switching}
+          onSelect={() => {
+            setOpen(false)
+            if (manager.isConnectedProfile(row)) return
+            setSwitching(true)
+            void manager.select(row.id).catch(failure => { setSwitching(false); setError(clientError(ctx, failure)) })
+          }}>{row.name}</MenuItemButton>)}
         {state !== 'connected' && <MenuItemButton separatorBefore icon={<IconRefreshOutlineRegular size={16} />}
           disabled={state === 'connecting'} onSelect={() => { connection.reconnect(); setOpen(false) }}>{t('Reconnect')}</MenuItemButton>}
         <MenuItemButton separatorBefore icon={<IconSettingsOutlineMedium size={16} />} disabled={!settings}

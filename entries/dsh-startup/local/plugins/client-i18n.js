@@ -4,10 +4,11 @@ import { namespace, dictionaries } from '../locales/index.js'
 export const inject = ['clientHost']
 export function apply(ctx) { installClientI18n(ctx, ctx.clientHost.configuration) }
 export function installClientI18n(ctx, configuration) {
-  const selected = configuration.selectedInstance
+  const selected = configuration.deviceInstance ?? configuration.selectedInstance
+  const storage = localStorage
   const key = `mygo.locale.v1:${location.origin}:${selected.id}:${selected.authenticationViewId}`
   let preference = null
-  try { const saved = localStorage.getItem(key); if (saved && Object.hasOwn(dictionaries, saved)) preference = saved } catch {}
+  try { const saved = storage.getItem(key); if (saved && Object.hasOwn(dictionaries, saved)) preference = saved } catch {}
   const offline = new LocaleRuntime(ctx, undefined, { languages: navigator.languages, preference })
   for (const [id, label] of [['ja', '日本語'], ['es', 'Español'], ['fr', 'Français'], ['de', 'Deutsch'], ['ru', 'Русский'], ['pt', 'Português']]) {
     ctx.effect(() => offline.addLanguage({ id, label, fallback: 'en' }))
@@ -18,7 +19,7 @@ export function installClientI18n(ctx, configuration) {
   const notify = () => {
     revision++
     document.documentElement.lang = current.getSnapshot().active === 'zh' ? 'zh-CN' : current.getSnapshot().active
-    try { localStorage.setItem(key, current.getSnapshot().active) } catch {}
+    try { storage.setItem(key, current.getSnapshot().active) } catch {}
     for (const listener of listeners) listener()
   }
   const adopt = source => { off?.(); current = source; off = current.subscribe(notify); notify() }

@@ -48,7 +48,7 @@ test('legacy addresses migrate, but subsequent explicit edits survive reload and
   ] }))
   let service = start()
   assert.equal(service.snapshot().catalog[0].address, 'http://127.0.0.1:4001')
-  await service.select('seed')
+  await service.save(service.snapshot().catalog[0], 'seed')
   service = start('http://127.0.0.1:4002')
   assert.equal(service.snapshot().catalog[0].address, 'http://127.0.0.1:4002')
   await service.save({ ...service.snapshot().catalog[0], address: location.origin }, 'seed')
@@ -56,4 +56,25 @@ test('legacy addresses migrate, but subsequent explicit edits survive reload and
   assert.equal(service.snapshot().catalog[0].address, location.origin)
   assert.equal(service.snapshot().catalog[0].name, 'Renamed')
   assert.equal(service.isConnectedProfile(service.snapshot().catalog[0]), false)
+})
+
+test('select registers an explicit route before navigation; refusal leaves current connection unchanged', async t => {
+  const { start } = fixture(t)
+  const navigations = []
+  location.assign = url => navigations.push(url)
+  const service = start()
+  const other = { ...service.snapshot().catalog[0], id: 'other', name: 'Other', address: 'https://other.example' }
+  await service.save(other)
+  const path = '/mygo-instance/' + 'a'.repeat(64) + '/'
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    assert.equal(url, '/mygo-local/connection')
+    assert.deepEqual(JSON.parse(options.body), other)
+    return { ok: true, json: async () => ({ url: path }) }
+  })
+  await service.select('other')
+  assert.deepEqual(navigations, [path])
+  assert.equal(service.snapshot().connectedProfile.id, 'seed')
+  t.mock.method(globalThis, 'fetch', async () => ({ ok: false, status: 403 }))
+  await assert.rejects(service.select('other'), /HTTP 403/)
+  assert.deepEqual(navigations, [path])
 })

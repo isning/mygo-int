@@ -8,13 +8,15 @@ const protectedNames = new Set(['./plugins/client-composition.js', './plugins/in
 
 export function apply(ctx) {
   const boot = ctx.mygoStartup
-  const key = `mygo.local.v1:${location.origin}:${boot.configuration.selectedInstance.id}:${boot.configuration.selectedInstance.authenticationViewId}`
+  const storage = localStorage
+  const device = boot.configuration.deviceInstance ?? boot.configuration.selectedInstance
+  const key = `mygo.local.v1:${location.origin}:${device.id}:${device.authenticationViewId}`
   const base = JSON.stringify(boot.configuration.entries)
   let revision = 0, overrides = {}, diagnostic = '', busy = false
   const listeners = new Set()
   const notify = () => { for (const listener of listeners) listener() }
   try {
-    const saved = JSON.parse(localStorage.getItem(key) || 'null')
+    const saved = JSON.parse(storage.getItem(key) || 'null')
     if (saved) {
       const legacy = matchesLegacyDeviceOverlay(saved.base, boot)
       const previous = matchesPreviousDeviceOverlay(saved.base, boot)
@@ -49,7 +51,7 @@ export function apply(ctx) {
     if ('config' in patch && (!patch.config || Array.isArray(patch.config) || typeof patch.config !== 'object')) throw Error('Plugin configuration must be a JSON object')
     if ('disabled' in patch && typeof patch.disabled !== 'boolean') throw Error('Invalid enablement')
     if (busy || expectedRevision !== revision) throw Error('Local state changed during admission; refresh and retry')
-    const stored = JSON.parse(localStorage.getItem(key) || 'null')
+    const stored = JSON.parse(storage.getItem(key) || 'null')
     if ((stored?.revision ?? 0) !== revision) throw Error('Another tab changed this device overlay; reload before saving')
     busy = true; notify()
     const entry = ctx.loader.resolve(id), previous = clone(entry.options)
@@ -60,10 +62,10 @@ export function apply(ctx) {
       await ctx.loader.await()
       if (!next.disabled) await entry.fiber?.await()
       if (!next.disabled && entry.fiber?.state !== boot.FiberState.ACTIVE) throw Error(`Entry ${id} failed to activate: ${phases[entry.fiber?.state] || 'no fiber'}`)
-      if ((JSON.parse(localStorage.getItem(key) || 'null')?.revision ?? 0) !== revision) throw Error('Another tab changed saved startup during lifecycle work; reload before saving')
+      if ((JSON.parse(storage.getItem(key) || 'null')?.revision ?? 0) !== revision) throw Error('Another tab changed saved startup during lifecycle work; reload before saving')
       const candidate = { ...overrides, [id]: next }
       // A single localStorage replacement is atomic; commit only after lifecycle success.
-      localStorage.setItem(key, JSON.stringify({ version: 1, base, revision: revision + 1, overrides: candidate }))
+      storage.setItem(key, JSON.stringify({ version: 1, base, revision: revision + 1, overrides: candidate }))
       overrides = candidate; revision++; diagnostic = ''
     } catch (error) {
       diagnostic = `Change rejected: ${error.message}`
@@ -80,7 +82,7 @@ export function apply(ctx) {
     desiredEntry, rows, change, subscribe: listener => { listeners.add(listener); return () => listeners.delete(listener) },
     status: () => ({ revision, diagnostic, busy }),
     reportRecovery(id) { diagnostic = `Saved startup for ${id} failed; operator configuration is running instead. Edit the desired config or reset this device overlay.`; notify() },
-    async reset() { localStorage.removeItem(key); location.reload() },
+    async reset() { storage.removeItem(key); location.reload() },
     async reload() { location.reload() },
   }
   ctx.provide('clientComposition', service)

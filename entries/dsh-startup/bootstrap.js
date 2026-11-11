@@ -1,5 +1,6 @@
 // The deferred exists before the unchanged official entry starts running.
 import { applyIndexInjections } from '/mygo-boot/apply-injections.js'
+import { routeURL } from '/mygo-boot/instance-route.js'
 const gate = globalThis.__DSH_BOOT_READY__
 try {
   const response = await fetch('/mygo/index-injections', { credentials: 'same-origin', cache: 'no-store' })
@@ -15,7 +16,7 @@ try {
   globalThis.__DSH_TRANSPORT__ = { ...globalThis.__DSH_TRANSPORT__, ownsHost: false }
   await applyIndexInjections(payload.injections, src => new Promise((resolve, reject) => {
     const script = document.createElement('script')
-    script.src = src
+    script.src = routeURL(src)
     script.onload = () => resolve()
     script.onerror = () => reject(new Error(`mygo boot: failed to load ${src}`))
     document.head.append(script)

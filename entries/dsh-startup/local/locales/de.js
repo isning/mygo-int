@@ -110,5 +110,11 @@ export default {
   "Another tab changed this device overlay; reload before saving": "Ein anderer Tab hat die Einstellungen geändert; neu laden",
   "Catalog changed during this edit; reload before saving": "Die Liste wurde geändert; vor dem Speichern neu laden",
   "Sign in required": "Anmeldung erforderlich",
-  "Open the private launch link provided by your instance to sign in.": "Öffne den privaten Startlink deiner Instanz, um dich anzumelden."
+  "Open the private launch link provided by your instance to sign in.": "Öffne den privaten Startlink deiner Instanz, um dich anzumelden.",
+  "Connect": "Verbinden",
+  "Private launch link or token": "Privater Startlink oder Token",
+  "Sign in": "Anmelden",
+  "Sign in failed": "Anmeldung fehlgeschlagen",
+  "Invalid login link": "Ungültiger Anmeldelink",
+  "Connect {name}": "Mit {name} verbinden"
 }

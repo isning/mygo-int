@@ -110,5 +110,11 @@ export default {
   "Another tab changed this device overlay; reload before saving": "Другая вкладка изменила настройки; перезагрузите страницу",
   "Catalog changed during this edit; reload before saving": "Список изменился; перезагрузите перед сохранением",
   "Sign in required": "Требуется вход",
-  "Open the private launch link provided by your instance to sign in.": "Для входа откройте приватную ссылку запуска вашего экземпляра."
+  "Open the private launch link provided by your instance to sign in.": "Для входа откройте приватную ссылку запуска вашего экземпляра.",
+  "Connect": "Подключить",
+  "Private launch link or token": "Приватная ссылка запуска или токен",
+  "Sign in": "Войти",
+  "Sign in failed": "Не удалось войти",
+  "Invalid login link": "Недействительная ссылка для входа",
+  "Connect {name}": "Подключить {name}"
 }

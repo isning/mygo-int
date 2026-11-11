@@ -7,12 +7,12 @@ export async function startSingleClient() {
   return startClient({
     ...createWebPlatform(), container,
     async readConfiguration() {
-      const response = await fetch('/mygo-local/startup.json', { cache: 'no-store' })
+      const response = await fetch('mygo-local/startup.json', { cache: 'no-store' })
       if (!response.ok) throw Error(`Local startup configuration HTTP ${response.status}`)
       return response.json()
     },
     importLocal(name) {
-      const url = new URL(name, new URL('/mygo-local/', location.href)).href
+      const url = new URL(name, new URL('mygo-local/', location.href)).href
       return import(/* @vite-ignore */ url)
     },
   })

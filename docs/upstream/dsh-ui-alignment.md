@@ -27,6 +27,8 @@ page designs.
   Running connection metadata remains separate: matching an ID alone is not
   sufficient for a Current badge or available connection action. An edited address
   shows saved-but-not-switched status until an actual connection matches it.
+  Connect and the sidebar menu now perform that switch; see
+  [instance switching](dsh-instance-switching.md).
   Other saved profiles are preserved. This metadata does not change routing or
   expose the loopback Host on the network.
 - Local settings and configuration errors use original error classes. The
@@ -58,7 +60,7 @@ bash scripts/dsh-upstream.sh verify
 git diff --check
 ```
 
-The repository suite passes 39 tests. Both adapted builds pass. The real Chromium
+The repository suite passes 42 tests. Both adapted builds pass. The real Chromium
 audit covers 360, 390, 768 and 1440 CSS-pixel widths for offline Instances, Local,
 Installed, Discover, built-in details, local plugin details, connected Instances
 and Client settings. It exercises all eight offline locales, reload persistence,
