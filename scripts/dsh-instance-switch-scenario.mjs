@@ -66,6 +66,12 @@ export async function verifyInstanceSwitch({ send, evaluate, until, scratch, lau
   await until(() => evaluate("document.body.innerText.includes('Sign in failed') || document.body.innerText.includes('登录失败')"))
   await signIn(tokenB)
   await ready()
+  const dshCookies = (await send('Network.getAllCookies')).cookies.filter(cookie => cookie.name.startsWith('mygo-dsh-') || cookie.name.startsWith('dsh-auth-'))
+  assert.equal(dshCookies.length, 0, 'upstream DSH credentials remain in the mygo reverse proxy')
+  await send('Page.navigate', { url: await evaluate('location.href') })
+  await ready()
+  assert.equal(await evaluate("!!document.querySelector('[data-mygo-local-shell] input[type=password]')"), false, 'saved instance credential restores the proxy without another prompt')
+  assert.equal(await evaluate("fetch('/mygo/status').then(r=>r.status)"), 200, 'the restored reverse-proxy credential is admitted upstream')
   const config = await evaluate("fetch('/mygo-local/startup.json').then(r=>r.json())")
   assert.equal(config.selectedInstance.address, b.origin)
   assert.equal(config.selectedInstance.id, 'second-dsh')
@@ -115,6 +121,6 @@ export async function verifyInstanceSwitch({ send, evaluate, until, scratch, lau
   await until(() => evaluate("!!document.querySelector('style[data-mygo-touch-feedback]')"))
   await pause(250)
   await writeFile(scratch + '/instance-switch-validation.json', JSON.stringify({ ok: true, originalHosts: 2, realSessionIsolation: true,
-    cookieIsolation: true, retainedLogin: true, storageIsolation: true, localPreferencesRetained: true, settingsConnect: true,
+    credentialIsolation: true, retainedLogin: true, proxyCredentialRestore: true, storageIsolation: true, localPreferencesRetained: true, settingsConnect: true,
     sidebarConnect: true, invalidLoginRefused: true, originalComposerMockReply: true, unavailableTargetRecovery: true }), { mode: 0o600 })
 }

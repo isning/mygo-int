@@ -59,14 +59,21 @@ if (command === 'serve') {
   const types = { '.json': 'application/json', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf', '.txt': 'text/plain', '.svg': 'image/svg+xml', '.map': 'application/json' }
   const seed = bootEnabled ? { name: 'Local test DSH', ...bindLocalStartup(localStartup, process.env.DSH_ORIGIN).selectedInstance } : undefined
   const routeFile = resolve(output, 'instance-routes.json')
+  const credentialFile = resolve(output, 'instance-credentials.json')
   let profiles = []
   try { profiles = JSON.parse(await readFile(routeFile, 'utf8')) } catch (error) { if (error.code !== 'ENOENT') throw error }
+  let credentials = { version: 1, entries: {} }
+  try { credentials = JSON.parse(await readFile(credentialFile, 'utf8')) } catch (error) { if (error.code !== 'ENOENT') throw error }
   let routeWrite = Promise.resolve()
-  const router = bootEnabled ? createInstanceRouter({ profile: seed, publicOrigins, profiles, onRegister(values) {
-    routeWrite = routeWrite.then(async () => {
-      await writeFile(routeFile + '.next', JSON.stringify(values), { mode: 0o600 })
-      await rename(routeFile + '.next', routeFile)
-    })
+  const writePrivateJSON = async (file, value) => {
+    await writeFile(file + '.next', JSON.stringify(value), { mode: 0o600 })
+    await rename(file + '.next', file)
+  }
+  const router = bootEnabled ? createInstanceRouter({ profile: seed, publicOrigins, profiles, credentials, onRegister(values) {
+    routeWrite = routeWrite.then(() => writePrivateJSON(routeFile, values))
+    return routeWrite
+  }, onCredentials(value) {
+    routeWrite = routeWrite.then(() => writePrivateJSON(credentialFile, value))
     return routeWrite
   } }) : undefined
   const assetRoot = await realpath(resolve(dist, 'assets'))
@@ -77,6 +84,10 @@ if (command === 'serve') {
       if (router && !route) { response.writeHead(410).end('Instance route unavailable; reopen the client entry'); return }
       const carrier = route?.carrier
       const requestPath = new URL(request.url, 'http://localhost').pathname
+      if (router && request.method === 'GET' && new URL(request.url, 'http://localhost').searchParams.has('token')) {
+        await router.loginLink(request, response, route)
+        return
+      }
       if (router && ['/mygo-local/connection', '/mygo-local/login'].includes(requestPath)) {
         await router.control(request, response, route)
         return

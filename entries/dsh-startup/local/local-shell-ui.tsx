@@ -1,6 +1,6 @@
 // Offline device surface: original controls, original Instances forms and Settings panel.
 import { useClientText, clientError } from './i18n'
-import React, { useState, useSyncExternalStore } from 'react'
+import React, { useEffect, useState, useSyncExternalStore } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Button, StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
 import { Instances, ClientSettings } from './management-ui'
@@ -38,7 +38,19 @@ export function mountLocalShell(ctx) {
     const [formError, setFormError] = useState('')
     const [token, setToken] = useState('')
     const [signingIn, setSigningIn] = useState(false)
+    const [restoreChecked, setRestoreChecked] = useState(false)
     const run = async operation => { setFormError(''); try { await operation() } catch (reason) { setFormError(clientError(ctx, reason)) } }
+    useEffect(() => {
+      if (!authenticationRequired) { setRestoreChecked(false); return }
+      let active = true
+      void fetch('/mygo-local/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })
+        .then(response => {
+          if (!active) return
+          if (response.status === 204) location.reload()
+          else setRestoreChecked(true)
+        }, () => { if (active) setRestoreChecked(true) })
+      return () => { active = false }
+    }, [authenticationRequired])
     return <div data-mygo-local-shell="" className={shellCSS.shell}>
       <nav aria-label={t('Client navigation')} className={shellCSS.navigation}>
         <span className={css.title}>mygo</span>
@@ -54,8 +66,8 @@ export function mountLocalShell(ctx) {
           <StateDot state={error ? 'error' : 'ongoing'} size={8} />
           <span className={css.intro}>{authenticationRequired ? t('Sign in required') : error ? t('The instance is unavailable.') : t('Loading the instance client.')}</span>
         </div>
-        {error && <><p role="alert" className={`${authenticationRequired ? css.intro : css.error} ${shellCSS.error}`}>{authenticationRequired ? t('Open the private launch link provided by your instance to sign in.') : error}</p><div><Button variant="outline" onClick={() => location.reload()}>{t('Retry connection')}</Button></div></>}
-        {authenticationRequired && <form className={css.editor} onSubmit={event => {
+        {error && (!authenticationRequired || restoreChecked) && <><p role="alert" className={`${authenticationRequired ? css.intro : css.error} ${shellCSS.error}`}>{authenticationRequired ? t('Open the private launch link provided by your instance to sign in.') : error}</p><div><Button variant="outline" onClick={() => location.reload()}>{t('Retry connection')}</Button></div></>}
+        {authenticationRequired && restoreChecked && <form className={css.editor} onSubmit={event => {
           event.preventDefault()
           void run(async () => {
             setSigningIn(true)

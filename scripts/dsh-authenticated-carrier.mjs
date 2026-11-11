@@ -6,7 +6,7 @@ import { Transform } from 'node:stream'
 import { createCarrierTrust } from './dsh-carrier-trust.mjs'
 
 const HOP = new Set(['connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization', 'te', 'trailer', 'transfer-encoding', 'upgrade'])
-export function createAuthenticatedCarrier({ origin, publicOrigins = [], maxBodyBytes = 300 * 1024 * 1024, credentialNamespace, pathPrefix = '' }) {
+export function createAuthenticatedCarrier({ origin, publicOrigins = [], maxBodyBytes = 300 * 1024 * 1024, credentialNamespace, pathPrefix = '', getCredential }) {
   const target = new URL(origin)
   if ((!credentialNamespace && (target.protocol !== 'http:' || target.hostname !== '127.0.0.1')) || !['http:', 'https:'].includes(target.protocol) || target.pathname !== '/' || target.search || target.hash || target.username || target.password) throw Error('Expected a configured DSH origin')
   const transport = target.protocol === 'https:' ? httpsRequest : httpRequest
@@ -17,7 +17,8 @@ export function createAuthenticatedCarrier({ origin, publicOrigins = [], maxBody
     ? 'mygo-dsh-' + createHash('sha256').update(req.headers.host + ':' + credentialNamespace).digest('base64url') : upstreamCookie(req)
   function responseHeaders(req, reply) {
     const out = Object.fromEntries(Object.entries(reply.headers).filter(([key]) => !HOP.has(key)))
-    if (credentialNamespace && out['set-cookie']) {
+    if (credentialNamespace && getCredential) delete out['set-cookie']
+    else if (credentialNamespace && out['set-cookie']) {
       out['set-cookie'] = out['set-cookie'].filter(value => value.startsWith(upstreamCookie(req) + '='))
         .map(value => {
           const cookie = value.replace(upstreamCookie(req) + '=', browserCookie(req) + '=')
@@ -39,9 +40,13 @@ export function createAuthenticatedCarrier({ origin, publicOrigins = [], maxBody
     }
     // Forward only the original DSH credential for this exact authority, never
     // unrelated browser cookies, a launcher's cookie or a synthesized principal.
-    const name = browserCookie(req)
-    const cookie = req.headers.cookie?.split(';').map(x => x.trim()).filter(x => x.startsWith(name + '='))
-    if (cookie?.length === 1) out.cookie = cookie[0].replace(name + '=', upstreamCookie(req) + '=')
+    const stored = getCredential?.()
+    if (stored) out.cookie = stored
+    else if (!getCredential) {
+      const name = browserCookie(req)
+      const cookie = req.headers.cookie?.split(';').map(x => x.trim()).filter(x => x.startsWith(name + '='))
+      if (cookie?.length === 1) out.cookie = cookie[0].replace(name + '=', upstreamCookie(req) + '=')
+    }
     // The public edge is validated before this authority translation. Credentials
     // remain signed and admitted by the target Host, never synthesized here.
     if (credentialNamespace) {
@@ -71,17 +76,23 @@ export function createAuthenticatedCarrier({ origin, publicOrigins = [], maxBody
       upstream.on('error', () => { if (!res.headersSent) res.writeHead(502); res.end() })
       upstream.end()
     },
-    login(req, res, token) {
-      if (!valid(req) || req.method !== 'POST') { res.writeHead(403).end(); return }
+    login(req, res, token, { onAccepted, successStatus = 204, successHeaders = {} } = {}) {
+      if (!valid(req) || !['GET', 'POST'].includes(req.method)) { res.writeHead(403).end(); return }
       const loginHeaders = headers(req)
       delete loginHeaders['content-length']
       delete loginHeaders['content-type']
-      const upstream = transport(target, { path: '/?token=' + encodeURIComponent(token), method: 'GET', headers: loginHeaders, agent: false }, reply => {
+      const upstream = transport(target, { path: '/?token=' + encodeURIComponent(token), method: 'GET', headers: loginHeaders, agent: false }, async reply => {
         reply.resume()
-        const cookies = responseHeaders(req, reply)['set-cookie']
-        const status = reply.statusCode === 303 && cookies?.length ? 204
+        const cookies = reply.headers['set-cookie']?.filter(value => value.startsWith(upstreamCookie(req) + '='))
+        const credential = cookies?.[0]?.split(';', 1)[0]
+        const status = reply.statusCode === 303 && credential ? 204
           : reply.statusCode >= 400 && reply.statusCode <= 599 ? reply.statusCode : 502
-        res.writeHead(status, { 'cache-control': 'no-store', ...(status === 204 && cookies?.length ? { 'set-cookie': cookies } : {}) }).end()
+        if (status === 204) {
+          try { await onAccepted?.(credential) } catch { res.writeHead(500, { 'cache-control': 'no-store' }).end(); return }
+        }
+        const browserCookies = !getCredential && status === 204 ? responseHeaders(req, reply)['set-cookie'] : undefined
+        const responseStatus = status === 204 ? successStatus : status
+        res.writeHead(responseStatus, { 'cache-control': 'no-store', ...(status === 204 ? successHeaders : {}), ...(browserCookies?.length ? { 'set-cookie': browserCookies } : {}) }).end()
       })
       upstream.on('socket', track)
       upstream.setTimeout(15000, () => upstream.destroy())

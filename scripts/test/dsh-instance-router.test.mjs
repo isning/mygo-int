@@ -51,23 +51,22 @@ test('instance routing isolates credentials, tabs and original authority while r
   try {
     const loginA = await post('/mygo-local/login', { token: 'test-A' })
     assert.equal(loginA.status, 204)
-    const cookieA = loginA.headers['set-cookie'][0].split(';')[0]
+    assert.equal(loginA.headers['set-cookie'], undefined, 'DSH credentials stay in the mygo proxy')
     assert.equal((await post('/mygo-local/login', { token: 'unsupported-cookie-test' })).status, 502, 'a redirect without the native credential is not a successful login')
-    assert.equal((await call(origin + '/api/proof', { headers: { cookie: cookieA } })).text, 'A')
+    const proofA = await call(origin + '/api/proof')
+    assert.equal(proofA.text, 'A', JSON.stringify({ status: proofA.status, upstream: seen.at(-1) }))
     const next = await post('/mygo-local/connection', { id: 'b', name: 'B', address: originB, authenticationViewId: 'owner' })
     assert.equal(next.status, 200)
     const path = JSON.parse(next.text).url
-    assert.equal((await call(origin + path + 'api/proof', { headers: { cookie: cookieA } })).status, 401)
+    assert.equal((await call(origin + path + 'api/proof')).status, 401)
     assert.equal(seen.at(-1).headers.cookie, undefined, 'A credential never travels to B')
-    const loginB = await post(path + 'mygo-local/login', { token: 'test-B' }, cookieA)
+    const loginB = await post(path + 'mygo-local/login', { token: 'test-B' })
     assert.equal(loginB.status, 204)
-    const cookieB = loginB.headers['set-cookie'][0].split(';')[0]
-    assert.notEqual(cookieA.split('=')[0], cookieB.split('=')[0])
-    const cookies = cookieA + '; ' + cookieB
-    assert.equal((await call(origin + path + 'api/proof', { headers: { cookie: cookies, origin } })).text, 'B')
+    assert.equal(loginB.headers['set-cookie'], undefined)
+    assert.equal((await call(origin + path + 'api/proof', { headers: { origin } })).text, 'B')
     assert.equal(seen.at(-1).headers.host, new URL(originB).host)
     assert.equal(seen.at(-1).headers.origin, originB)
-    assert.equal((await call(origin + '/api/proof', { headers: { cookie: cookies } })).text, 'A', 'other tab remains on A')
+    assert.equal((await call(origin + '/api/proof')).text, 'A', 'other tab remains on A')
     assert.equal((await call(origin + '/mygo-local/connection', { method: 'POST', headers: { origin: 'https://evil.invalid' }, body: '{}' })).status, 403)
     assert.equal((await call(origin + '/mygo-local/connection', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })).status, 403)
     assert.equal((await post('/mygo-local/connection', { id: 'b', name: 'B', address: originB + '/?token=not-allowed', authenticationViewId: 'owner' })).status, 400)
@@ -75,7 +74,7 @@ test('instance routing isolates credentials, tabs and original authority while r
     const wire = createConnection({ host: '127.0.0.1', port: new URL(origin).port })
     await new Promise((resolve, reject) => { wire.once('connect', resolve); wire.once('error', reject) })
     const handshake = new Promise(resolve => wire.once('data', data => resolve(data.toString())))
-    wire.write(`GET /api/remote.mux HTTP/1.1\r\nHost: ${new URL(origin).host}\r\nOrigin: ${origin}\r\nCookie: ${cookieA}\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n\r\n`)
+    wire.write(`GET /api/remote.mux HTTP/1.1\r\nHost: ${new URL(origin).host}\r\nOrigin: ${origin}\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n\r\n`)
     assert.match(await handshake, /^HTTP\/1.1 101/)
     wire.destroy()
     let timer
@@ -85,6 +84,49 @@ test('instance routing isolates credentials, tabs and original authority while r
   } finally {
     router.close()
     await Promise.all([server, a, b].map(server => new Promise(resolve => server.close(resolve))))
+  }
+})
+
+test('mygo stores a launch token per instance and restores the reverse proxy after restart', async () => {
+  const host = createServer((req, res) => {
+    const cookie = 'dsh-auth-' + createHash('sha256').update(req.headers.host).digest('base64url')
+    if (req.url === '/?token=durable-token') { res.writeHead(303, { 'set-cookie': `${cookie}=owner; Path=/; HttpOnly; SameSite=Strict` }).end(); return }
+    if (req.headers.cookie === `${cookie}=owner`) { res.end('authenticated'); return }
+    res.writeHead(401).end()
+  })
+  const upstream = await listen(host)
+  const profile = { id: 'saved', name: 'Saved', address: upstream, authenticationViewId: 'owner' }
+  let savedCredentials = { version: 1, entries: {} }
+  const start = async () => {
+    const router = createInstanceRouter({ profile, credentials: savedCredentials, onCredentials(value) { savedCredentials = structuredClone(value) } })
+    const server = createServer(async (req, res) => {
+      const route = router.resolve(req)
+      if (!route) { res.writeHead(410).end(); return }
+      if (req.method === 'GET' && new URL(req.url, 'http://localhost').searchParams.has('token')) await router.loginLink(req, res, route)
+      else if (req.url === '/mygo-local/login') await router.control(req, res, route)
+      else route.carrier.handle(req, res)
+    })
+    return { router, server, origin: await listen(server) }
+  }
+  let running = await start()
+  try {
+    const post = (origin, value, cookie) => call(origin + '/mygo-local/login', { method: 'POST', headers: { origin, 'content-type': 'application/json', ...(cookie ? { cookie } : {}) }, body: JSON.stringify(value) })
+    const first = await call(running.origin + '/?token=durable-token')
+    assert.equal(first.status, 303)
+    assert.match(first.headers.location, /^\/mygo-instance\/[a-f0-9]{64}\/$/)
+    assert.equal(first.headers['set-cookie'], undefined, 'the browser never receives the upstream DSH credential')
+    assert.equal(JSON.stringify(savedCredentials).includes('durable-token'), true, 'the private server credential store retains the instance token')
+    running.router.close()
+    await new Promise(resolve => running.server.close(resolve))
+
+    running = await start()
+    assert.equal((await call(running.origin + '/proof')).text, 'authenticated')
+    const restored = await post(running.origin, {})
+    assert.equal(restored.status, 204, 'the stored launch token can refresh the native upstream credential')
+  } finally {
+    running.router.close()
+    await new Promise(resolve => running.server.close(resolve))
+    await new Promise(resolve => host.close(resolve))
   }
 })
 

@@ -10,13 +10,16 @@ provides its original bootstrap and client packages. The previous page is closed
 local plugin preferences and the catalog survive. Runtime Entry/fiber objects do
 not survive the page navigation. Separate tabs keep their own routes.
 
-An unauthenticated target shows the local shell and a login form made from the
-existing DSH controls. Paste that target's private launch URL or token there.
-The token is exchanged through original Host authentication, is not persisted,
-and never updates a global active target. Existing direct launch links work too.
-Login values are original Host-issued credentials, stored in HttpOnly cookies
-with a profile-specific browser name. The server forwards only the selected
-profile's credential, preserving native Peer/Gateway permission checks.
+An unauthenticated target first asks mygo's private credential store to restore
+the instance login. Only the first login (or a changed/revoked token)
+shows the original-style form for that target's private launch URL or token.
+The successful token and Host-issued cookie are stored in
+`.scratch/dsh-startup/instance-credentials.json` with mode `0600`, keyed by the
+exact instance/origin/authentication view. They are never returned to JavaScript,
+placed in a profile or retained in the route URL, or shared with another
+instance. Mygo acts as the reverse proxy and injects only that instance's native
+credential upstream, preserving Peer/Gateway permission checks. Mygo user
+authentication is a separate outer system and is not replaced by DSH cookies.
 
 Remote localStorage/sessionStorage have separate namespaces per instance,
 origin and authentication view. Device preferences use the stable device seed.
@@ -26,7 +29,8 @@ for arbitrary same-origin JavaScript. See [ADR 0007](../adr/0007-explicit-instan
 An unreachable target stays on its explicit route, with the local Instances
 settings available to select another one. It does not silently display data
 from the previous Host. Registered route metadata is retained privately in
-`.scratch/dsh-startup/instance-routes.json`; it contains no login tokens.
+`.scratch/dsh-startup/instance-routes.json`; credentials live separately in the
+private credential store above.
 
 ## Reproduce the two-Host workflow
 

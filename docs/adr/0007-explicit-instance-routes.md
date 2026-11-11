@@ -20,13 +20,14 @@ routes; no global mutable active-target cookie can redirect another tab's calls.
 
 The local carrier validates public Host/Origin before translating upstream
 Host/Origin to the selected target's native authority. It filters forwarded
-headers and forwards only that profile's original DSH credential. Cookie names
-are partitioned by public authority, instance ID, remote origin and authentication
-view. The native Host still signs/verifies the value and performs original
-Peer/Gateway authorization. Cookie Secure follows the explicitly configured
-public transport. There is no server owner-cookie fallback, business method
-allowlist, synthesized principal or disabled TLS verification. Native browser
-login still grants the native owner role, not a new restricted-user mechanism.
+headers and injects only that profile's original, Host-issued DSH credential.
+The credential remains in the mygo reverse proxy and is never sent to browser
+JavaScript or browser cookies. The native Host still signs/verifies it and
+performs original Peer/Gateway authorization. There is no business method
+allowlist, synthesized principal or disabled TLS verification. Mygo's own user
+authentication and authorization are a separate outer boundary; the current
+personal-client fixture does not define that system. A native owner launch token
+still grants the native owner role, not a new restricted-user mechanism.
 
 Target registration requires a same-origin JSON POST, bounded payload and a
 validated credential-free origin. Paths, tokens, redirects-as-targets and other
@@ -37,10 +38,14 @@ keeps the local shell and Instances settings usable for login or switching back.
 Unknown route identities fail explicitly.
 
 The offline login form accepts the target's private launch link or token and
-exchanges it through original DSH token authentication. It does not persist the
-input or return the token to another instance; the password field is cleared on
-success. The carrier returns the original refusal status. Existing direct launch
-links remain supported.
+exchanges it through original DSH token authentication. After a successful
+exchange, mygo stores the token and Host-issued cookie in its private credential
+file, keyed by the exact instance, origin and authentication view. A later 401
+can repeat the native exchange without asking for the link again. The token is
+never placed in the profile catalog, browser storage, route URL after exchange,
+logs or client response, and another instance cannot select it. The carrier
+returns the original refusal status. Existing direct launch links are
+intercepted, saved and redirected to a token-free route.
 
 Device preferences/catalog use the stable device seed namespace. Original
 remote localStorage/sessionStorage are namespaced by instance/origin/authentication
