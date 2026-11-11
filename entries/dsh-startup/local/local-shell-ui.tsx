@@ -1,4 +1,5 @@
 // Offline device surface: original controls, original Instances forms and Settings panel.
+import { useClientText, clientError } from './i18n'
 import React, { useState, useSyncExternalStore } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Button, StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
@@ -15,28 +16,35 @@ export function mountLocalShell(ctx) {
   const notify = () => { version++; for (const listener of listeners) listener() }
   const subscribe = listener => { listeners.add(listener); return () => listeners.delete(listener) }
   function Shell() {
+    const t = useClientText(ctx)
+    const language = ctx.mygoLocale.locale()
     useSyncExternalStore(subscribe, () => version)
     const [settings, setSettings] = useState(false)
     const [active, setActive] = useState('instances')
     const [formError, setFormError] = useState('')
-    const run = async operation => { setFormError(''); try { await operation() } catch (reason) { setFormError(reason.message) } }
+    const run = async operation => { setFormError(''); try { await operation() } catch (reason) { setFormError(clientError(ctx, reason)) } }
     return <div data-mygo-local-shell="" style={{ padding: '24px', maxWidth: 960, margin: '0 auto' }}>
-      <nav aria-label="Client navigation" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 }}>
+      <nav aria-label={t('Client navigation')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 }}>
         <span className={css.title}>mygo</span>
-        <Button variant="outline" onClick={() => setSettings(true)}>Instances</Button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <label className={css.intro}>{t('Language')} <select aria-label={t('Language')} value={language.active} disabled={!ctx.mygoLocale.canSelect()}
+          onChange={event => ctx.mygoLocale.setLocale(event.target.value)}>
+          {language.locales.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}
+        </select></label>
+        <Button variant="outline" onClick={() => setSettings(true)}>{t('Instances')}</Button></div>
       </nav>
       <main className={css.section}>
-        <h1 className={css.title}>{error ? 'Not connected' : 'Connecting…'}</h1>
-        <p className={css.intro}>Your instance profiles and device settings are available here.</p>
+        <h1 className={css.title}>{error ? t('Not connected') : t('Connecting…')}</h1>
+        <p className={css.intro}>{t('Your instance profiles and device settings are available here.')}</p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <StateDot state={error ? 'error' : 'ongoing'} size={8} />
-          <span className={css.intro}>{error ? 'The instance is unavailable.' : 'Loading the instance client.'}</span>
+          <span className={css.intro}>{error ? t('The instance is unavailable.') : t('Loading the instance client.')}</span>
         </div>
-        {error && <><p role="alert" className={css.error}>{error}</p><div><Button variant="outline" onClick={() => location.reload()}>Retry connection</Button></div></>}
+        {error && <><p role="alert" className={css.error}>{error}</p><div><Button variant="outline" onClick={() => location.reload()}>{t('Retry connection')}</Button></div></>}
       </main>
-      {settings && <SettingsPanel rows={[{ id: 'instances', label: 'Instances' }, { id: 'client', label: 'Client' }]} activeId={active} onSelect={setActive}
-        onClose={() => setSettings(false)} renderSlot={(key) => key === 'settings.header' ? 'Settings'
-          : key === 'settings.close' ? 'Close settings'
+      {settings && <SettingsPanel rows={[{ id: 'instances', label: t('Instances') }, { id: 'client', label: t('Client') }]} activeId={active} onSelect={setActive}
+        onClose={() => setSettings(false)} renderSlot={(key) => key === 'settings.header' ? t('Settings')
+          : key === 'settings.close' ? t('Close settings')
           : key === 'settings.section' ? <>{formError && <p role="alert">{formError}</p>}{active === 'instances' ? <Instances ctx={ctx} run={run} /> : <ClientSettings ctx={ctx} run={run} />}</> : null} />}
     </div>
   }

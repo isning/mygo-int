@@ -9,7 +9,8 @@ export function apply(ctx) {
   function validate(row) {
     if (!row || !/^[\w-]{1,128}$/.test(row.id) || typeof row.name !== 'string' || !row.name.trim() || row.name.length > 128 || !/^[\w-]{1,128}$/.test(row.authenticationViewId)) throw Error('Expected stable id, name and authentication view')
     if (Object.keys(row).some(key => !['id', 'name', 'address', 'authenticationViewId'].includes(key))) throw Error('Credentials and unknown catalog fields are not accepted')
-    const address = new URL(row.address)
+    let address
+    try { address = new URL(row.address) } catch { throw Error('Invalid URL') }
     if (!['http:', 'https:'].includes(address.protocol) || address.username || address.password || address.search || address.hash || address.pathname !== '/') throw Error('Use an HTTP(S) origin without credentials, path or token')
     if (row.id === bound.id && (address.origin !== location.origin || row.authenticationViewId !== bound.authenticationViewId)) throw Error('The carrier binding is operator configured; its address and authentication view cannot be changed here')
     return { id: row.id, name: row.name.trim(), address: address.origin, authenticationViewId: row.authenticationViewId }

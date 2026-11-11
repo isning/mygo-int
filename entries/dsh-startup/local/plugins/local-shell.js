@@ -2,7 +2,7 @@
 import * as managementUI from '../management-ui.tsx'
 import * as unifiedUI from '../unified-plugin-ui.tsx'
 import { mountLocalShell } from '../local-shell-ui.tsx'
-export const inject = ['clientHost', 'mygoStartup', 'loader']
+export const inject = ['mygoLocale', 'clientHost', 'mygoStartup', 'loader']
 export async function apply(ctx) {
   const host = ctx.clientHost
   host.modules['mygo/dsh-management-ui'] = managementUI

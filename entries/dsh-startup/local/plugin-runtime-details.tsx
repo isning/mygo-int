@@ -1,4 +1,5 @@
 // Read-only runtime information contributed to the original detail Slots.
+import { useClientText } from './i18n'
 import React, { useEffect, useState, useSyncExternalStore } from 'react'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
@@ -16,6 +17,7 @@ const normalize = (name: string) => name.replace(/\/client$/, '')
 export function RuntimeDetails({ ctx, facts, modules, local = false }: {
   ctx: RuntimeContext; facts: PluginRuntimeFacts; modules: readonly string[]; local?: boolean
 }) {
+  const t = useClientText(ctx)
   const snapshot = useSyncExternalStore(facts.subscribe, facts.getSnapshot)
   const [, refresh] = useState(0)
   const [failures, setFailures] = useState<Record<string, string>>({})
@@ -41,32 +43,32 @@ export function RuntimeDetails({ ctx, facts, modules, local = false }: {
     && ctx.mygoStartup.ownsEntry(entry) === local)
   const factsRow = (label: string, value: React.ReactNode) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>
   return <section className={css.detailSection} data-mygo-runtime-details="">
-    <h4 className={css.sectionTitle}>Runtime details</h4>
+    <h4 className={css.sectionTitle}>{t('Runtime details')}</h4>
     <dl className={css.facts}>
-      {factsRow(local ? 'Location' : 'Instance', local ? 'This device' : ctx.mygoStartup.configuration.selectedInstance.id)}
-      {!local && factsRow('Authentication view', ctx.mygoStartup.configuration.selectedInstance.authenticationViewId)}
-      {factsRow('Module', modules.map(name => <code key={name}>{name}</code>))}
+      {factsRow(local ? t('Location') : t('Instance'), local ? t('This device') : ctx.mygoStartup.configuration.selectedInstance.id)}
+      {!local && factsRow(t('Authentication view'), ctx.mygoStartup.configuration.selectedInstance.authenticationViewId)}
+      {factsRow(t('Module'), modules.map(name => <code key={name}>{name}</code>))}
     </dl>
     {!local && <>
       <h4 className={css.sectionTitle}>Remote</h4>
-      {remote.length === 0 && <p className={css.status}>No matching remote Entry is available.</p>}
+      {remote.length === 0 && <p className={css.status}>{t('No matching remote Entry is available.')}</p>}
       {remote.map(entry => <React.Fragment key={entry.entryId}>
         <dl className={css.facts}>
           {factsRow('Entry', <code>{entry.entryId}</code>)}
-          {factsRow('Enabled', entry.enabled ? 'Yes' : 'No')}
-          {factsRow('Runtime state', entry.fiberPhase ?? 'No fiber')}
+          {factsRow(t('Enabled'), entry.enabled ? t('Yes') : t('No'))}
+          {factsRow(t('Runtime state'), entry.fiberPhase ? t(entry.fiberPhase) : t('No fiber'))}
         </dl>
         {entry.diagnostic && <pre className={css.rowFailure}>{entry.diagnostic}</pre>}
       </React.Fragment>)}
     </>}
-    <h4 className={css.sectionTitle}>Client</h4>
-    {client.length === 0 && <p className={css.status}>No matching client Entry is loaded.</p>}
+    <h4 className={css.sectionTitle}>{t('Client')}</h4>
+    {client.length === 0 && <p className={css.status}>{t('No matching client Entry is loaded.')}</p>}
     {client.map(entry => <React.Fragment key={entry.id}>
       <dl className={css.facts}>
         {factsRow('Entry', <code>{entry.id}</code>)}
-        {factsRow('Enabled', entry.disabled ? 'No' : 'Yes')}
-        {factsRow('Runtime state', entry.fiber ? phases[entry.fiber.state] : 'No fiber')}
-        {factsRow('Dependencies', Object.keys(entry.fiber?.inject ?? {}).join(', ') || 'None')}
+        {factsRow(t('Enabled'), entry.disabled ? t('No') : t('Yes'))}
+        {factsRow(t('Runtime state'), entry.fiber ? t(phases[entry.fiber.state]) : t('No fiber'))}
+        {factsRow(t('Dependencies'), Object.keys(entry.fiber?.inject ?? {}).join(', ') || t('None'))}
       </dl>
       {(failures[entry.id] || ctx.modules.importError(entry.options.name)) && <pre className={css.rowFailure}>{failures[entry.id] || String(ctx.modules.importError(entry.options.name))}</pre>}
     </React.Fragment>)}

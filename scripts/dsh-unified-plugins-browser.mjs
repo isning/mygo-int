@@ -56,10 +56,27 @@ try {
   await send('Page.navigate', { url: new URL(url).origin })
   await until(() => evaluate('document.readyState === "complete"'))
   assert.equal(await evaluate("fetch('/').then(r => r.status)"), 200)
-  if (process.argv.includes('--offline-only')) {
+  if (process.argv.includes('--offline-only') || process.argv.includes('--i18n-only')) {
     stage = 'offline local shell'
     await until(() => evaluate("!!document.querySelector('[data-mygo-local-shell]') && document.body.innerText.includes('Not connected')"))
     assert.equal(await evaluate("fetch('/mygo/status').then(r=>r.status)"),401,'remote still denies anonymous access')
+    if (process.argv.includes('--i18n-only')) {
+      for (const [language, heading] of Object.entries({en:'Not connected',zh:'未连接',ja:'未接続',es:'Sin conexión',fr:'Non connecté',de:'Nicht verbunden',ru:'Нет подключения',pt:'Sem conexão'})) {
+        await evaluate(`(() => { const select=document.querySelector('[data-mygo-local-shell] select'); select.value=${JSON.stringify(language)}; select.dispatchEvent(new Event('change',{bubbles:true})); })()`)
+        await until(() => evaluate(`document.documentElement.lang===${JSON.stringify(language==='zh'?'zh-CN':language)} && document.querySelector('[data-mygo-local-shell] main h1')?.innerText===${JSON.stringify(heading)}`))
+      }
+    }
+    await evaluate("(() => { const select=document.querySelector('[data-mygo-local-shell] select'); select.value='zh'; select.dispatchEvent(new Event('change',{bubbles:true})); })()")
+    await until(() => evaluate("document.documentElement.lang.startsWith('zh') && document.querySelector('[data-mygo-local-shell] main h1')?.innerText==='未连接'"))
+    await send('Page.reload', {ignoreCache:true})
+    await until(() => evaluate("document.documentElement.lang.startsWith('zh') && !!document.querySelector('[data-mygo-local-shell] nav button')"))
+    await evaluate("document.querySelector('[data-mygo-local-shell] nav button').click()")
+    await until(() => evaluate("document.querySelector('[data-mygo-instances] h2')?.innerText==='实例'"))
+    assert.equal(await evaluate("document.querySelector('[data-mygo-instances]').innerText.includes('管理你的实例连接。')"),true)
+    await evaluate("[...document.querySelectorAll('button')].find(x=>x.getAttribute('aria-label')==='关闭设置')?.click()")
+    await evaluate("(() => { const select=document.querySelector('[data-mygo-local-shell] select'); select.value='en'; select.dispatchEvent(new Event('change',{bubbles:true})); })()")
+    await until(() => evaluate("document.documentElement.lang==='en'"))
+
     await evaluate("document.querySelector('[data-mygo-local-shell] nav button').click()")
     await until(() => evaluate("!!document.querySelector('[data-mygo-instances]')"))
     await evaluate("[...document.querySelectorAll('[data-mygo-instances] button')].find(x=>x.innerText==='Add instance').click()")
@@ -85,19 +102,26 @@ try {
   await evaluate("[...document.querySelectorAll('button,[role=button]')].find(x => ['Plugins','插件'].includes(x.innerText)).click()")
   await pause(700)
   await until(() => evaluate("!!document.querySelector('[data-plugin-panel] [data-plugin-package]')"))
-  if (process.argv.includes('--touch-only') || process.argv.includes('--offline-only')) {
+  if (process.argv.includes('--touch-only') || process.argv.includes('--offline-only') || process.argv.includes('--i18n-only')) {
     await until(() => evaluate("!!document.querySelector('[data-mygo-shared-client]')"))
     assert.equal(await evaluate("document.querySelector('[data-mygo-shared-client]').dataset.platformSingletons"),'true','diagnostic plugin sees original shared runtime')
     stage = 'mobile touch feedback'
     await send('Emulation.setDeviceMetricsOverride', {width:390,height:844,deviceScaleFactor:1,mobile:true})
     await send('Emulation.setTouchEmulationEnabled', {enabled:true,maxTouchPoints:1})
     await pause(200)
-    const point = await evaluate("(() => { const el=[...document.querySelectorAll('[role=tab]')].find(x=>x.innerText==='Local'); const r=el.getBoundingClientRect(); return {x:r.x+r.width/2,y:r.y+r.height/2} })()")
+    const point = await evaluate("(() => { const el=[...document.querySelectorAll('[role=tab]')].find(x=>['Local','本地'].includes(x.innerText)); const r=el.getBoundingClientRect(); return {x:r.x+r.width/2,y:r.y+r.height/2} })()")
     await send('Input.dispatchTouchEvent', {type:'touchStart',touchPoints:[point]})
     await send('Input.dispatchTouchEvent', {type:'touchEnd',touchPoints:[]})
-    await until(() => evaluate("document.querySelector('[role=tab][aria-selected=true]')?.innerText==='Local'"))
+    await until(() => evaluate("['Local','本地'].includes(document.querySelector('[role=tab][aria-selected=true]')?.innerText)"))
     assert.equal(await evaluate("document.documentElement.dataset.inputModality"),'pointer','real touch uses original pointer modality')
     assert.equal(await evaluate("getComputedStyle(document.querySelector('[role=tab][aria-selected=true]')).webkitTapHighlightColor"),'rgba(0, 0, 0, 0)','browser tap flash is transparent')
+    if (process.argv.includes('--i18n-only')) {
+      assert.equal(await evaluate("document.documentElement.lang"),'zh-CN','local UI adopts the real Host language')
+      assert.equal(await evaluate("document.querySelector('[role=tab][aria-selected=true]').innerText"),'本地')
+      assert.equal(await evaluate("document.querySelector('[data-plugin-package=\"./plugins/touch-feedback.js\"]').innerText.includes('触摸反馈')"),true)
+      await writeFile(scratch+'/i18n-validation.json',JSON.stringify({ok:true,languages:['en','zh','ja','es','fr','de','ru','pt'],offlineSwitching:true,restoredAfterReload:true,adoptedHostLanguage:true,translatedMetadata:true}),{mode:0o600})
+    }
+
     assert.equal(await evaluate("document.querySelectorAll('style[data-mygo-touch-feedback]').length"),1,'one plugin-owned stylesheet')
     const toggleTouch = () => evaluate("document.querySelector('[data-plugin-package=\"./plugins/touch-feedback.js\"] [role=switch]').click()")
     await toggleTouch()

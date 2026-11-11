@@ -132,3 +132,6 @@ TypeScript check is claimed.
 The offline Settings panel also reuses the existing Client settings section;
 remote Plugin manager navigation remains disabled until its provider is available.
 The final repository test run passed 34/34.
+
+Local dictionaries, offline language selection and instance-locale adoption are
+owned by `client-i18n`; see [internationalization](dsh-client-i18n.md).

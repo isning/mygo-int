@@ -1,6 +1,7 @@
 // Small decoration for the pinned original card DOM: no replacement page/list.
 // This pin has a detail badge Slot, but no card badge Slot. Keep the adapter
 // scoped to its existing card anchors and dispose every addition.
+import type {} from './i18n'
 import type { Context } from '@deepseek-ai/cordis'
 import type { BundleInfo, PluginInfo } from '@deepseek-ai/dsh-api-remotes/client'
 
@@ -38,6 +39,7 @@ export function installPluginSideBadges(ctx: Context, ownsLocalEntry: (entry: un
     return element
   }
   function update() {
+    const t = ctx.mygoLocale.text
     scheduled = false
     if (!live) return
     for (const [card, mount] of mounts) if (!card.isConnected) { mount.remove(); mounts.delete(card) }
@@ -52,7 +54,7 @@ export function installPluginSideBadges(ctx: Context, ownsLocalEntry: (entry: un
       const client = clientEntries.filter(entry => modules.has(normalize(entry.options.name)))
       const remoteActive = ctx.connection.state.getSnapshot() === 'connected' && (bundle?.enabled ?? true) && remote.length > 0 && remote.every(entry => entry.enabled && entry.fiberPhase === 'active')
       const clientActive = client.length > 0 && client.every(entry => !entry.disabled && entry.fiber?.state === 2)
-      const clientState = clientActive ? '已加载' : client.some(entry => entry.fiber?.state === 3) ? '加载失败' : '未就绪'
+      const clientState = clientActive ? t('Loaded') : client.some(entry => entry.fiber?.state === 3) ? t('Load failed') : t('Not ready')
       const signature = JSON.stringify([remoteActive, client.length > 0, clientActive, clientState])
       let mount = mounts.get(card)
       if (!mount || mount.parentElement !== title) {
@@ -65,7 +67,7 @@ export function installPluginSideBadges(ctx: Context, ownsLocalEntry: (entry: un
       }
       if (mount.dataset.signature === signature) continue
       mount.dataset.signature = signature
-      mount.replaceChildren(badge('Remote', remoteActive, remoteActive ? '运行中' : '未运行'))
+      mount.replaceChildren(badge('Remote', remoteActive, remoteActive ? t('Running') : t('Not running')))
       if (client.length) mount.append(badge('Client', clientActive, clientState))
     }
   }
@@ -90,11 +92,12 @@ export function installPluginSideBadges(ctx: Context, ownsLocalEntry: (entry: un
     observer.observe(document.getElementById('root')!, { childList: true, subtree: true })
     const status = ctx.on('internal/status', schedule)
     const connection = ctx.connection.state.subscribe(schedule)
+    const locale = ctx.mygoLocale.subscribe(schedule)
     const manifest = ctx.modules.entries.state.subscribe(schedule)
     const changed = ctx.remote.$on('plugin-manager/changed', () => { void refresh() })
     const reset = ctx.on('connection/reset', () => { void refresh() })
     void refresh()
-    return () => { live = false; revision++; observer.disconnect(); status(); connection(); manifest(); changed(); reset(); for (const mount of mounts.values()) mount.remove(); mounts.clear(); listeners.clear() }
+    return () => { live = false; revision++; observer.disconnect(); status(); connection(); locale(); manifest(); changed(); reset(); for (const mount of mounts.values()) mount.remove(); mounts.clear(); listeners.clear() }
   })
   return { getSnapshot: () => snapshot, subscribe: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener) } } } satisfies PluginRuntimeFacts
 }

@@ -14,6 +14,7 @@ export async function startLocalComposition({ Context, Loader, FiberState, stati
         if (!response.ok) throw Error(`DSH browser admission required (${response.status}); reopen the private launch entry`)
       },
     }))
+    staticModules['mygo/dsh-management-ui']?.installClientI18n(ctx, configuration)
     const ownership = createEntryOwnership()
     // The same Cordis class and platform objects used by AppWebEntry, in a separate tree.
     ctx.reflect.provide('mygoPlatform', Object.freeze({ modules: Object.freeze(staticModules) }))

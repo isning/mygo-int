@@ -4,6 +4,7 @@
   "bootstrap": [
     { "id": "dsh-instance", "name": "./plugins/dsh-instance.js" },
     { "id": "plugin-manager-override", "name": "./plugins/plugin-manager-override.js", "mode": "override", "target": "@deepseek-ai/dsh-client-ui-plugin-manager" },
+    { "id": "client-i18n", "name": "./plugins/client-i18n.js" },
     { "id": "local-shell", "name": "./plugins/local-shell.js" }
   ],
   "entries": [

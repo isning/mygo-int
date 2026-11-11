@@ -1,5 +1,6 @@
 // Extend the original Plugins page through its native tab contract. The original
 // main registration, page, Host controller, cards and dialogs stay in charge.
+import { useClientText, clientError } from './i18n'
 import React, { useEffect, useState } from 'react'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
@@ -40,6 +41,7 @@ type LocalNavigation = {
 }
 
 function LocalPlugins({ ctx, t, facts, navigation, renderConfiguration }: { ctx: ClientContext; t: Translate; facts: PluginRuntimeFacts; navigation: LocalNavigation; renderConfiguration: PluginManagerPageProps['renderSlot'] }) {
+  const clientT = useClientText(ctx)
   const [, refresh] = useState(0)
   const selected = navigation.view?.entryId
   const component = navigation.view?.component ?? false
@@ -58,33 +60,33 @@ function LocalPlugins({ ctx, t, facts, navigation, renderConfiguration }: { ctx:
   }, [ctx])
   const local = ctx.clientComposition.rows()
   const rows: InspectRow[] = local.map(row => ({ ...row,
-    meta: { ...row.meta, ...(localPluginInfo[row.moduleName] ? { title: localPluginInfo[row.moduleName].title, description: localPluginInfo[row.moduleName].description } : {}) },
+    meta: { ...row.meta, ...(localPluginInfo[row.moduleName] ? { title: clientT(localPluginInfo[row.moduleName].title), description: clientT(localPluginInfo[row.moduleName].description) } : {}) },
     ...(row.readOnlyReason ? { readOnlyReason: 'management-required' as const } : {}),
   }))
   const row = rows.find(row => row.entryId === selected)
-  const scope = 'This device'
-  const pkg: PackageView = { name: scope, meta: { title: 'Local plugins' },
+  const scope = clientT('This device')
+  const pkg: PackageView = { name: scope, meta: { title: clientT('Local plugins') },
     official: false, installed: false, availability: 'profile', optional: false, removable: false,
     updatable: false, enabled: true, rows: rows as PackageRow[] }
   const change = (row: InspectRow, enabled: boolean) => {
     if (busy || !row.entryId) return
     setBusy(true); setError('')
     void ctx.clientComposition.change(row.entryId, { disabled: !enabled }, ctx.clientComposition.status().revision)
-      .catch(error => setError(error instanceof Error ? error.message : String(error)))
+      .catch(error => setError(clientError(ctx, error)))
       .finally(() => setBusy(false))
   }
   const packageFor = (row: InspectRow): PackageView => ({ ...pkg, name: row.moduleName,
     enabled: row.enabled, rows: [row as PackageRow], meta: row.meta,
     ...(row.readOnlyReason ? { readOnlyReason: row.readOnlyReason } : {}),
   })
-  const itemFor = (row: InspectRow) => ({ id: row.rowId, label: localPluginInfo[row.moduleName]?.title ?? row.moduleName })
+  const itemFor = (row: InspectRow) => ({ id: row.rowId, label: clientT(localPluginInfo[row.moduleName]?.title ?? row.moduleName) })
   const renderLocal: PluginManagerPageProps['renderSlot'] = (key, owner, options) => {
     if (!row) return null
     if (key === 'plugins.detail.section') return <RuntimeDetails ctx={ctx} facts={facts} modules={[row.moduleName]} local />
-    if (key === 'plugins.detail.badge') return <Tag tone="neutral">Local</Tag>
+    if (key === 'plugins.detail.badge') return <Tag tone="neutral">{clientT('Local')}</Tag>
     if (key === 'plugins.bundle.config' || key === 'plugins.row.config') return renderConfiguration(key, owner, options)
     if (key !== 'plugins.item') return null
-    if (owner.view === 'summary') return localPluginInfo[row.moduleName]?.description ?? null
+    if (owner.view === 'summary') return localPluginInfo[row.moduleName]?.description ? clientT(localPluginInfo[row.moduleName].description) : null
     return <LocalPluginActions ctx={ctx} row={row} onChanged={() => refresh(value => value + 1)} />
   }
   const back = () => select(undefined)
@@ -112,7 +114,7 @@ function LocalPlugins({ ctx, t, facts, navigation, renderConfiguration }: { ctx:
         <ul className={css.cards}>{members.map(row => group === 'basic'
           ? <ItemCard key={row.entryId ?? row.rowId} item={itemFor(row)} t={t}
               renderSlot={(key, owner) => key === 'plugins.item' && owner.view === 'summary'
-                ? localPluginInfo[row.moduleName]?.description ?? null : null}
+                ? localPluginInfo[row.moduleName]?.description ? clientT(localPluginInfo[row.moduleName].description) : null : null}
               onOpen={() => select(row.entryId)} />
           : <PackageCard key={row.entryId ?? row.rowId} pkg={packageFor(row)} t={t}
               resolveText={resolveText} busy={busy || ctx.clientComposition.status().busy}
@@ -138,7 +140,7 @@ export function register(ctx: ClientContext) {
   // Contributions use those declarations rather than replacing the page or
   // duplicating its controller, navigation state, header, CSS or dialogs.
   ctx.slots.inject('plugins.tab', function* () {
-    yield ctx.slots.register({ name: 'plugins.tab', id: 'mygo-local', label: 'Local', order: -20, locale: 'pluginManager' },
+    yield ctx.slots.register({ name: 'plugins.tab', id: 'mygo-local', label: () => ctx.mygoLocale.text('Local'), order: -20, locale: 'pluginManager' },
       ({ t, navigation, renderConfiguration }) => <LocalPlugins ctx={ctx} t={t} facts={facts} navigation={navigation} renderConfiguration={renderConfiguration} />)
   })
 }
