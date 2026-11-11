@@ -205,3 +205,27 @@ The focused browser workflow verifies direct plugin-page visibility, validation
 blocking Save, edit-without-write, actual save/restore, discard on leaving,
 separate Components information, and zero Host management writes. The existing
 original composer MODEL MOCK checkpoint and 27 repository tests passed.
+
+## Sidebar instance menu
+
+The local navigation entry delegates to a compiled component using the unchanged
+AccountMenu trigger styles, Menu/MenuItemButton, StateDot and icons. The expanded
+trigger shows the actual bound instance name and connection state dot; its title
+supplies the textual state. The collapsed trigger uses the same original compact
+sidebar chrome. Diagnostic paragraphs and raw `Instances · connected` labels are
+removed.
+
+The menu marks the real bound instance as current. Saved profiles without a
+carrier are disabled with the native explanatory tooltip; selecting a saved
+preference in Settings never relabels the active connection. Manage instances
+opens `mygo-instances` through the original settings shell's shared store handle
+(the pinned registration's `create()` explicitly returns its existing instance).
+No second settings store or DOM-driven navigation is created. Reconnect delegates
+to the existing Connection service when disconnected; induced disconnection was
+not added to this UI checkpoint.
+
+Focused browser acceptance verifies the real-name trigger, current/disabled menu
+entries, absence of diagnostic copy, original Settings navigation and unchanged
+Host state. Screenshot: `.scratch/test-dsh/instance-switcher.png`. The original
+composer MODEL MOCK checkpoint and 27 repository tests pass. No custom sidebar
+stylesheet or upstream source edits are introduced.

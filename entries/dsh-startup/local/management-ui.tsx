@@ -1,3 +1,4 @@
+export { registerInstanceNavigation } from './instance-navigation'
 // Original DSH UI components are imported from the verified pin by the build adapter.
 // The injected face below is local only; no Host PluginManagerController/ConfigForms.
 import React, { useEffect, useState } from 'react'
