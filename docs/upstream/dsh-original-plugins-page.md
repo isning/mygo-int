@@ -95,3 +95,21 @@ the existing `shell.overlay` list instead, preserving the Inspector and avoiding
 an unrelated product UI collision. Default single-root startup and original
 session creation/receipt/MODEL MOCK reply passed after this correction, as did
 all 27 repository tests. The upstream source pin remains unchanged.
+
+## Local page hierarchy
+
+Local built-in settings now use the unchanged upstream `ItemCard` and
+`ItemDetail`, matching Installed's built-in settings rather than presenting
+startup services as switchable packages. Experimental/installed local plugins
+use upstream `PackageCard` → `PackageDetail` → `RowDetail`; Components opens
+actual local configuration. The build adapter only exposes these existing
+components; upstream files remain unchanged. Lifecycle and configuration writes
+still target the local composition service.
+
+Run `node scripts/dsh-unified-plugins-browser.mjs --local-only` for the focused
+browser checkpoint. It verifies built-in item structure, experimental package
+and component navigation, real disable/enable and configuration save/restore,
+and unchanged Host settings/inventory with zero Host management writes.
+Evidence: `.scratch/test-dsh/local-structure-validation.json`,
+`plugins-local.png`, and `plugins-local-package.png`. This focused checkpoint
+passed; it does not claim a rerun of the full remote Components checkpoint.

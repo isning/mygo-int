@@ -87,18 +87,25 @@ try {
   mutations.length = 0
   await tab('Local')
   await until(() => evaluate("!!document.querySelector('[data-mygo-plugin-source=LOCAL] [data-plugin-package=\"./plugins/marker.js\"]')"))
-  const localCount = await evaluate("document.querySelectorAll('[data-mygo-plugin-source=LOCAL] [data-plugin-package]').length")
+  const localCount = await evaluate("document.querySelectorAll('[data-mygo-plugin-source=LOCAL] [data-plugin-package], [data-mygo-plugin-source=LOCAL] [data-plugin-item]').length")
   const note = '[data-plugin-package="./plugins/marker.js"]'
-  assert.equal(await evaluate("document.querySelectorAll('[data-local-plugin-group=basic] [data-plugin-package]').length"),5,'builtin Local plugins use the original group/card layout')
+  assert.equal(await evaluate("document.querySelectorAll('[data-local-plugin-group=basic] [data-plugin-item]').length"),5,'builtin Local plugins use the original group/card layout')
   assert.equal(await evaluate("document.querySelectorAll('[data-local-plugin-group=extensions] [data-plugin-package]').length"),1,'experimental Local contribution has its own group')
   const originalLabel = await evaluate("document.querySelector('[data-mygo-local-plugin=marker]').textContent")
-  assert.equal(await evaluate("document.querySelector('[data-plugin-package=\"./plugins/client-composition.js\"] [role=switch]').disabled"), true, 'protected original row switches are disabled')
+  assert.equal(await evaluate("document.querySelectorAll('[data-local-plugin-group=basic] [role=switch]').length"), 0, 'builtin cards follow original settings-item structure without package switches')
+  await evaluate("document.querySelector('[data-local-plugin-group=basic] [data-plugin-item] button').click()")
+  await until(() => evaluate("!!document.querySelector('[data-plugin-item-detail]')"))
+  assert.equal(await evaluate("!!document.querySelector('[data-plugin-item-detail] [data-plugin-name], [data-plugin-item-detail] [data-plugin-rows]')"), false, 'builtin detail uses the original item page, not package or component metadata')
+  await evaluate("document.querySelector('[data-plugin-item-detail] button').click()")
   await evaluate(`document.querySelector('${note} [role=switch]').click()`)
   await until(() => evaluate("!document.querySelector('[data-mygo-local-plugin=marker]')"))
   await evaluate(`document.querySelector('${note} [role=switch]').click()`)
   await until(() => evaluate("!!document.querySelector('[data-mygo-local-plugin=marker]')"))
   await writeFile(scratch+'/plugins-local.png',Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'))
   await evaluate(`document.querySelector('${note} button:not([role=switch])').click()`)
+  await until(() => evaluate("!!document.querySelector('[data-plugin-detail] [data-plugin-rows]')"))
+  await writeFile(scratch+'/plugins-local-package.png',Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'))
+  await evaluate("document.querySelector('[data-plugin-detail] [data-plugin-row] button:not([role=switch])').click()")
   await until(() => evaluate("!!document.querySelector('[data-plugin-row-detail] [data-local-plugin-actions]')"))
   await evaluate("document.querySelector('[data-local-plugin-actions] button[aria-label=\"Configure local plugin\"]').click()")
   const save = async label => {
@@ -112,6 +119,11 @@ try {
   assert.deepEqual(settings(await rpc('settings/describe')), beforeSettings, 'local management preserves Host settings/revisions')
   assert.deepEqual(await rpc('pluginInventory/list').then(answer=>answer.result), beforeInventory.result, 'local management preserves actual Host inventory')
   assert.equal(mutations.length,0,'local workflows perform no Host management writes')
+  if (process.argv.includes('--local-only')) {
+    await writeFile(scratch+'/local-structure-validation.json',JSON.stringify({ok:true,localCount,builtinItemStructure:true,experimentalPackageStructure:true,localToggle:true,localConfig:true,hostMutations:mutations}),{mode:0o600})
+    console.log('Original Local item/package hierarchy, lifecycle/configuration and unchanged Host state passed')
+    await Promise.race([send('Browser.close'), pause(5000)])
+  } else {
   await tab('Installed')
   await until(() => evaluate("document.querySelectorAll('[data-plugin-package]').length > 0"))
   await until(() => evaluate("!!document.querySelector('[data-plugin-package] [data-plugin-side=Remote]')"))
@@ -151,6 +163,7 @@ try {
   await writeFile(scratch+'/original-plugins-validation.json',JSON.stringify({ok:true,localCount,markers,builtinDetails:true,componentDetails:true,localGroups:true,originalMain:true,originalRowDetail:true,localToggle:true,localConfig:true,hostMutations:mutations,narrowViewport:true}),{mode:0o600})
   console.log('Original Plugins page, native Local tab and Remote/Client badges, local lifecycle/configuration and narrow viewport passed')
   await Promise.race([send('Browser.close'), pause(5000)])
+  }
 } catch (error) {
   await writeFile(scratch + '/unified-plugin-failure.json', JSON.stringify({ stage, error: error.message, errors, mutations, text: evaluate ? await evaluate('document.body.innerText').catch(() => '') : '' }), { mode: 0o600 })
   throw error

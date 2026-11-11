@@ -34,7 +34,7 @@ await build({
       }
     },
     async load(id) {
-      if (id.endsWith('?mygo-rows')) return (await readFile(id.slice(0, -'?mygo-rows'.length), 'utf8')) + '\nexport { RowsSection, RowDetail, PackageCard };'
+      if (id.endsWith('?mygo-rows')) return (await readFile(id.slice(0, -'?mygo-rows'.length), 'utf8')) + '\nexport { RowsSection, RowDetail, PackageCard, PackageDetail, ItemCard, ItemDetail };'
       if (id.endsWith('?mygo-panel')) return (await readFile(id.slice(0, -'?mygo-panel'.length), 'utf8')) + '\nexport { SettingsPanel };'
       if (id !== web + '/src/main.ts') return
       if (singleRoot) return `import { startSingleClient } from ${JSON.stringify(resolve(root, 'entries/dsh-startup/single-client.js'))};\nvoid startSingleClient();`
