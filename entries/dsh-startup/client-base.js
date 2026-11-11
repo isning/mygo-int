@@ -52,16 +52,18 @@ export async function startClient({ Context, Loader, modules, container, readCon
       if (entry.disabled || entry.fiber?.state === 2) continue
       await ctx.serial('mygo/startup-failed', entry)
     }
-    const failures = []
-    for (const entry of localEntries) {
-      if (entry.disabled || entry.fiber?.state === 2) continue
-      let reason = 'inactive or missing dependency'
-      if (entry.fiber?.state === 3) {
-        try { await entry.fiber.await() } catch (error) { reason = String(error) }
+    if (configuration.selectedInstance) {
+      const failures = []
+      for (const entry of localEntries) {
+        if (entry.disabled || entry.fiber?.state === 2) continue
+        let reason = 'inactive or missing dependency'
+        if (entry.fiber?.state === 3) {
+          try { await entry.fiber.await() } catch (error) { reason = String(error) }
+        }
+        failures.push(`${entry.options.id}: ${reason}`)
       }
-      failures.push(`${entry.options.id}: ${reason}`)
+      if (failures.length) throw Error(`Local startup entries did not activate\n${failures.join('\n')}`)
     }
-    if (failures.length) throw Error(`Local startup entries did not activate\n${failures.join('\n')}`)
     await runtime?.mount?.()
     return ctx
   } catch (reason) {

@@ -6,11 +6,11 @@ export function validateLocalStartup(value) {
     throw Error('Expected local startup schemaVersion 1 and at most 64 entries')
   }
   const selected = value.selectedInstance
-  if (!selected || !['id', 'authenticationViewId'].every(key =>
+  if (selected !== undefined && !['id', 'authenticationViewId'].every(key =>
     typeof selected[key] === 'string' && /^[a-zA-Z0-9_-]{1,128}$/.test(selected[key]))) {
     throw Error('Expected explicit selectedInstance id and authenticationViewId')
   }
-  if (selected.address !== undefined) validateInstanceAddress(selected.address)
+  if (selected?.address !== undefined) validateInstanceAddress(selected.address)
   if (value.bootstrap !== undefined && (!Array.isArray(value.bootstrap) || value.bootstrap.length > 16)) throw Error('Invalid bootstrap plugin list')
   const ids = new Set()
   for (const entry of [...(value.bootstrap ?? []), ...value.entries]) {
@@ -38,6 +38,7 @@ function validateInstanceAddress(address) {
 
 // Deployment metadata describes the fixed carrier target, never the UI origin.
 export function bindLocalStartup(value, remoteOrigin) {
+  if (!value.selectedInstance) throw Error('Cannot bind a startup configuration without selectedInstance')
   return { ...value, selectedInstance: { ...value.selectedInstance, address: validateInstanceAddress(remoteOrigin) } }
 }
 

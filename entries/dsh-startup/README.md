@@ -4,8 +4,11 @@ The default launcher and adapted build use one MYGO Context and the original
 Loader, React renderer, navigation, Settings and unified Plugins page. Run the
 owned authenticated Host with `scripts/dsh-test-host.mjs`; see
 [default acceptance and demo](../../docs/upstream/dsh-default-client.md).
-No composition opt-in is required. The carrier requires `DSH_ORIGIN` and retains
-original browser authentication; startup failure never selects a legacy fallback.
+No composition opt-in or `DSH_ORIGIN` is required. mygo starts with its local
+Cordis composition and an empty instance catalog. Each DSH Host is registered
+through `/mygo-local/connection`, and only its explicit instance route loads the
+remote client graph. Original Host authentication remains in charge; startup
+failure never selects a legacy fallback.
 
 Explicit `MYGO_CLIENT_COMPOSITION=legacy` retains the historical two-root fixture
 and its unchanged `local/startup.json` snapshot for regression/migration checks.

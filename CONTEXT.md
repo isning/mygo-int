@@ -43,6 +43,8 @@ _Avoid_: DSH as the mandatory model for every harness
 **Instance**:
 A remote harness instance with its own sessions, workspaces and capabilities.
 Several instances may remain connected concurrently while the user switches views.
+mygo has no implicit or privileged default instance; development fixtures register
+through the same interface as user-created instances.
 _Avoid_: Client composition, service provider, network connection or JS realm as synonyms
 
 **Connection**:

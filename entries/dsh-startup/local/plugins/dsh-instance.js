@@ -20,6 +20,7 @@ export function apply(scope) {
   const diagnosticName = '@mygo/single-client-contribution'
   let modules
   staticModules[diagnosticName] = createSharedRuntimeDiagnostics({ React, Context, getConfiguration: () => configuration })
+  ctx.reflect.provide('mygoPlatform', Object.freeze({ modules: staticModules }))
   ctx.provide('mygoStartup', Object.freeze({
     configuration, FiberState, sharedClient: true,
     ownsEntry: entry => localEntries.has(entry),
@@ -28,9 +29,9 @@ export function apply(scope) {
       if (!response.ok) throw Error(`DSH browser admission required (${response.status}); reopen the private launch entry`)
     },
   }))
+  if (!configuration.selectedInstance) return
   scope.provide('clientRuntime', {
     async prepare() {
-      ctx.reflect.provide('mygoPlatform', Object.freeze({ modules: Object.freeze(staticModules) }))
       const bootstrapUrl = '/mygo-boot/bootstrap.js'
       await import(/* @vite-ignore */ bootstrapUrl)
       await globalThis.__DSH_BOOT_READY__?.promise

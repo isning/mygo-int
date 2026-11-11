@@ -32,7 +32,6 @@ try {
  if(!cookie)throw Error('Original owner cookie missing');
  await writeFile(scratch+'/owner-cookie',cookie,{mode:0o600});
  await writeFile(scratch+'/launch-url',authenticatedUrl,{mode:0o600});
- await writeFile(scratch+'/client-launch-url',ctx.connection.authenticatedUrl(clientUrl),{mode:0o600});
  const workspacePath=scratch+'/workspace';await mkdir(workspacePath,{recursive:true});
  let fixtureId;
  try{fixtureId=JSON.parse(await readFile(scratch+'/session.json','utf8')).sessionId;}catch(e){if(e.code!=='ENOENT')throw e;}
@@ -66,10 +65,17 @@ try {
  await withdraw();await restricted.dispose();
  await writeFile(scratch+'/permission-validation.json',JSON.stringify({nonOwnerLoginSupported:false,inProcessRestrictedPeer:{remoteHTTP:rpc.status,remoteError:denied.error?.code??denied.result?.error?.code,exactRouteHTTP:exact.status}}),{mode:0o600});
  const log=openSync(scratch+'/carrier.log','a',0o600);
- carrier=spawn(process.execPath,[root+'/scripts/dsh-startup.mjs','serve'],{env:{...process.env,PORT:String(clientPort),DSH_ORIGIN:origin},stdio:['ignore',log,log]});
+ carrier=spawn(process.execPath,[root+'/scripts/dsh-startup.mjs','serve'],{env:{...process.env,PORT:String(clientPort)},stdio:['ignore',log,log]});
  carrier.on('exit',()=>{if(!stopping)void stop();});
  let ready=false;for(let i=0;i<120;i++){try{ready=(await httpStatus(clientUrl))===200;if(ready)break;}catch{}await new Promise(r=>setTimeout(r,250));}
  if(!ready)throw Error('Carrier did not become ready');
+ const profile={id:'local-test-dsh',name:'Local test DSH',address:origin,authenticationViewId:'owner'};
+ const registered=await fetch(new URL('/mygo-local/connection',clientUrl),{method:'POST',headers:{origin:new URL(clientUrl).origin,'content-type':'application/json'},body:JSON.stringify(profile)});
+ if(!registered.ok)throw Error('Test instance registration failed');
+ const route=(await registered.json()).url;
+ const token=new URL(authenticatedUrl).searchParams.get('token');
+ if(!token||!/^\/mygo-instance\/[a-f0-9]{64}\/$/.test(route))throw Error('Test instance launch construction failed');
+ await writeFile(scratch+'/client-launch-url',new URL(route+'?token='+encodeURIComponent(token),clientUrl).href,{mode:0o600});
  const credential=await ctx.credentials.describe('DEEPSEEK_API_KEY');
  const status={pid:process.pid,origin,clientUrl,localClientUrl,clientBind:process.env.DSH_CLIENT_BIND??'127.0.0.1',model:{mode:model.mode,origin:model.origin,stats:model.stats},providers:ctx.llm.listProviders().map(x=>x.id),selection:ctx.agentDefaultModel.currentSelection(),credential:{reference:'DEEPSEEK_API_KEY',configured:credential.configured,source:credential.source},sessionId:fixtureId};
  if((await fetch(origin+'/mygo/status')).status!==401)throw Error('Host authentication fence failed');

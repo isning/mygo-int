@@ -4,9 +4,9 @@ export function apply(ctx) {
   const boot = ctx.mygoStartup, bound = boot.configuration.selectedInstance
   const storage = localStorage
   const key = `mygo.instances.v2:${location.origin}`
-  const binding = { id: bound.id, name: bound.name ?? 'Local test DSH', address: bound.address, authenticationViewId: bound.authenticationViewId }
-  let catalog = [binding]
-  let selectedId = bound.id, diagnostic = '', revision = 0, connectionStatus = 'checking', connectionDiagnostic = ''
+  const binding = bound && { id: bound.id, name: bound.name ?? bound.id, address: bound.address, authenticationViewId: bound.authenticationViewId }
+  let catalog = binding ? [binding] : []
+  let selectedId = binding?.id ?? null, diagnostic = '', revision = 0, connectionStatus = binding ? 'checking' : 'idle', connectionDiagnostic = ''
   const listeners = new Set(), notify = () => { for (const fn of listeners) fn() }
   function validate(row) {
     if (!row || !/^[\w-]{1,128}$/.test(row.id) || typeof row.name !== 'string' || !row.name.trim() || row.name.length > 128 || !/^[\w-]{1,128}$/.test(row.authenticationViewId)) throw Error('Expected stable id, name and authentication view')
@@ -21,8 +21,9 @@ export function apply(ctx) {
     if (saved) {
       if (![1, 2].includes(saved.version) || !Number.isSafeInteger(saved.revision) || !Array.isArray(saved.catalog) || saved.catalog.length > 32) throw Error('Invalid catalog')
       const rows = saved.catalog.map(validate)
-      if (new Set(rows.map(r => r.id)).size !== rows.length || !rows.some(r => r.id === saved.selectedId)) throw Error('Invalid catalog identities')
-      if (!rows.some(row => row.id === bound.id)) {
+      if (new Set(rows.map(r => r.id)).size !== rows.length
+        || saved.selectedId !== null && !rows.some(r => r.id === saved.selectedId)) throw Error('Invalid catalog identities')
+      if (binding && !rows.some(row => row.id === binding.id)) {
         if (rows.length >= 32) throw Error('Catalog limit reached')
         rows.push(binding)
       }
@@ -37,18 +38,19 @@ export function apply(ctx) {
     catalog = rows; selectedId = selection; revision++; notify()
   }
   async function refresh() {
+    if (!binding) { connectionStatus = 'idle'; connectionDiagnostic = ''; notify(); return }
     connectionStatus = 'checking'; connectionDiagnostic = ''; notify()
     try { await boot.admit(); connectionStatus = 'authenticated' }
     catch (error) { connectionStatus = 'unavailable'; connectionDiagnostic = error instanceof Error ? error.message : String(error) }
     notify()
   }
-  void refresh()
-  const isConnectedProfile = row => row?.id === binding.id && row.address === binding.address
+  if (binding) void refresh()
+  const isConnectedProfile = row => binding !== undefined && row?.id === binding.id && row.address === binding.address
     && row.authenticationViewId === binding.authenticationViewId
   ctx.provide('instanceManager', {
-    snapshot: () => ({ catalog, selectedId, connectedId: bound.id, connectedProfile: binding, diagnostic, connectionStatus, connectionDiagnostic }),
+    snapshot: () => ({ catalog, selectedId, connectedId: binding?.id ?? null, connectedProfile: binding ?? null, diagnostic, connectionStatus, connectionDiagnostic }),
     isConnectedProfile,
-    availability: row => isConnectedProfile(row) ? `Bound carrier · ${connectionStatus} (DSH admission probe)` : 'Unavailable · external carrier not configured',
+    availability: row => isConnectedProfile(row) ? connectionStatus : 'saved',
     refresh,
     async save(row, editingId) {
       if (editingId && editingId !== row.id) throw Error('Stable instance id cannot be changed')
@@ -56,7 +58,7 @@ export function apply(ctx) {
       const value = validate(row)
       if (!editingId && catalog.some(r => r.id === value.id)) throw Error('Instance id already exists')
       if (catalog.length >= 32 && !editingId) throw Error('Catalog limit reached')
-      await persist([...catalog.filter(r => r.id !== value.id), value], selectedId)
+      await persist([...catalog.filter(r => r.id !== value.id), value], selectedId ?? value.id)
     },
     async select(id) {
       const profile = catalog.find(row => row.id === id)
@@ -75,7 +77,7 @@ export function apply(ctx) {
       const response = await fetch('/mygo-local/connection', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify(profile) })
       if (!response.ok) throw Error(`Instance removal HTTP ${response.status}`)
       const rows = catalog.filter(row => row.id !== id)
-      await persist(rows, selectedId === id ? binding.id : selectedId)
+      await persist(rows, selectedId === id ? rows[0]?.id ?? null : selectedId)
     },
     subscribe: fn => { listeners.add(fn); return () => listeners.delete(fn) },
   })

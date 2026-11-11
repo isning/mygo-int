@@ -35,7 +35,9 @@ test('startup rejects remote entries, traversal, duplicate ids and unsupported s
 })
 
 test('instance and authentication view are explicit local identities, not endpoint URLs', () => {
-  for (const selectedInstance of [undefined, {}, { id: 'https://host.invalid', authenticationViewId: 'owner' }, { id: 'test' }]) {
+  assert.equal(validate({ schemaVersion: 1, entries: [], selectedInstance: undefined }).selectedInstance, undefined)
+  assert.throws(() => bindLocalStartup({ schemaVersion: 1, entries: [] }, 'http://127.0.0.1:4000'))
+  for (const selectedInstance of [{}, { id: 'https://host.invalid', authenticationViewId: 'owner' }, { id: 'test' }]) {
     assert.throws(() => validate({ schemaVersion: 1, entries: [], selectedInstance }))
   }
 })

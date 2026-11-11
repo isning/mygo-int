@@ -176,7 +176,7 @@ export function Instances({ ctx, run }) {
     <h2 className={modelsCSS.title}>{t('Instances')}</h2>
     <p className={modelsCSS.intro}>{t('Manage your instance connections.')}</p>
     {snapshot.diagnostic && <p className={modelsCSS.error} role="alert">{snapshot.diagnostic}</p>}
-    {!isConnected(snapshot.catalog.find(row => row.id === snapshot.selectedId)) && <p className={modelsCSS.notice} role="status">{t('The selected profile is saved. Your active connection has not changed.')}</p>}
+    {snapshot.selectedId && !isConnected(snapshot.catalog.find(row => row.id === snapshot.selectedId)) && <p className={modelsCSS.notice} role="status">{t('The selected profile is saved. Your active connection has not changed.')}</p>}
     <ul className={modelsCSS.rows}>
       {snapshot.catalog.map(row => <li key={row.id} className={`${modelsCSS.rowCard} ${deviceCSS.instanceCard}`} data-instance-id={row.id}>
         <div className={`${modelsCSS.rowHead} ${deviceCSS.instanceHead}`}>
@@ -212,7 +212,7 @@ export function Instances({ ctx, run }) {
       {editing?.id === null ? <InstanceEditor ctx={ctx} key="new-instance" service={service} target={editing} onClose={() => setEditing(null)} />
         : <div className={modelsCSS.addActions}><button type="button" className={modelsCSS.addButton}
             disabled={snapshot.catalog.length >= 32} onClick={() => setEditing({ id: null, draft: {
-              id: 'instance-' + Array.from(crypto.getRandomValues(new Uint8Array(12)), value => value.toString(16).padStart(2, '0')).join(''), name: '', address: '', authenticationViewId: snapshot.connectedProfile.authenticationViewId,
+              id: 'instance-' + Array.from(crypto.getRandomValues(new Uint8Array(12)), value => value.toString(16).padStart(2, '0')).join(''), name: '', address: '', authenticationViewId: snapshot.connectedProfile?.authenticationViewId ?? 'owner',
             } })}><IconPlusOutlineRegular size={14} />{t('Add instance')}</button></div>}
     </div>
     <Modal open={!!confirmRemove} title={t('Remove instance?')} closeLabel={t('Close')}

@@ -95,8 +95,8 @@ try{
  await until(async()=>{const state=await send('Runtime.evaluate',{expression:'location.origin === '+JSON.stringify(cleanOrigin)+' && document.readyState === "complete"',returnByValue:true});return state.result.value;});
  const anonymous=await send('Runtime.evaluate',{expression:"fetch('/mygo/status').then(r=>r.status)",returnByValue:true,awaitPromise:true});
  if(!checkManagementRestore&&!checkManagementRecovery&&process.argv[2]!=='open-management'){
-  assert.equal(anonymous.result.value,401,'remote status still requires original authentication');
-  await writeFile(scratch+'/browser-admission.json',JSON.stringify({origin:cleanOrigin,anonymousHTTP:401,specialPortOverride:false}),{mode:0o600});
+  assert.equal(anonymous.result.value,410,'the clean mygo origin has no implicit remote status route');
+  await writeFile(scratch+'/browser-admission.json',JSON.stringify({origin:cleanOrigin,unscopedRemoteHTTP:410,specialPortOverride:false}),{mode:0o600});
  }
  await send('Page.navigate',{url});
  evaluate=expression=>new Promise((r,j)=>{const id=++sequence;pending.set(id,m=>m.error?j(Error('CDP evaluation failed')):r(m.result.result.value));ws.send(JSON.stringify({id,method:'Runtime.evaluate',params:{expression,returnByValue:true,awaitPromise:true}}));});
@@ -296,13 +296,15 @@ try{
    await writeFile(scratch+'/remove.png',Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'));
    console.log('Original used Terminal contribution removed twice; same local shell/outlet and unrelated session retained');
   } else {
-  await evaluate("dispatchEvent(new PageTransitionEvent('pagehide'))");
-  await until(()=>evaluate("document.querySelectorAll('[data-mygo-local-plugin]').length===0"));
-  assert.equal(await evaluate("document.getElementById('root')===globalThis.__MYGO_ORIGINAL_OUTLET__ && !!document.querySelector('#root [contenteditable=true]')"),true,'local disposal retains mounted original session UI');
-  const afterDisposal=await evaluate('globalThis.__MYGO_ENTRY_OWNERSHIP__.snapshot()');
-  assert.equal(afterDisposal.filter(row=>row.owner.kind==='local').length,0,'disposed local scope releases registry membership');
-  assert.deepEqual(afterDisposal,remoteEntries,'local lifecycle leaves remote entries and owners intact');
-  await writeFile(scratch+'/local-'+expected+'.json',JSON.stringify({officialUIReady:ready,...observation,layout,ownership,afterDisposal,lazyResponses,terminalChunks,sessionOpened:true,disposed:true},null,2));
+  if(!submit){
+   await evaluate("dispatchEvent(new PageTransitionEvent('pagehide'))");
+   await until(()=>evaluate("document.querySelectorAll('[data-mygo-local-plugin]').length===0"));
+   assert.equal(await evaluate("document.getElementById('root')===globalThis.__MYGO_ORIGINAL_OUTLET__ && !!document.querySelector('#root [contenteditable=true]')"),true,'local disposal retains mounted original session UI');
+   const afterDisposal=await evaluate('globalThis.__MYGO_ENTRY_OWNERSHIP__.snapshot()');
+   assert.equal(afterDisposal.filter(row=>row.owner.kind==='local').length,0,'disposed local scope releases registry membership');
+   assert.deepEqual(afterDisposal,remoteEntries,'local lifecycle leaves remote entries and owners intact');
+   await writeFile(scratch+'/local-'+expected+'.json',JSON.stringify({officialUIReady:ready,...observation,layout,ownership,afterDisposal,lazyResponses,terminalChunks,sessionOpened:true,disposed:true},null,2));
+  }
   }
   console.log('Configured shell, original outlet, session and lazy boot passed');
  }

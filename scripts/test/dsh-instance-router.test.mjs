@@ -17,6 +17,29 @@ const call = (url, { method = 'GET', headers = {}, body } = {}) => new Promise((
   req.end(body)
 })
 
+test('mygo starts without a privileged default instance and registers every profile through one interface', async () => {
+  let router
+  const server = createServer(async (req, res) => {
+    const route = router.resolve(req)
+    if (req.url === '/mygo-local/connection') await router.control(req, res, route)
+    else if (!route) res.writeHead(410).end()
+    else route.carrier.handle(req, res)
+  })
+  const origin = await listen(server)
+  router = createInstanceRouter({ publicOrigins: [origin] })
+  try {
+    assert.equal(router.connected, undefined)
+    assert.equal(router.resolve({ url: '/' }), undefined)
+    const profile = { id: 'first', name: 'First', address: 'http://127.0.0.1:4001', authenticationViewId: 'owner' }
+    const response = await call(origin + '/mygo-local/connection', { method: 'POST', headers: { origin, 'content-type': 'application/json' }, body: JSON.stringify(profile) })
+    assert.equal(response.status, 200)
+    assert.match(JSON.parse(response.text).url, /^\/mygo-instance\/[a-f0-9]{64}\/$/)
+  } finally {
+    router.close()
+    await new Promise(resolve => server.close(resolve))
+  }
+})
+
 test('instance routing isolates credentials, tabs and original authority while refusing cross-site control', async () => {
   const seen = []
   const host = label => createServer((req, res) => {

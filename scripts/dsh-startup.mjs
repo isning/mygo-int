@@ -11,10 +11,9 @@ import { createInstanceRouter } from './dsh-instance-router.mjs'
 
 const workspace = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const upstream = resolve(workspace, '.scratch/upstream/deepseek-harness')
-const bootEnabled = Boolean(process.env.DSH_ORIGIN)
 const composition = process.env.MYGO_CLIENT_COMPOSITION ?? 'single-root'
 if (!['legacy', 'single-root'].includes(composition)) throw Error('MYGO_CLIENT_COMPOSITION must be legacy or single-root')
-if (composition === 'single-root' && !bootEnabled) throw Error('single-root composition requires DSH_ORIGIN')
+const bootEnabled = composition === 'single-root' || Boolean(process.env.DSH_ORIGIN)
 if (process.env.DSH_COOKIE_FILE) throw new Error('Server-side DSH_COOKIE_FILE is retired; use original browser login')
 const localStartup = bootEnabled ? await readLocalStartup(workspace,
   process.env.MYGO_STARTUP_CONFIG ?? (composition === 'single-root'
@@ -57,7 +56,9 @@ if (command === 'serve') {
   if (bindHost !== '127.0.0.1' && publicOrigins.length === 0) throw Error('Non-loopback bind requires DSH_CLIENT_PUBLIC_ORIGIN')
   const trusted = createCarrierTrust({ publicOrigins })
   const types = { '.json': 'application/json', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf', '.txt': 'text/plain', '.svg': 'image/svg+xml', '.map': 'application/json' }
-  const provisionedProfile = bootEnabled ? { name: 'Local test DSH', ...bindLocalStartup(localStartup, process.env.DSH_ORIGIN).selectedInstance } : undefined
+  const provisionedProfile = composition === 'legacy' && process.env.DSH_ORIGIN
+    ? { name: 'Local test DSH', ...bindLocalStartup({ ...localStartup, selectedInstance: localStartup.selectedInstance ?? { id: 'local-test-dsh', authenticationViewId: 'owner' } }, process.env.DSH_ORIGIN).selectedInstance }
+    : undefined
   const routeFile = resolve(output, 'instance-routes.json')
   const credentialFile = resolve(output, 'instance-credentials.json')
   const clientConfigFile = resolve(output, 'client-config.json')
@@ -87,11 +88,14 @@ if (command === 'serve') {
   const server = createServer(async (request, response) => {
     try {
       if (!trusted(request)) { response.writeHead(403).end(); return }
+      const originalPath = new URL(request.url, 'http://localhost').pathname
       const route = router?.resolve(request)
-      if (router && !route) { response.writeHead(410).end('Instance route unavailable; reopen the client entry'); return }
+      const localPath = originalPath === '/' || originalPath === '/index.html' || originalPath.startsWith('/assets/')
+        || originalPath.startsWith('/mygo-local/') || originalPath.startsWith('/mygo-boot/')
+      if (router && !route && !localPath) { response.writeHead(410).end('Instance route unavailable; reopen the client entry'); return }
       const carrier = route?.carrier
       const requestPath = new URL(request.url, 'http://localhost').pathname
-      if (router && request.method === 'GET' && new URL(request.url, 'http://localhost').searchParams.has('token')) {
+      if (router && route && request.method === 'GET' && new URL(request.url, 'http://localhost').searchParams.has('token')) {
         await router.loginLink(request, response, route)
         return
       }
@@ -148,7 +152,7 @@ if (command === 'serve') {
         data = html
         extension = '.html'
       } else if (bootEnabled && path === '/mygo-local/startup.json') {
-        data = JSON.stringify({ ...localStartup, selectedInstance: route.profile })
+        data = JSON.stringify(route ? { ...localStartup, selectedInstance: route.profile } : localStartup)
         extension = '.json'
       } else if (bootEnabled && /^\/mygo-local\/plugins\/[a-zA-Z0-9_-]+\.js$/.test(path)) {
         const localRoot = await realpath(resolve(workspace, 'entries/dsh-startup/local/plugins'))

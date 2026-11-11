@@ -15,14 +15,27 @@ function fixture(t) {
   const key = 'mygo.instances.v2:http://mygo.test:4224'
   const start = (address = 'http://127.0.0.1:4001', admit = async () => {}) => {
     let service
+    const selectedInstance = address === null ? undefined : { id: 'first', address, authenticationViewId: 'owner' }
     apply({
-      mygoStartup: { configuration: { selectedInstance: { id: 'first', address, authenticationViewId: 'owner' } }, admit },
+      mygoStartup: { configuration: { selectedInstance }, admit },
       provide(name, value) { assert.equal(name, 'instanceManager'); service = value },
     })
     return service
   }
   return { values, key, start }
 }
+
+test('an empty client has no implicit instance and treats the first saved profile like every later profile', async t => {
+  const { start } = fixture(t)
+  const service = start(null)
+  assert.deepEqual(service.snapshot().catalog, [])
+  assert.equal(service.snapshot().connectedProfile, null)
+  assert.equal(service.snapshot().connectionStatus, 'idle')
+  await service.save({ id: 'first', name: 'First', address: 'https://first.example', authenticationViewId: 'owner' })
+  assert.equal(service.snapshot().catalog.length, 1)
+  assert.equal(service.snapshot().selectedId, 'first')
+  assert.equal(service.isConnectedProfile(service.snapshot().catalog[0]), false)
+})
 
 test('connection checks expose success and the original failure diagnostic', async t => {
   const { start } = fixture(t)

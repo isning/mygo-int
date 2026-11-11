@@ -27,7 +27,7 @@ export function createInstanceRouter({ connectedProfile, publicOrigins = [], pro
   }
   let savedCredentials = credentials.version === 2 ? structuredClone(credentials) : { version: 2, entries: {} }
   if (credentials.version === 1) {
-    for (const candidate of [...profiles, connectedProfile].map(validateConnectionProfile)) {
+    for (const candidate of [...profiles, connectedProfile].filter(Boolean).map(validateConnectionProfile)) {
       const legacyId = digest(JSON.stringify([candidate.id, candidate.address, candidate.authenticationViewId]))
       const credentialId = digest(JSON.stringify([candidate.id, candidate.authenticationViewId]))
       if (credentials.entries[legacyId]) savedCredentials.entries[credentialId] = { address: candidate.address, ...credentials.entries[legacyId] }
@@ -58,7 +58,7 @@ export function createInstanceRouter({ connectedProfile, publicOrigins = [], pro
   // The deployment-provided profile is authoritative for its stable identity.
   // Historical explicit routes remain aliases so open tabs recover after a
   // local Host restart changes its ephemeral address.
-  const connected = register(connectedProfile)
+  const connected = connectedProfile === undefined ? undefined : register(connectedProfile)
   async function authenticate(req, res, route, token, options) {
     await route.carrier.login(req, res, token, {
       ...options,
@@ -95,7 +95,7 @@ export function createInstanceRouter({ connectedProfile, publicOrigins = [], pro
       if (req.method === 'DELETE') {
         const removed = validateConnectionProfile(value)
         const key = JSON.stringify([removed.id, removed.authenticationViewId])
-        const activeKey = JSON.stringify([route.profile.id, route.profile.authenticationViewId])
+        const activeKey = route && JSON.stringify([route.profile.id, route.profile.authenticationViewId])
         if (key === activeKey) { res.writeHead(409, { 'cache-control': 'no-store' }).end(); return }
         const target = current.get(key)
         if (target) {
@@ -129,6 +129,7 @@ export function createInstanceRouter({ connectedProfile, publicOrigins = [], pro
         // connected route as context. Remote DSH paths must always name an
         // instance; silently sending /api or a socket to an implicit Host would
         // merge unrelated profiles and make a mygo address alias that Host.
+        if (!connected) return undefined
         return path === '/' || path === '/index.html' || path.startsWith('/assets/')
           || path.startsWith('/mygo-local/') || path.startsWith('/mygo-boot/') ? connected : undefined
       }
