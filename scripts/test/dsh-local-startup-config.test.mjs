@@ -1,8 +1,19 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { validateLocalStartup as validate, readLocalStartup } from '../dsh-local-startup-config.mjs'
+import { validateLocalStartup as validate, readLocalStartup, bindLocalStartup } from '../dsh-local-startup-config.mjs'
 const selectedInstance = { id: 'test-instance', authenticationViewId: 'owner' }
 const validateLocalStartup = value => validate({ selectedInstance, ...value })
+
+test('deployment binds the instance to its remote origin without changing composition or carrying credentials', () => {
+  const config = { schemaVersion: 1, selectedInstance, entries: [] }
+  const bound = bindLocalStartup(config, 'http://127.0.0.1:40369/')
+  assert.equal(bound.selectedInstance.address, 'http://127.0.0.1:40369')
+  assert.deepEqual(config.selectedInstance, selectedInstance)
+  assert.equal(bound.entries, config.entries)
+  for (const address of ['http://user:secret@localhost:40369/', 'http://localhost/?token=private', 'http://localhost/path', 'file:///tmp/test']) {
+    assert.throws(() => bindLocalStartup(config, address))
+  }
+})
 
 test('local composition selects distinct Loader entries without changing the base', async () => {
   const first = await readLocalStartup(process.cwd(), 'entries/dsh-startup/local/startup.json')

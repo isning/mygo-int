@@ -10,6 +10,7 @@ export function validateLocalStartup(value) {
     typeof selected[key] === 'string' && /^[a-zA-Z0-9_-]{1,128}$/.test(selected[key]))) {
     throw Error('Expected explicit selectedInstance id and authenticationViewId')
   }
+  if (selected.address !== undefined) validateInstanceAddress(selected.address)
   if (value.bootstrap !== undefined && (!Array.isArray(value.bootstrap) || value.bootstrap.length > 16)) throw Error('Invalid bootstrap plugin list')
   const ids = new Set()
   for (const entry of [...(value.bootstrap ?? []), ...value.entries]) {
@@ -25,6 +26,19 @@ export function validateLocalStartup(value) {
     ids.add(entry.id)
   }
   return value
+}
+
+function validateInstanceAddress(address) {
+  const url = new URL(address)
+  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash || url.pathname !== '/') {
+    throw Error('Expected a remote instance origin without credentials, path or token')
+  }
+  return url.origin
+}
+
+// Deployment metadata describes the fixed carrier target, never the UI origin.
+export function bindLocalStartup(value, remoteOrigin) {
+  return { ...value, selectedInstance: { ...value.selectedInstance, address: validateInstanceAddress(remoteOrigin) } }
 }
 
 export async function readLocalStartup(workspace, path) {

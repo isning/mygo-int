@@ -18,6 +18,12 @@ page designs.
   private launch link is required after a Host restart invalidates a login.
 - Instances keeps the original Models cards and editor. Small layout overrides
   allow long names and origins to wrap without pushing actions off screen.
+- The deployed startup response describes the bound DSH origin separately from
+  the mygo document origin. The default profile displays the actual fixed carrier
+  target from `DSH_ORIGIN`. Existing saved default profiles retain their name and
+  selection while the deployment-owned address is refreshed, including after a
+  test Host restart changes its port. Other saved profiles are preserved. This
+  metadata does not change routing or expose the loopback Host on the network.
 - Local settings and configuration errors use original error classes. The
   selected-profile badge uses the existing translated copy.
 - The default example note contributes an original neutral Tag through
@@ -47,11 +53,12 @@ bash scripts/dsh-upstream.sh verify
 git diff --check
 ```
 
-The repository suite passes 36 tests. Both adapted builds pass. The real Chromium
+The repository suite passes 37 tests. Both adapted builds pass. The real Chromium
 audit covers 360, 390, 768 and 1440 CSS-pixel widths for offline Instances, Local,
 Installed, Discover, built-in details, local plugin details, connected Instances
 and Client settings. It exercises all eight offline locales, reload persistence,
-Host locale adoption, original built-in configuration availability, long profile
+Host locale adoption, migration of a saved client-origin profile address to the
+actual DSH target, original built-in configuration availability, long profile
 names/origins, local note save/restore, touch plugin disposal/re-enable and visible
 keyboard focus. No Host management writes occur during the audit.
 

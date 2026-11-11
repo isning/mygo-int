@@ -6,7 +6,7 @@ import { createServer } from 'node:http'
 import { resolve, dirname, extname, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { execFileSync } from 'node:child_process'
-import { readLocalStartup } from './dsh-local-startup-config.mjs'
+import { readLocalStartup, bindLocalStartup } from './dsh-local-startup-config.mjs'
 
 const workspace = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const upstream = resolve(workspace, '.scratch/upstream/deepseek-harness')
@@ -84,7 +84,7 @@ if (command === 'serve') {
         data = html
         extension = '.html'
       } else if (bootEnabled && path === '/mygo-local/startup.json') {
-        data = JSON.stringify(localStartup)
+        data = JSON.stringify(bindLocalStartup(localStartup, process.env.DSH_ORIGIN))
         extension = '.json'
       } else if (bootEnabled && /^\/mygo-local\/plugins\/[a-zA-Z0-9_-]+\.js$/.test(path)) {
         const localRoot = await realpath(resolve(workspace, 'entries/dsh-startup/local/plugins'))

@@ -3,7 +3,7 @@ export const inject = ['mygoStartup']
 export function apply(ctx) {
   const boot = ctx.mygoStartup, bound = boot.configuration.selectedInstance
   const key = `mygo.instances.v1:${location.origin}:${bound.id}:${bound.authenticationViewId}`
-  const binding = { id: bound.id, name: 'Local test DSH', address: location.origin, authenticationViewId: bound.authenticationViewId }
+  const binding = { id: bound.id, name: 'Local test DSH', address: bound.address, authenticationViewId: bound.authenticationViewId }
   let catalog = [binding], selectedId = bound.id, diagnostic = '', revision = 0, connectionStatus = 'checking'
   const listeners = new Set(), notify = () => { for (const fn of listeners) fn() }
   function validate(row) {
@@ -12,14 +12,16 @@ export function apply(ctx) {
     let address
     try { address = new URL(row.address) } catch { throw Error('Invalid URL') }
     if (!['http:', 'https:'].includes(address.protocol) || address.username || address.password || address.search || address.hash || address.pathname !== '/') throw Error('Use an HTTP(S) origin without credentials, path or token')
-    if (row.id === bound.id && (address.origin !== location.origin || row.authenticationViewId !== bound.authenticationViewId)) throw Error('The carrier binding is operator configured; its address and authentication view cannot be changed here')
+    if (row.id === bound.id && (address.origin !== binding.address || row.authenticationViewId !== bound.authenticationViewId)) throw Error('The carrier binding is operator configured; its address and authentication view cannot be changed here')
     return { id: row.id, name: row.name.trim(), address: address.origin, authenticationViewId: row.authenticationViewId }
   }
   try {
     const saved = JSON.parse(localStorage.getItem(key) || 'null')
     if (saved) {
       if (saved.version !== 1 || !Number.isSafeInteger(saved.revision) || !Array.isArray(saved.catalog) || saved.catalog.length > 32) throw Error('Invalid catalog')
-      const rows = saved.catalog.map(validate)
+      // The carrier target is deployment-owned and can change ports on restart.
+      // Preserve device names/selection and other profiles; refresh only its address.
+      const rows = saved.catalog.map(row => validate(row?.id === bound.id ? { ...row, address: binding.address } : row))
       if (new Set(rows.map(r => r.id)).size !== rows.length || !rows.some(r => r.id === bound.id) || !rows.some(r => r.id === saved.selectedId)) throw Error('Invalid catalog identities')
       catalog = rows; selectedId = saved.selectedId; revision = saved.revision
     }
