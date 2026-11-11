@@ -1,5 +1,11 @@
 # Default single-root client (ticket 60)
 
+Current Plugins presentation and acceptance commands are documented in
+[Extend the original Plugins page](dsh-original-plugins-page.md). The flat
+three-source page and related isolated fixtures described below are historical;
+the original page now owns Host management, with native Local and Instance client
+tab contributions. The single-root, transport and persistence decisions remain.
+
 Both `dsh-startup.mjs` and the direct adapted build now default to `single-root`.
 The curated `local/single-root.json` loads local navigation, native Settings and
 unified Plugins with LOCAL, INSTANCE CLIENT and HOST actions in the original

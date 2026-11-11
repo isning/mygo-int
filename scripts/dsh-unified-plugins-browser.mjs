@@ -1,4 +1,4 @@
-// Complete-client acceptance for ticket 51; real Host, original browser authority.
+// Original Plugins page and native client-tab acceptance; real Host and authority.
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { readFile, mkdir, writeFile } from 'node:fs/promises'
@@ -65,52 +65,57 @@ try {
   mutations.length = 0
   await evaluate("[...document.querySelectorAll('button,[role=button]')].find(x => x.innerText === 'Plugins').click()")
   await pause(700)
-  assert.equal(await evaluate("!!document.querySelector('[data-mygo-unified-plugins]')"), true,
-    'original Plugins page is overridden through its original main Slot')
-  await until(() => evaluate("document.querySelectorAll('[data-plugin-source=HOST]').length > 0"))
-  const rows = await evaluate("[...document.querySelectorAll('[data-plugin-source]')].map(x => ({source:x.dataset.pluginSource,key:x.dataset.pluginKey,module:x.dataset.moduleName,owner:x.dataset.runtimeOwner}))")
-  for (const source of ['LOCAL','INSTANCE CLIENT','HOST']) assert.ok(rows.some(x => x.source === source), source + ' has actual entries')
-  assert.equal(new Set(rows.map(x => x.key)).size, rows.length, 'qualified identities distinguish every displayed entry')
-  const collision = rows.filter(x => x.module === '@deepseek-ai/dsh-client-ui-plugin-manager')
-  assert.ok(collision.some(x => x.source === 'HOST') && collision.some(x => x.source === 'INSTANCE CLIENT'), 'same original package appears independently in Host and instance client ownership')
-  const select = async (label, value) => {
-    await evaluate(`(() => { const el=document.querySelector('select[aria-label="${label}"]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(el,${JSON.stringify(value)}); el.dispatchEvent(new Event('change',{bubbles:true})); })()`)
-    await pause(150)
+  await until(() => evaluate("!!document.querySelector('[data-plugin-panel] [data-plugin-package]')"))
+  assert.equal(await evaluate("!!document.querySelector('[data-mygo-unified-plugins]')"), false, 'the custom replacement page is removed')
+  assert.equal(await evaluate("!!document.querySelector('[data-plugin-toolbar]')"), true, 'original header and toolbar remain')
+  const tab = async label => {
+    await evaluate(`[...document.querySelectorAll('[role=tab]')].find(x => x.innerText === ${JSON.stringify(label)}).click()`)
+    await pause(200)
   }
-  for (const source of ['LOCAL','INSTANCE CLIENT','HOST']) {
-    await select('Plugin source',source)
-    assert.deepEqual(await evaluate("[...new Set([...document.querySelectorAll('[data-plugin-source]')].map(x=>x.dataset.pluginSource))]"), [source])
+  const rpc = method => evaluate(`fetch('/api/${method}',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({type:'client-request',rpcId:'ui-read-'+Date.now(),method:'${method}',payload:{args:{}}})}).then(r=>r.json())`)
+  const settings = reply => { assert.equal(reply.result?.ok,true); return reply.result.value.namespaces.map(({ns,value,base,user,revision})=>({ns,value,base,user,revision})) }
+  const beforeSettings = settings(await rpc('settings/describe'))
+  const beforeInventory = await rpc('pluginInventory/list')
+  mutations.length = 0
+  await tab('Local')
+  await until(() => evaluate("!!document.querySelector('[data-mygo-plugin-source=LOCAL] [data-plugin-row=local-note]')"))
+  const localCount = await evaluate("document.querySelectorAll('[data-mygo-plugin-source=LOCAL] [data-plugin-row]').length")
+  const note = '[data-plugin-row="local-note"]'
+  const originalLabel = await evaluate("document.querySelector('[data-mygo-local-plugin=marker]').textContent")
+  assert.equal(await evaluate("document.querySelector('[data-plugin-row=client-composition] [role=switch]').disabled"), true, 'protected original row switches are disabled')
+  await evaluate(`document.querySelector('${note} [role=switch]').click()`)
+  await until(() => evaluate("!document.querySelector('[data-mygo-local-plugin=marker]')"))
+  await evaluate(`document.querySelector('${note} [role=switch]').click()`)
+  await until(() => evaluate("!!document.querySelector('[data-mygo-local-plugin=marker]')"))
+  await writeFile(scratch+'/plugins-local.png',Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'))
+  await evaluate(`document.querySelector('${note} button:not([role=switch])').click()`)
+  await until(() => evaluate("!!document.querySelector('[data-plugin-row-detail] [data-local-plugin-actions]')"))
+  await evaluate("document.querySelector('[data-local-plugin-actions] button[aria-label=\"Configure local plugin\"]').click()")
+  const save = async label => {
+    await evaluate(`(() => { const el=document.querySelector('[data-local-plugin-actions] textarea'); Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(el,${JSON.stringify(JSON.stringify({label}))}); el.dispatchEvent(new Event('input',{bubbles:true})); })()`)
+    await evaluate("[...document.querySelectorAll('[data-local-plugin-actions] button')].find(x=>x.innerText==='Save and apply locally').click()")
+    await until(() => evaluate(`document.querySelector('[data-mygo-local-plugin=marker]')?.textContent === ${JSON.stringify(label)}`))
   }
-  await select('Plugin source','all')
-  await select('Plugin instance','local-test-dsh')
-  assert.equal(await evaluate("!!document.querySelector('[data-plugin-source=LOCAL]')"),false,'instance filter excludes device-owned entries')
-  await select('Plugin instance','device')
-  assert.deepEqual(await evaluate("[...new Set([...document.querySelectorAll('[data-plugin-source]')].map(x=>x.dataset.pluginSource))]"),['LOCAL'])
-  assert.equal(await evaluate("!!document.querySelector('[data-module-name=\"./plugins/marker.js\"] [data-local-plugin-actions]')"),true,'unified page exposes device-local lifecycle actions')
-  assert.equal(mutations.length,0,'inspection performs no Host mutation')
-  if (process.env.MYGO_CHECK_INVENTORY_ERRORS === '1') {
-    await select('Plugin source', 'all')
-    await select('Plugin instance', 'all')
-    const refresh = () => evaluate("[...document.querySelectorAll('button')].find(x => x.innerText === 'Refresh inventory').click()")
-    const status = () => evaluate("document.querySelector('[data-mygo-unified-plugins] > p[role=status]').innerText")
-    await send('Network.setBlockedURLs', { urls: ['*/api/pluginInventory/list*'] })
-    await refresh()
-    await until(async () => (await status()).startsWith('Host inventory unavailable:'))
-    const transport = await status()
-    assert.match(transport, /transport failure.*gateway\/internal.*Failed to fetch/i, 'inventory retains the original transport failure and code')
-    await send('Network.setBlockedURLs', { urls: [] })
-    await refresh()
-    await until(async () => (await status()) === 'Host inventory read through original Remote')
-    await send('Network.clearBrowserCookies')
-    await refresh()
-    await until(async () => (await status()).startsWith('Host inventory unavailable:'))
-    const authentication = await status()
-    assert.match(authentication, /authentication or permission refusal.*gateway\/internal.*HTTP 401/i, 'inventory retains original authentication refusal and code')
-    await writeFile(scratch + '/inventory-errors-result.json', JSON.stringify({ ok: true, transport, authentication }), { mode: 0o600 })
-  }
-  await writeFile(scratch+'/unified-plugin-result.json',JSON.stringify({ok:true,rows,sourceFilters:true,instanceFilter:true,packageCollision:true,hostMutations:mutations}),{mode:0o600})
-  await writeFile(scratch+'/unified-plugin.png',Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'))
-  console.log('Original Plugins Slot: three actual sources, qualified collisions and source/instance filters passed')
+  await save('Original page local configuration')
+  await save(originalLabel)
+  await tab('Instance client')
+  await until(() => evaluate("!!document.querySelector('[data-mygo-plugin-source=\"INSTANCE CLIENT\"] [data-plugin-row]')"))
+  const clientCount = await evaluate("document.querySelectorAll('[data-mygo-plugin-source=\"INSTANCE CLIENT\"] [data-plugin-row]').length")
+  assert.equal(await evaluate("document.querySelectorAll('[data-mygo-plugin-source=\"INSTANCE CLIENT\"] [role=switch]').length"), 0, 'client delivery has no Host switches')
+  await evaluate("document.querySelector('[data-mygo-plugin-source=\"INSTANCE CLIENT\"] [data-plugin-row] button').click()")
+  await until(() => evaluate("!!document.querySelector('[data-plugin-row-detail] [data-instance-client-actions]')"))
+  assert.deepEqual(settings(await rpc('settings/describe')), beforeSettings, 'local management preserves Host settings/revisions')
+  assert.deepEqual(await rpc('pluginInventory/list').then(answer=>answer.result), beforeInventory.result, 'local management preserves actual Host inventory')
+  assert.equal(mutations.length,0,'local workflows perform no Host management writes')
+  await tab('Installed')
+  await until(() => evaluate("document.querySelectorAll('[data-plugin-package]').length > 0"))
+  await writeFile(scratch+'/plugins-original-desktop.png',Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'))
+  await send('Emulation.setDeviceMetricsOverride', {width:390,height:844,deviceScaleFactor:1,mobile:true})
+  await pause(400)
+  assert.equal(await evaluate('document.documentElement.scrollWidth <= window.innerWidth'),true,'original page fits a narrow viewport')
+  await writeFile(scratch+'/plugins-original-mobile.png',Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'))
+  await writeFile(scratch+'/original-plugins-validation.json',JSON.stringify({ok:true,localCount,clientCount,originalMain:true,originalRowDetail:true,localToggle:true,localConfig:true,hostMutations:mutations,narrowViewport:true}),{mode:0o600})
+  console.log('Original Plugins page, native source tabs/details, local lifecycle/configuration and narrow viewport passed')
   await Promise.race([send('Browser.close'), pause(5000)])
 } catch (error) {
   await writeFile(scratch + '/unified-plugin-failure.json', JSON.stringify({ stage, error: error.message, errors, mutations, text: evaluate ? await evaluate('document.body.innerText').catch(() => '') : '' }), { mode: 0o600 })

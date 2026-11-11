@@ -1,132 +1,93 @@
-// Source-scoped override of the pinned original Plugins surface, in the shared root.
+// Extend the original Plugins page through its native tab contract. The original
+// main registration, page, Host controller, cards and dialogs stay in charge.
 import React, { useEffect, useState } from 'react'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
 import type {} from '@deepseek-ai/dsh-client-modules/client'
-import type {} from '@deepseek-ai/dsh-api-remotes/client'
-import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
-import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
-import { RowsSection } from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-plugin-manager/src/client/PluginManagerPage.tsx?mygo-rows'
-import { en } from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-plugin-manager/src/client/locales.ts'
+import { Tag } from '@deepseek-ai/dsh-client-ui-primitives'
+import { RowsSection, RowDetail } from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-plugin-manager/src/client/PluginManagerPage.tsx?mygo-rows'
+import type { PackageRow, PackageView } from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-plugin-manager/src/client/manager-store.ts'
+import type { PluginManagerPageProps } from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-plugin-manager/src/client/PluginManagerPage.tsx'
 import css from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-plugin-manager/src/client/PluginManagerPage.module.css'
-import { HostPluginActions } from './unified-host-actions'
-import { InstanceClientActions } from './unified-instance-actions'
 import { LocalPluginActions, type LocalCompositionService } from './unified-local-actions'
-import type { PackageRow } from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-plugin-manager/src/client/manager-store.ts'
+import { InstanceClientActions } from './unified-instance-actions'
 
-type InspectRow = Omit<PackageRow, 'entryId'> & { readonly entryId?: string }
-type Instance = { id: string; name: string; authenticationViewId: string }
-type Services = {
+type Source = 'LOCAL' | 'INSTANCE CLIENT'
+type ClientContext = Context & {
   clientComposition: LocalCompositionService
-  instanceManager: {
-    snapshot(): { catalog: Instance[]; connectedId: string; selectedId: string }
-    availability(instance: Instance): string
-    subscribe(fn: () => void): () => void
+  mygoStartup: {
+    admit(): Promise<void>
+    ownsEntry(entry: unknown): boolean
+    configuration: { selectedInstance: { id: string; authenticationViewId: string } }
   }
-  mygoStartup: { admit(): Promise<void>; ownsEntry(entry: unknown): boolean; configuration: { selectedInstance: { id: string; authenticationViewId: string } } }
 }
-type SurfaceContext = Context & Services
-type Source = 'LOCAL' | 'INSTANCE CLIENT' | 'HOST'
-type InventoryRow = { source: Source; instance: string; owner: string; key: string; row: InspectRow }
+type InspectRow = Omit<PackageRow, 'entryId'> & { entryId?: string }
+type Translate = PluginManagerPageProps['t']
 const phases = ['pending', 'loading', 'active', 'failed', null, 'unloading'] as const
-const translate = (key: keyof typeof en, params: Record<string, string> = {}) =>
-  Object.entries(params).reduce((text, [name, value]) => text.replaceAll(`{${name}}`, value), en[key] ?? key)
-const resolveText = (text: string | Record<string, string> | undefined) => typeof text === 'string' ? text : text?.en ?? ''
 
-function inventoryFailure(error: unknown) {
-  const original = error && typeof error === 'object'
-    ? error as { code?: unknown; message?: unknown; details?: unknown }
-    : undefined
-  const code = original?.code === undefined ? '' : String(original.code)
-  const message = original?.message === undefined ? String(error) : String(original.message)
-  const category = code === 'remote-access/denied' || /\bHTTP (401|403)\b/.test(message)
-    ? 'authentication or permission refusal'
-    : /transport failure|Failed to fetch|NetworkError|fetch failed|Load failed/i.test(message)
-      ? 'transport failure' : 'Remote failure'
-  const details = original?.details === undefined ? '' : JSON.stringify(original.details)
-  return `Host inventory unavailable: ${category} · ${[code, message, details].filter(Boolean).join(' · ')}`
-}
-
-function PluginInventory({ ctx }: { ctx: SurfaceContext }) {
-  const [, update] = useState(0)
-  const [source, setSource] = useState('all'), [instance, setInstance] = useState('all')
-  const [hostRows, setHostRows] = useState<InspectRow[]>([])
-  const [hostStatus, setHostStatus] = useState('Loading Host inventory…')
-  const [refresh, setRefresh] = useState(0)
+function ClientPlugins({ ctx, source, t }: { ctx: ClientContext; source: Source; t: Translate }) {
+  const [, refresh] = useState(0)
+  const [selected, select] = useState<string>()
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const resolveText = (text: Parameters<typeof ctx.locale.resolveText>[0]) => ctx.locale.resolveText(text)
   useEffect(() => {
-    const notify = () => update(value => value + 1)
-    const local = ctx.clientComposition.subscribe(notify)
-    const catalog = ctx.instanceManager.subscribe(notify)
-    const status = ctx.on('internal/status', notify)
-    // Loader entries and manifest can change even while this page is hidden.
-    const timer = setInterval(notify, 1000)
-    return () => { local(); catalog(); status(); clearInterval(timer) }
+    const update = () => refresh(value => value + 1)
+    const off = ctx.clientComposition.subscribe(update)
+    const status = ctx.on('internal/status', update)
+    const timer = setInterval(update, 1000)
+    return () => { off(); status(); clearInterval(timer) }
   }, [ctx])
-  useEffect(() => {
-    let live = true
-    setHostStatus('Loading Host inventory…')
-    void ctx.remote.pluginInventory.list().then(answer => {
-      if (!live) return
-      if (!answer.ok) { setHostStatus(inventoryFailure(answer.error)); return }
-      setHostRows(answer.value.entries.map(entry => ({
-        entryId: entry.entryId, rowId: entry.entryId, moduleName: entry.moduleName,
-        enabled: entry.enabled, phase: entry.fiberPhase,
-        ...(entry.meta ? { meta: entry.meta } : {}),
-        ...(entry.diagnostic ? { diagnostic: entry.diagnostic } : {}),
-      })))
-      setHostStatus('Host inventory read through original Remote')
-    }).catch(error => { if (live) setHostStatus(inventoryFailure(error)) })
-    return () => { live = false }
-  }, [ctx, refresh])
-  const catalog = ctx.instanceManager.snapshot()
-  const bound = ctx.mygoStartup.configuration.selectedInstance
-  const rows: InventoryRow[] = []
-  const add = (source: Source, row: InspectRow) => {
-    const local = source === 'LOCAL'
-    rows.push({ source, instance: local ? 'device' : bound.id,
-      owner: local ? 'Device client runtime' : source === 'HOST' ? `Host runtime · ${bound.id} · ${bound.authenticationViewId}` : `Device client runtime · instance ${bound.id} · ${bound.authenticationViewId}`,
-      key: JSON.stringify([source, local ? null : bound.id, local ? null : bound.authenticationViewId, row.entryId ?? row.rowId]), row })
-  }
-  for (const row of ctx.clientComposition.rows()) add('LOCAL', row)
-  const supplied = new Set(ctx.modules.manifest.plugins.map(plugin => plugin.id))
-  for (const entry of ctx.loader.entries()) {
-    if (ctx.mygoStartup.ownsEntry(entry) || !supplied.has(entry.options.name)) continue
-    add('INSTANCE CLIENT', {
+  const local = ctx.clientComposition.rows()
+  const rows: InspectRow[] = source === 'LOCAL' ? local.map(row => ({ ...row,
+    ...(row.readOnlyReason ? { readOnlyReason: 'management-required' as const } : {}),
+  })) : [...ctx.loader.entries()].filter(entry => !ctx.mygoStartup.ownsEntry(entry)
+    && ctx.modules.manifest.plugins.some(plugin => plugin.id === entry.options.name)).map(entry => ({
       entryId: entry.id, rowId: entry.options.id, moduleName: entry.options.name,
       enabled: !entry.disabled, phase: entry.fiber ? phases[entry.fiber.state] ?? null : null,
-    })
-  }
-  for (const row of hostRows) add('HOST', row)
-  const shown = rows.filter(row => (source === 'all' || row.source === source) && (instance === 'all' || row.instance === instance))
-  return <section className={css.page} data-mygo-unified-plugins="" style={{ overflow: 'auto', fontFamily: 'var(--dsw-font-family, system-ui)' }}>
-    <h1 className={css.pageTitle}>Plugins</h1>
-    <p>Inspect actual LOCAL, INSTANCE CLIENT and HOST entries. Actions apply to the labelled runtime only.</p>
-    <p>Connected instance: {catalog.connectedId} · authentication view: {bound.authenticationViewId}</p>
-    <label>Source <select aria-label="Plugin source" value={source} onChange={event => setSource(event.target.value)}>
-      <option value="all">All sources</option>{(['LOCAL', 'INSTANCE CLIENT', 'HOST'] as const).map(value => <option key={value}>{value}</option>)}
-    </select></label>{' '}
-    <label>Instance <select aria-label="Plugin instance" value={instance} onChange={event => setInstance(event.target.value)}>
-      <option value="all">All instances and device</option><option value="device">Device local</option>
-      {catalog.catalog.map(row => <option key={row.id} value={row.id}>{row.name} · {row.id}</option>)}
-    </select></label>{' '}
-    <Button onClick={() => setRefresh(value => value + 1)}>Refresh inventory</Button>
-    <p role="status">{hostStatus}</p>
-    {catalog.catalog.filter(row => row.id !== catalog.connectedId).map(row => <p key={row.id}>{row.name}: {ctx.instanceManager.availability(row)}</p>)}
-    {catalog.selectedId !== catalog.connectedId && <p>Catalog preference differs from the connected instance; the connection has not switched.</p>}
-    <p>{shown.length} entries</p>
-    {shown.length === 0 && <p>No entries match these filters.</p>}
-    {shown.map(({ source, owner, key, row }) => <article key={key} data-plugin-source={source} data-plugin-key={key} data-module-name={row.moduleName} data-runtime-owner={owner}>
-      <p><strong>{source}</strong> · {owner} · Entry <code>{row.entryId ?? row.rowId}</code></p>
-      <RowsSection rows={[row]} t={translate} resolveText={resolveText} />
-      {source === 'HOST' && <HostPluginActions ctx={ctx} row={row} onChanged={() => setRefresh(value => value + 1)} />}
-      {source === 'INSTANCE CLIENT' && <InstanceClientActions ctx={ctx} row={row} onChanged={() => { update(value => value + 1); setRefresh(value => value + 1) }} />}
-      {source === 'LOCAL' && <LocalPluginActions ctx={ctx} row={row} onChanged={() => setRefresh(value => value + 1)} />}
-    </article>)}
+    }))
+  const row = rows.find(row => row.entryId === selected)
+  const scope = source === 'LOCAL' ? 'This device' : ctx.mygoStartup.configuration.selectedInstance.id
+  const pkg: PackageView = { name: scope, meta: { title: source === 'LOCAL' ? 'Local plugins' : 'Instance client' },
+    official: false, installed: false, availability: 'profile', optional: false, removable: false,
+    updatable: false, enabled: true, rows: rows as PackageRow[] }
+  if (row) return <RowDetail pkg={pkg} row={row} t={t} resolveText={resolveText} form={undefined}
+    onBack={() => select(undefined)} renderSlot={(key, owner) => {
+      if (key === 'plugins.detail.badge') return <Tag tone="neutral">{source === 'LOCAL' ? 'Local' : 'Instance client'}</Tag>
+      if (key !== 'plugins.row.config') return null
+      if (owner.view === 'summary') return source === 'LOCAL' ? 'Runs on this device.' : `Supplied by ${scope}; runs on this device.`
+      return source === 'LOCAL'
+        ? <LocalPluginActions ctx={ctx} row={row} onChanged={() => refresh(value => value + 1)} />
+        : <InstanceClientActions ctx={ctx} row={row} onChanged={() => refresh(value => value + 1)} />
+    }} />
+  return <section className={css.group} data-mygo-plugin-source={source}>
+    <p className={css.pageIntro}>{source === 'LOCAL'
+      ? 'Plugins on this device. Changes here do not modify your Host.'
+      : `Client plugins supplied by ${scope}. Their versions follow the instance.`}</p>
+    {error && <p role="alert" className={css.reason}>{error}</p>}
+    <RowsSection rows={rows} t={t} resolveText={resolveText}
+      configure={{ has: row => row.entryId !== undefined, open: row => select(row.entryId) }}
+      toggle={source === 'LOCAL' ? {
+        busy: () => busy || ctx.clientComposition.status().busy,
+        onSetEnabled: (row, enabled) => {
+          if (busy || !row.entryId) return
+          setBusy(true); setError('')
+          void ctx.clientComposition.change(row.entryId, { disabled: !enabled }, ctx.clientComposition.status().revision)
+            .catch(error => setError(error instanceof Error ? error.message : String(error)))
+            .finally(() => setBusy(false))
+        },
+      } : undefined} />
   </section>
 }
 
-export function register(ctx: SurfaceContext) {
-  ctx.slots.inject('main', () => ctx.slots.register({
-    name: 'main', key: 'plugins' as MainPanelId, priority: -100,
-  }, () => <PluginInventory ctx={ctx} />))
+export function register(ctx: ClientContext) {
+  // The original main entry owns the page and its child-slot declarations.
+  // Contributions use those declarations rather than replacing the page or
+  // duplicating its controller, navigation state, header, CSS or dialogs.
+  ctx.slots.inject('plugins.tab', function* () {
+    yield ctx.slots.register({ name: 'plugins.tab', id: 'mygo-local', label: 'Local', order: -20, locale: 'pluginManager' },
+      ({ t }) => <ClientPlugins ctx={ctx} source="LOCAL" t={t} />)
+    yield ctx.slots.register({ name: 'plugins.tab', id: 'mygo-instance-client', label: 'Instance client', order: -10, locale: 'pluginManager' },
+      ({ t }) => <ClientPlugins ctx={ctx} source="INSTANCE CLIENT" t={t} />)
+  })
 }
