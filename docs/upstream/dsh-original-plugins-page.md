@@ -169,9 +169,11 @@ there is no duplicate Client heading or stacked subsection/button layout.
 Instances directly imports ModelsSection's styles for its title, cards, action
 buttons, inset editor, inputs, advanced fields and dashed Add instance row.
 It presents one editor at a time; Name/Address are primary, while stable Instance
-ID and Authentication view are advanced. New IDs are generated with
-`crypto.getRandomValues`, which also works on the HTTP Tailscale demo. Bound
-address/authentication are read-only. Save failures retain drafts; Cancel writes
+ID is advanced. Authentication view is not a form field: new saved profiles
+inherit the bound connection’s internal context, and editing preserves their
+existing context. New IDs are generated with
+`crypto.getRandomValues`, which also works on the HTTP Tailscale demo. The bound
+address is read-only. Save failures retain drafts; Cancel writes
 nothing. Existing catalog validation, admission, persistence and selection are
 unchanged. Availability indicates the admission check, not a new transport;
 selecting an additional saved profile never changes the active carrier.

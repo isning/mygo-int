@@ -134,7 +134,6 @@ function InstanceEditor({ service, target, onClose }) {
       <summary className={modelsCSS.customizedSummary}>Advanced</summary>
       <div className={modelsCSS.customizedBody}>
         {field('id', 'Instance ID', !!target.id)}
-        {field('authenticationViewId', 'Authentication view', bound)}
       </div>
     </details>
     {error && <p className={modelsCSS.error} role="alert">{error}</p>}
@@ -190,7 +189,7 @@ function Instances({ ctx, run }) {
       {editing?.id === null ? <InstanceEditor key="new-instance" service={service} target={editing} onClose={() => setEditing(null)} />
         : <div className={modelsCSS.addActions}><button type="button" className={modelsCSS.addButton}
             disabled={snapshot.catalog.length >= 32} onClick={() => setEditing({ id: null, draft: {
-              id: 'instance-' + Array.from(crypto.getRandomValues(new Uint8Array(12)), value => value.toString(16).padStart(2, '0')).join(''), name: '', address: '', authenticationViewId: 'owner',
+              id: 'instance-' + Array.from(crypto.getRandomValues(new Uint8Array(12)), value => value.toString(16).padStart(2, '0')).join(''), name: '', address: '', authenticationViewId: snapshot.catalog.find(row => row.id === snapshot.connectedId).authenticationViewId,
             } })}><IconPlusOutlineRegular size={14} />Add instance</button></div>}
     </div>
     <p className={modelsCSS.advancedHint}>Additional profiles can be saved; connecting to them is not available yet.</p>

@@ -86,13 +86,23 @@ try {
   const beforeSettings = settings(await rpc('settings/describe'))
   const beforeInventory = await rpc('pluginInventory/list')
   mutations.length = 0
-  const openClientSettings = async () => {
+  const openClientSettings = async (attempt = 0) => {
+    if (!await evaluate("!!document.querySelector('[data-plugin-panel]')")) {
+      await until(() => evaluate("[...document.querySelectorAll('button')].some(x=>x.innerText==='Plugins')"))
+      await evaluate("[...document.querySelectorAll('button')].find(x=>x.innerText==='Plugins').click()")
+      await until(() => evaluate("!!document.querySelector('[data-plugin-panel]')"))
+    }
+    await until(() => evaluate("!!document.querySelector('[aria-label=\"Account menu\"]')"))
     await evaluate("document.querySelector('[aria-label=\"Account menu\"]').click()")
     await until(() => evaluate("[...document.querySelectorAll('[role=menuitem]')].some(x=>x.innerText.includes('Settings'))"))
     await evaluate("[...document.querySelectorAll('[role=menuitem]')].find(x=>x.innerText.includes('Settings')).click()")
     await until(() => evaluate("!!document.querySelector('[data-shortcut-modal=settings]')"))
     // Let the original account menu finish its close/return-focus transition.
     await pause(250)
+    if (!await evaluate("[...document.querySelectorAll('[data-shortcut-modal=settings] nav button')].some(x=>x.innerText==='Client')")) {
+      if (attempt < 2) return openClientSettings(attempt + 1)
+      throw Error('Settings closed during the original shell startup transition')
+    }
     await evaluate("[...document.querySelectorAll('[data-shortcut-modal=settings] nav button')].find(x=>x.innerText==='Client').click()")
     await until(() => evaluate("!!document.querySelector('[data-mygo-client-settings]')"))
   }
@@ -120,11 +130,16 @@ try {
   const boundInstance = await evaluate("document.querySelector('[data-instance-id]').dataset.instanceId")
   await evaluate("[...document.querySelectorAll('[data-mygo-instances] button')].find(x=>x.innerText==='Add instance').click()")
   await until(() => evaluate("!!document.querySelector('[data-instance-editor]')"))
+  assert.equal(await evaluate("!!document.querySelector('[data-instance-editor] input[aria-label=\"Authentication view\"]')"),false,'authentication context is managed internally, not an editable instance field')
   const addedInstance = await evaluate("document.querySelector('[data-instance-editor] input[aria-label=\"Instance ID\"]').value")
   await fillInstance('Name','Work PC')
   await fillInstance('Address','https://example.invalid')
   await instanceSave()
   await until(() => evaluate(`!!document.querySelector('[data-instance-id="${addedInstance}"]') && !document.querySelector('[data-instance-editor]')`))
+  assert.equal(await evaluate(`(() => {
+    const saved=Object.keys(localStorage).filter(key=>key.startsWith('mygo.instances.v1:')).map(key=>JSON.parse(localStorage.getItem(key))).find(value=>value.catalog.some(row=>row.id==='${addedInstance}'));
+    return saved.catalog.find(row=>row.id==='${addedInstance}').authenticationViewId === saved.catalog.find(row=>row.id==='${boundInstance}').authenticationViewId;
+  })()`),true,'new profiles inherit the current authentication context without asking for a role')
   await evaluate("document.querySelector('[data-mygo-instances] [aria-label=\"Select Work PC\"]').click()")
   await until(() => evaluate("document.querySelector('[data-mygo-instances]').innerText.includes('Your active connection has not changed')"))
   assert.equal(await evaluate(`document.querySelector('[data-instance-id="${boundInstance}"]').innerText.includes('Current')`),true,'selecting an external profile never claims the active connection switched')
