@@ -1,6 +1,6 @@
 // Extend the original Plugins page through its native tab contract. The original
 // main registration, page, Host controller, cards and dialogs stay in charge.
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
 import type {} from '@deepseek-ai/dsh-client-modules/client'
@@ -37,6 +37,11 @@ function LocalPlugins({ ctx, t, facts }: { ctx: ClientContext; t: Translate; fac
   const [, refresh] = useState(0)
   const [selected, select] = useState<string>()
   const [component, setComponent] = useState(false)
+  const panelRef = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    // Local navigation shares the original page's scroller and header.
+    panelRef.current?.closest('[data-plugin-body]')?.scrollTo({ top: 0, behavior: 'instant' })
+  }, [selected, component])
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const resolveText = (text: Parameters<typeof ctx.locale.resolveText>[0]) => ctx.locale.resolveText(text)
@@ -79,20 +84,20 @@ function LocalPlugins({ ctx, t, facts }: { ctx: ClientContext; t: Translate; fac
   }
   const back = () => { select(undefined); setComponent(false) }
   if (row) {
-    if (localPluginInfo[row.moduleName]?.group === 'basic') return <ItemDetail
-      item={itemFor(row)} t={t} form={undefined} renderSlot={renderLocal} onBack={back} />
+    if (localPluginInfo[row.moduleName]?.group === 'basic') return <div ref={panelRef}><ItemDetail
+      item={itemFor(row)} t={t} form={undefined} renderSlot={renderLocal} onBack={back} /></div>
     const selectedPackage = packageFor(row)
-    if (component) return <RowDetail pkg={selectedPackage} row={row as PackageRow} t={t}
-      resolveText={resolveText} form={undefined} renderSlot={renderLocal} onBack={() => setComponent(false)} />
-    return <PackageDetail pkg={selectedPackage} t={t} resolveText={resolveText}
+    if (component) return <div ref={panelRef}><RowDetail pkg={selectedPackage} row={row as PackageRow} t={t}
+      resolveText={resolveText} form={undefined} renderSlot={renderLocal} onBack={() => setComponent(false)} /></div>
+    return <div ref={panelRef}><PackageDetail pkg={selectedPackage} t={t} resolveText={resolveText}
       busy={busy || ctx.clientComposition.status().busy} rowBusy={() => busy} configured={false}
       configure={{ has: () => true, open: () => setComponent(true) }} renderSlot={renderLocal}
       inMore={false} versions={undefined} detail={null} onBack={back}
       onSetEnabled={enabled => change(row, enabled)} onSetRowEnabled={(entry, enabled) => change(entry, enabled)}
       onUninstall={() => {}} onUpdate={() => {}} onEnsureVersions={() => {}}
-      onCheckVersions={() => {}} onUpdateVersion={() => {}} />
+      onCheckVersions={() => {}} onUpdateVersion={() => {}} /></div>
   }
-  return <div className={css.installedPanel} data-mygo-plugin-source="LOCAL">
+  return <div ref={panelRef} className={css.installedPanel} data-mygo-plugin-source="LOCAL">
     {error && <p role="alert" className={css.reason}>{error}</p>}
     {(['basic', 'extensions', 'bundles'] as const).map(group => {
       const members = rows.filter(row => (localPluginInfo[row.moduleName]?.group ?? 'bundles') === group)

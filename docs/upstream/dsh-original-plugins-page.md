@@ -113,3 +113,11 @@ and unchanged Host settings/inventory with zero Host management writes.
 Evidence: `.scratch/test-dsh/local-structure-validation.json`,
 `plugins-local.png`, and `plugins-local-package.png`. This focused checkpoint
 passed; it does not claim a rerun of the full remote Components checkpoint.
+
+Local navigation resets the original `[data-plugin-body]` scroller on item,
+package and component transitions. Without that reset, opening a card after
+scrolling the narrow list retained scrollTop=128 and scrolled the shared Plugins
+title/intro out of view. The focused browser checkpoint reproduces this on a
+390×600 viewport and now asserts scrollTop=0 and the original title/intro after
+navigation. `plugins-local-header.png` captures the corrected shared header.
+No duplicate header or alternative page CSS is introduced.
