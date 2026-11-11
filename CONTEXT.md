@@ -13,7 +13,10 @@ _Avoid_: Monolithic client core, built-in universal session manager
 
 **Client composition**:
 The set of local plugins and their configuration that together provide the client
-experience, including its shell, navigation and features.
+experience, including its shell, navigation and features. In the current DSH
+integration, local plugins and instance-supplied client entries share one client
+Cordis Context and original Loader. Their owners and management authorities remain
+distinct; the Host runs its own server-side tree.
 _Avoid_: Features necessarily hard-coded into the base
 
 **Startup configuration**:

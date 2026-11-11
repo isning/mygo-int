@@ -1,0 +1,41 @@
+# One client composition with owner-scoped management
+
+Status: accepted, 2026-11-11.
+
+The accepted single-client specification replaces the earlier two-root startup
+assembly. mygo supplies one client Cordis Context and the original DSH Loader.
+Local entries and unchanged instance-delivered client halves participate in that
+runtime, using original services, React singletons, Slots, Remote and event APIs.
+The Host continues to own a separate server-side runtime. No plugin rewrite,
+second SDK or serialized remote UI protocol is required by this integration.
+
+Local plugins contribute navigation, Settings and a unified Plugins page through
+original Slots. The default path has no outer shell or independently mounted
+floating settings application. Historical legacy startup is available only by
+explicit selection; startup failure never selects it as a fallback.
+
+The Host manifest controls only its managed client entries. Configured local
+module identities are protected before reconciliation; conflicting graphs fail
+with diagnostics while unrelated entries remain intact. Package identity,
+concrete Entry identity and owner identity serve different purposes.
+
+Unified presentation does not unify mutation authority. LOCAL actions use the
+device composition adapter; INSTANCE CLIENT actions expose the original managed
+roster's supported lifecycle; HOST actions explicitly invoke the connected
+Host's original controller and permissions. Local enablement and configuration
+do not implicitly issue Host management writes. Trusted plugin code retains its
+declared RPC behavior; ownership attribution is not a security sandbox.
+
+The persistence, runtime-first commit, rollback and admission decisions in
+[ADR 0003](0003-local-management-and-device-startup-overlays.md) remain in force.
+Only exact known legacy compositions migrate retained entry preferences.
+Unrecognized or invalid overlays retain their saved data and expose recovery to
+the operator baseline rather than silently reinterpreting entries.
+
+This implementation binds one instance and authentication view. Catalog selection
+does not switch its carrier. Concurrent instance isolation, native renderers and
+non-owner browser provisioning require further work. Original browser authority
+from [ADR 0002](0002-dsh-browser-authority-and-permissions.md) remains unchanged.
+
+See the [specification](../specs/mygo-single-client-composition.md) and
+[integrated validation](../upstream/dsh-default-client.md).
