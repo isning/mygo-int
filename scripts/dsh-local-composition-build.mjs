@@ -3,7 +3,9 @@ import { createRequire } from 'node:module'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 const root = process.cwd()
-const singleRoot = process.env.MYGO_CLIENT_COMPOSITION === 'single-root'
+const composition = process.env.MYGO_CLIENT_COMPOSITION ?? 'single-root'
+if (!['legacy', 'single-root'].includes(composition)) throw Error('MYGO_CLIENT_COMPOSITION must be legacy or single-root')
+const singleRoot = composition === 'single-root'
 const upstream = resolve('.scratch/upstream/deepseek-harness')
 const web = resolve(upstream, 'apps/web')
 const require = createRequire(web + '/package.json')

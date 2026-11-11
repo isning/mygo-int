@@ -4,7 +4,6 @@ import { spawn } from 'node:child_process'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { openSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { protectLocalEntryModules } from '../entries/dsh-startup/local-entry-boundary.js'
 import { observeManagedRoster } from './test/helpers/dsh-managed-roster.js'
 const scratch = resolve('.scratch/test-dsh')
 const profile = scratch + '/roster-browser-' + Date.now()
@@ -40,7 +39,7 @@ try {
     return result.result.value
   }
   await send('Page.enable')
-  await send('Page.addScriptToEvaluateOnNewDocument', { source: '(' + observeManagedRoster.toString() + ')(' + protectLocalEntryModules.toString() + ')' })
+  await send('Page.addScriptToEvaluateOnNewDocument', { source: '(' + observeManagedRoster.toString() + ')()' })
   await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false })
   const launch = await readFile(scratch + '/client-launch-url', 'utf8')
   await send('Page.navigate', { url: new URL(launch).origin + '/' })
@@ -99,6 +98,9 @@ try {
   const duplicateResult = await evaluate('__MYGO_ROSTER_TEST__.sync(' + JSON.stringify(duplicate) + ')')
   assert.match(duplicateResult.error ?? '', /duplicate graph entry/, 'original graph parser rejects duplicate Host identities')
   assert.deepEqual(await evaluate('__MYGO_ROSTER_TEST__.snapshot()'), final, 'invalid graph preserves local and unrelated Host entries')
+  await evaluate("[...document.querySelectorAll('button,[role=button]')].find(x=>x.innerText==='Plugins').click()")
+  await until(() => evaluate("!!document.querySelector('[data-mygo-unified-plugins] [data-local-plugin-actions]')"))
+  assert.equal(await evaluate("!!document.querySelector('[data-module-name=\"./plugins/marker.js\"] [data-local-plugin-actions]')"),true,'local management survives owned Host manifest removal and restoration')
   await writeFile(scratch + '/roster-validation.json', JSON.stringify({ ok: true, before, after, final, removal, restoration, rejected, duplicateResult }, null, 2), { mode: 0o600 })
   console.log('Real Host graph removal/restoration: original disposal, same ACTIVE local Entry/module and unrelated Host identities passed')
   await Promise.race([send('Browser.close').catch(() => {}), pause(5000)])

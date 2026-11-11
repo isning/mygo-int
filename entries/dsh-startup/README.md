@@ -1,17 +1,18 @@
-# Independent official DSH startup
+# Single-root DSH startup
 
-Explicit supplied-root migration: select `MYGO_CLIENT_COMPOSITION=single-root`.
-See [single-client boot and validation](../../docs/upstream/dsh-single-client.md).
-This entry reuses the pinned lower-level boot and renderer with one MYGO Context;
-the default composition below remains available during migration.
+The default launcher and adapted build use one MYGO Context and the original
+Loader, React renderer, navigation, Settings and unified Plugins page. Run the
+owned authenticated Host with `scripts/dsh-test-host.mjs`; see
+[default acceptance and demo](../../docs/upstream/dsh-default-client.md).
+No composition opt-in is required. The carrier requires `DSH_ORIGIN` and retains
+original browser authentication; startup failure never selects a legacy fallback.
 
-Current local management: the default composition includes replaceable
-composition, instance-catalog and UI plugins. `Local client settings` reuses the
-original DSH manager rows and Settings panel for the actual local Loader, with
-device persistence and original browser admission. See
-[local management](../../docs/upstream/dsh-local-management.md) for current
-port 4200 commands, provenance, recovery and connection limits. The connected
-Host's original `Plugins` page remains separate.
+Explicit `MYGO_CLIENT_COMPOSITION=legacy` retains the historical two-root fixture
+and its unchanged `local/startup.json` snapshot for regression/migration checks.
+The single-root operator configuration remains `local/single-root.json`.
+
+The following records describe the earlier diagnostic and legacy modes. For the
+static diagnostic commands below, explicitly select `MYGO_CLIENT_COMPOSITION=legacy`.
 
 The diagnostic mode of this mygo-owned document loads the **unchanged original Web entry bundle** from
 DSH `fcc0ad462172522aaf5c93a7b2e01f6b9f0b0159`. That entry constructs the real

@@ -61,6 +61,22 @@ try {
   await until(() => evaluate("!!document.querySelector('[data-mygo-shared-client]')"))
   await evaluate("[...document.querySelectorAll('button')].find(x => x.innerText === 'Continue')?.click()")
   await evaluate("[...document.querySelectorAll('button')].find(x => x.getAttribute('aria-label') === 'Open sidebar')?.click()")
+  // Create acceptance input through the shipped Settings UI, rather than relying
+  // on the old opt-in navigation-fixture startup plugin.
+  await until(() => evaluate("!!document.querySelector('[aria-label=\"Account menu\"]')"))
+  await evaluate("document.querySelector('[aria-label=\"Account menu\"]').click()")
+  await until(() => evaluate("[...document.querySelectorAll('[role=menuitem]')].some(x=>x.innerText.includes('Settings'))"))
+  await evaluate("[...document.querySelectorAll('[role=menuitem]')].find(x=>x.innerText.includes('Settings')).click()")
+  await until(() => evaluate("!!document.querySelector('[data-shortcut-modal=settings]') && !document.querySelector('[role=menuitem]')"))
+  await evaluate("[...document.querySelectorAll('[data-shortcut-modal=settings] button')].find(x=>x.innerText==='Instances').click()")
+  await until(() => evaluate("!!document.querySelector('#mygo-instance-id')"))
+  for (const [field,value] of Object.entries({id:'external-demo',name:'External saved profile',address:'https://external.invalid',authenticationViewId:'owner'})) {
+    await evaluate(`(() => {const input=document.getElementById('mygo-instance-${field}'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,${JSON.stringify(value)}); input.dispatchEvent(new Event('input',{bubbles:true})); input.dispatchEvent(new Event('change',{bubbles:true}));})()`)
+  }
+  await evaluate("[...document.querySelectorAll('button')].find(x=>x.innerText==='Save connection profile').click()")
+  await until(() => evaluate("!!document.querySelector('[data-instance-id=external-demo]')"))
+  await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27})
+  await until(() => evaluate("!document.querySelector('[data-shortcut-modal=settings]')"))
   stage = 'navigation present'
   assert.equal(await evaluate("document.querySelectorAll('[data-mygo-navigation]').length"), 1, 'instance entry is inside the original sidebar')
   assert.equal(await evaluate("document.querySelectorAll('[data-mygo-shell]').length"), 0, 'no outer workbench surrounds original UI')

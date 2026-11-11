@@ -106,6 +106,11 @@ try {
   assert.deepEqual(await hostSnapshot(), hostBefore, 'Host plugin inventory and redacted configuration remain unchanged')
   assert.equal(mutations.length, beforeMutations, 'local lifecycle sends no Host management mutation')
   await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 })
+  if (process.env.MYGO_EXPECT_UNIFIED_MANAGEMENT === '1') {
+    await evaluate("[...document.querySelectorAll('button,[role=button]')].find(x=>x.innerText==='Plugins').click()")
+    await until(() => evaluate("!!document.querySelector('[data-mygo-unified-plugins] [data-local-plugin-actions]')"))
+    assert.equal(await evaluate("!!document.querySelector('[data-module-name=\"./plugins/marker.js\"] [data-local-plugin-actions]')"),true,'local management survives local override activation and revoke')
+  }
   stage = 'retained session'
   await evaluate("[...document.querySelectorAll('button')].find(x => x.getAttribute('aria-label') === 'Open sidebar')?.click()")
   await until(() => evaluate("[...document.querySelectorAll('[role=treeitem]')].some(x => x.innerText === 'Local test DSH')"))
@@ -114,6 +119,7 @@ try {
   await evaluate("[...document.querySelectorAll('[role=treeitem],button,[role=button]')].find(x => x.innerText === 'Local MODEL MOCK reply')?.click()")
   await until(() => evaluate("!!document.querySelector('[contenteditable=true]') && document.body.innerText.includes('Hello! This is a deterministic local model mock reply.')"))
   const count = "[...document.querySelectorAll('[data-chat-flow-kind=assistant-step]')].filter(x => x.innerText.includes('Hello! This is a deterministic local model mock reply.')).length"
+  await until(() => evaluate(count + "> 0 && !document.body.innerText.includes('Loading history')"))
   const before = await evaluate(count)
   const text = 'Slot lifecycle MODEL MOCK check ' + Date.now()
   await evaluate("document.querySelector('[contenteditable=true]').focus()")
@@ -128,7 +134,7 @@ try {
   const fixture = JSON.parse(await readFile(scratch + '/session.json', 'utf8'))
   assert.equal(prompts[0].payload.args.request.sessionId, fixture.sessionId, 'same real Host session remains usable')
   assert.equal(await evaluate("document.querySelector('[contenteditable=true]').innerText"), '')
-  await writeFile(scratch + '/slot-override-result.json', JSON.stringify({ before: 'official chooser', override: 'local presentation', disabled: 'official chooser', removed: 'official chooser', sessionRetained: true, promptAccepted: true, managementMutations: mutations.slice(beforeMutations) }), { mode: 0o600 })
+  await writeFile(scratch + '/slot-override-result.json', JSON.stringify({ before: 'official chooser', override: 'local presentation', disabled: 'official chooser', removed: 'official chooser', sessionRetained: true, unifiedManagementRetained: process.env.MYGO_EXPECT_UNIFIED_MANAGEMENT === '1', promptAccepted: true, managementMutations: mutations.slice(beforeMutations) }), { mode: 0o600 })
   console.log('Slot override, disable, removal and retained original Session composer passed')
   await Promise.race([send('Browser.close'), pause(5000)])
 } catch (error) {

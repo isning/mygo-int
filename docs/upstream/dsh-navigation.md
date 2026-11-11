@@ -1,6 +1,6 @@
 # Local instance navigation (ticket 52)
 
-The opt-in `local/navigation.json` fixture contributes instance selection through
+The default `local/single-root.json` composition contributes instance selection through
 DSH's public `sidebar.footer.action` list. The original sidebar owns its layout,
 collapse/drawer behavior, workspace tree, Settings and panel navigation. No outer
 workbench, additional React root, transport or Host lifecycle manager is added.
@@ -26,8 +26,6 @@ including Host provisioning. Then run from this workspace:
 
 ```bash
 source scripts/dsh-test-env.sh
-MYGO_CLIENT_COMPOSITION=single-root \
-MYGO_STARTUP_CONFIG=entries/dsh-startup/local/navigation.json \
 DSH_CLIENT_PORT=4215 DSH_CLIENT_BIND=0.0.0.0 \
 DSH_CLIENT_PUBLIC_ORIGIN=http://100.97.207.47:4215 \
 node scripts/dsh-test-host.mjs start
@@ -35,10 +33,9 @@ node scripts/dsh-navigation-browser.mjs
 node scripts/dsh-test-host.mjs stop
 ```
 
-`navigation-fixture.js` supplies a real external catalog record through the public
-instance manager solely as acceptance input. Omit that Entry in production.
-The fixture deliberately omits ticket 53's legacy floating management surface.
-The original Settings remain available. Browser credentials, launch URLs, model
+The browser creates an external catalog profile through the original Settings UI
+before checking saved selection and the unchanged bound connection. It does not
+require `navigation-fixture.js` or a separate startup configuration. Browser credentials, launch URLs, model
 mock logs and evidence stay private under ignored `.scratch/test-dsh/`.
 
 ## Parent integration

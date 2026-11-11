@@ -9,7 +9,9 @@ export async function checkSharedManagement({ evaluate, until, apiRequests }) {
     await until(() => evaluate("[...document.querySelectorAll('[role=menuitem]')].some(x=>x.innerText.includes('Settings'))"))
     await evaluate("[...document.querySelectorAll('[role=menuitem]')].find(x=>x.innerText.includes('Settings')).click()")
     await until(() => evaluate('!!document.querySelector("[data-shortcut-modal=settings]")'))
+    await until(() => evaluate("!document.querySelector('[role=menuitem]')"))
     await evaluate("[...document.querySelectorAll('[data-shortcut-modal=settings] button')].find(x=>x.innerText==='LOCAL plugins').click()")
+    await until(() => evaluate('!!document.querySelector("[data-plugin-row=local-note]")'))
   }
   const describeHost = () => evaluate(`fetch('/api/settings/describe', {
     method:'POST', headers:{'content-type':'application/json'},
@@ -59,6 +61,7 @@ export async function checkSharedManagement({ evaluate, until, apiRequests }) {
   await evaluate('globalThis.__MYGO_MANAGEMENT_RELOAD_MARK__=true')
   await evaluate("[...document.querySelectorAll('button')].find(x=>x.innerText==='Reload saved composition').click()")
   await until(() => evaluate('globalThis.__MYGO_MANAGEMENT_RELOAD_MARK__!==true && document.querySelector("[data-mygo-local-plugin=marker]")?.textContent === "Shared runtime local edit"'))
+  await evaluate('new Promise(resolve => setTimeout(resolve, 500))')
   await openLocalSettings()
   assert.equal(await evaluate('!!document.querySelector("[data-plugin-row=local-note]")'), true, 'local settings reopen after reload')
   return { localRows: ids, hostSettingsUnchanged: true, hostManagementWrites: false,

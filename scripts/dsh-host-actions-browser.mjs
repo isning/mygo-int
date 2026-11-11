@@ -81,7 +81,7 @@ try {
   await click()
   await until(async () => (await fixtureStatus()) === 404)
   await until(() => evaluate(`document.querySelector('${selector} [data-mygo-host-actions] [role=status]')?.innerText.includes('applied')`))
-  assert.ok(await evaluate(`document.querySelector('${selector} [data-mygo-host-actions]').innerText.includes('Enable on Host')`))
+  await until(() => evaluate(`document.querySelector('${selector} [data-mygo-host-actions]')?.innerText.includes('Enable on Host')`))
   const disabledText = await evaluate(`document.querySelector('${selector} [data-mygo-host-actions]').innerText`)
   await evaluate(`document.querySelector('${selector}').scrollIntoView({block:'center'})`)
   await writeFile(scratch+'/host-actions-disabled.png',Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'))

@@ -4,7 +4,7 @@ import { resolve } from 'node:path'
 const root = process.cwd(), scratch = resolve('.scratch/host-actions')
 await mkdir(scratch, { recursive: true, mode: 0o700 })
 const stage = process.argv[2] ?? 'red'
-if (!['red', 'green'].includes(stage)) throw Error('Usage: node scripts/dsh-host-actions-prepare.mjs {red|green}')
+if (!['red', 'green', 'integrated'].includes(stage)) throw Error('Usage: node scripts/dsh-host-actions-prepare.mjs {red|green|integrated}')
 const green = stage === 'green'
 let build = await readFile('scripts/dsh-local-composition-build.mjs', 'utf8')
 build = build.replace("['management-ui.tsx', 'unified-plugin-ui.tsx']", "['management-ui.tsx', 'unified-plugin-ui.tsx', 'unified-host-actions.tsx']")
@@ -64,4 +64,4 @@ controller = controller.replaceAll("from './", `from '${root}/scripts/`)
 controller = controller.replace(/const root=resolve.*?;process.chdir\(root\);/, `const root=${JSON.stringify(root)};process.chdir(root);`)
 controller = controller.replace("copyFile('scripts/dsh-test-host-runner.mjs',", `copyFile(${JSON.stringify(scratch + '/test-host.mjs')},`)
 await writeFile(scratch + '/host.mjs', controller)
-console.log('Prepared isolated Host action ' + (green ? 'implementation' : 'RED baseline'))
+console.log('Prepared isolated Host action ' + (stage === 'integrated' ? 'integrated acceptance fixture' : green ? 'implementation' : 'RED baseline'))

@@ -84,7 +84,7 @@ try {
   assert.equal(await evaluate("!!document.querySelector('[data-plugin-source=LOCAL]')"),false,'instance filter excludes device-owned entries')
   await select('Plugin instance','device')
   assert.deepEqual(await evaluate("[...new Set([...document.querySelectorAll('[data-plugin-source]')].map(x=>x.dataset.pluginSource))]"),['LOCAL'])
-  assert.equal(await evaluate("document.querySelectorAll('[data-mygo-unified-plugins] [role=switch], [data-mygo-unified-plugins] textarea').length"),0,'inspection adds no lifecycle controls')
+  assert.equal(await evaluate("!!document.querySelector('[data-module-name=\"./plugins/marker.js\"] [data-local-plugin-actions]')"),true,'unified page exposes device-local lifecycle actions')
   assert.equal(mutations.length,0,'inspection performs no Host mutation')
   await writeFile(scratch+'/unified-plugin-result.json',JSON.stringify({ok:true,rows,sourceFilters:true,instanceFilter:true,packageCollision:true,hostMutations:mutations}),{mode:0o600})
   await writeFile(scratch+'/unified-plugin.png',Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'))

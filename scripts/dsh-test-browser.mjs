@@ -5,16 +5,22 @@ import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import {openSync} from 'node:fs';
 import {resolve} from 'node:path';
 const checkRemoval=process.argv[2]==='check-remove';
-const checkSingleManagement=process.argv[2]==='check-single-management';
-const checkSingleRoot=process.argv[2]==='check-single-root';
-const checkManagement=process.argv[2]==='check-management';
-const checkManagementRestore=process.argv[2]==='check-management-restore';
-const checkManagementRecovery=process.argv[2]==='check-management-recovery';
-const createSession=process.argv[2]==='check-create';
+const legacyComposition=process.env.MYGO_CLIENT_COMPOSITION==='legacy';
+const checkSingleManagement=process.argv[2]==='check-single-management'||(process.argv[2]==='check-management'&&!legacyComposition);
+const checkDefault=process.argv[2]==='check-default';
+const checkSingleRoot=process.argv[2]==='check-single-root'||checkDefault;
+const checkManagement=process.argv[2]==='check-management'&&legacyComposition;
+if(!legacyComposition&&['check-management-restore','check-management-recovery'].includes(process.argv[2])){
+ const recovery=spawn(process.execPath,['scripts/dsh-overlay-browser.mjs'],{stdio:'inherit',env:process.env});
+ process.exit(await new Promise(resolve=>recovery.once('exit',code=>resolve(code??1))));
+}
+const checkManagementRestore=process.argv[2]==='check-management-restore'&&legacyComposition;
+const checkManagementRecovery=process.argv[2]==='check-management-recovery'&&legacyComposition;
+const createSession=process.argv[2]==='check-create'||checkDefault;
 const submit=process.argv[2]==='check-submit'||checkRemoval||createSession||checkSingleRoot||checkSingleManagement;
 const checkLocal=process.argv[2]==='check-local'||checkRemoval;
 const scratch=resolve('.scratch/test-dsh'),interactive=['open','open-management'].includes(process.argv[2]),authenticated=process.argv[2]==='check-auth';
-const profileName=checkManagementRestore||checkManagementRecovery||process.argv[2]==='open-management' ? (await readFile(scratch+'/management-profile','utf8')).trim() : 'browser-'+Date.now();
+const profileName=checkManagementRestore||checkManagementRecovery||(legacyComposition&&process.argv[2]==='open-management') ? (await readFile(scratch+'/management-profile','utf8')).trim() : 'browser-'+Date.now();
 assert.match(profileName,/^browser-\d+$/);
 const profile=scratch+'/'+profileName;await mkdir(profile,{recursive:true,mode:0o700});
 const log=openSync(scratch+'/browser.log','a',0o600);
@@ -58,6 +64,15 @@ try{
  await send('Runtime.enable',{});
  await send('Page.enable',{});
  await send('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
+ if(checkDefault) await send('Page.addScriptToEvaluateOnNewDocument',{source:`{
+  const roots = new Set(), renderers = new Map();
+  globalThis.__REACT_DEVTOOLS_GLOBAL_HOOK__ = {supportsFiber:true, renderers,
+    inject(renderer) { const id=renderers.size+1; renderers.set(id,renderer); return id },
+    onCommitFiberRoot(id,root) { if(root.current.memoizedState?.element) roots.add(root); else roots.delete(root) },
+    onCommitFiberUnmount() {},
+  };
+  globalThis.__MYGO_BROWSER_ROOTS__ = roots;
+}`});
  if(checkLocal) await send('Page.addScriptToEvaluateOnNewDocument',{source:`{
    const originalFetch = globalThis.fetch;
    globalThis.fetch = function(input, ...args) {
@@ -90,6 +105,11 @@ try{
  const ready=await until(async()=>await evaluate("globalThis.__ModuleLoader__?.mode==='live' && document.body.innerText.includes('Local test DSH') && !document.body.innerText.includes('Failed to load plugins')"));
  if(checkSingleRoot){
   stage='shared client composition';
+  if(checkDefault){
+   assert.equal(await evaluate("document.querySelectorAll('[data-mygo-shell], [data-local-management], [aria-label=\"Local client settings\"]').length"),0,'default has no legacy outer shell or floating management application');
+   assert.equal(await evaluate('__MYGO_BROWSER_ROOTS__.size'),1,'one mounted original React root');
+   assert.equal(await evaluate('__REACT_DEVTOOLS_GLOBAL_HOOK__.renderers.size'),1,'one original React renderer');
+  }
   const contribution=await evaluate(`(() => {
    const node=document.querySelector('#root [data-mygo-shared-client]');
    return node && {text:node.textContent,local:node.dataset.localActive,session:node.dataset.sessionActive,singletons:node.dataset.platformSingletons};
@@ -99,7 +119,7 @@ try{
   const localEntry=await evaluate("document.querySelector('[data-mygo-shared-client]')?.dataset.localEntry");
   assert.equal(marker,'Local note · editable','curated existing local marker runs alongside unchanged official client entries');
   assert.equal(localEntry?.split(',').includes('./plugins/marker.js'),true,'the active local entry retains its original startup module identity');
-  await writeFile(scratch+'/single-root-browser.json',JSON.stringify({...contribution,marker,localEntry}),{mode:0o600});
+  await writeFile(scratch+'/single-root-browser.json',JSON.stringify({...contribution,marker,localEntry,...checkDefault?{reactRoots:await evaluate('__MYGO_BROWSER_ROOTS__.size'),reactRenderers:await evaluate('__REACT_DEVTOOLS_GLOBAL_HOOK__.renderers.size')}: {}}),{mode:0o600});
  }
  if(checkSingleManagement){
   stage='shared local management';
@@ -328,11 +348,22 @@ try{
   await writeFile(scratch+'/submit.png',Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'));
   if(createSession){
    assert.equal(createCalls.length-initialCreates,1,'one new session/create request from the original New session control');
-   const ownership=await evaluate('globalThis.__MYGO_ENTRY_OWNERSHIP__.snapshot()');
-   assert.equal(ownership.filter(x=>x.owner.kind==='local').length,process.env.MYGO_EXPECT_LOCAL_PLUGIN==='focus'?1:5,'local Loader entries remain owned locally');
-   assert.ok(ownership.some(x=>x.packageId==='@deepseek-ai/dsh-client-ui-session'&&x.fiberState===2),'original Session client entry remains active');
-   assert.ok(ownership.filter(x=>x.owner.kind==='instance').every(x=>x.owner.instanceId==='local-test-dsh'&&x.owner.authenticationViewId==='owner'),'remote entries retain selected instance/authentication view');
+   if(legacyComposition){
+    const ownership=await evaluate('globalThis.__MYGO_ENTRY_OWNERSHIP__.snapshot()');
+    const startup=await evaluate("fetch('/mygo-local/startup.json').then(r=>r.json())");
+    assert.equal(ownership.filter(x=>x.owner.kind==='local').length,startup.entries.length);
+    assert.ok(ownership.some(x=>x.packageId==='@deepseek-ai/dsh-client-ui-session'&&x.fiberState===2));
+    assert.ok(ownership.filter(x=>x.owner.kind==='instance').every(x=>x.owner.instanceId===startup.selectedInstance.id&&x.owner.authenticationViewId===startup.selectedInstance.authenticationViewId));
+    await writeFile(scratch+'/ownership-validation.json',JSON.stringify(ownership),{mode:0o600});
+   }else{
+   const ownership=await evaluate(`(() => { const node=document.querySelector('[data-mygo-shared-client]'); return {localActive:node?.dataset.localActive,sessionActive:node?.dataset.sessionActive,singletons:node?.dataset.platformSingletons,localEntries:node?.dataset.localEntry.split(',')}; })()`);
+   const startup=await evaluate("fetch('/mygo-local/startup.json').then(r=>r.json())");
+   assert.equal(ownership.localActive,'true','actual local entries remain active in the shared Loader');
+   assert.equal(ownership.sessionActive,'true','original Session entry remains active');
+   assert.equal(ownership.singletons,'true','local and instance entries share original platform modules');
+   assert.deepEqual(ownership.localEntries.sort(),startup.entries.map(x=>x.name).sort(),'shared Loader retains every curated local entry');
    await writeFile(scratch+'/ownership-validation.json',JSON.stringify(ownership,null,2),{mode:0o600});
+   }
    stage='settings and catalog';
    await evaluate("[...document.querySelectorAll('button')].find(x=>x.getAttribute('aria-label')==='Account menu')?.click()");
    await until(()=>evaluate("[...document.querySelectorAll('[role=menuitem]')].some(x=>x.innerText.includes('Settings'))"));

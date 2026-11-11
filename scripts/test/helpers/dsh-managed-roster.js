@@ -1,6 +1,6 @@
 // Browser-only observation at the original public bootstrap/ClientEntries seams.
 // No fake Loader, graph controller, entry attribution or replacement lifecycle.
-export function observeManagedRoster(protectLocalEntryModules) {
+export function observeManagedRoster() {
   let facade, modules, loader
   Object.defineProperty(globalThis, '__ModuleLoader__', {
     configurable: true,
@@ -23,10 +23,6 @@ export function observeManagedRoster(protectLocalEntryModules) {
   const rows = () => [...loader.entries()]
   globalThis.__MYGO_ROSTER_TEST__ = {
     capture() {
-      if (protectLocalEntryModules) {
-        const local = rows().filter(entry => entry.options.name === './plugins/marker.js')
-        protectLocalEntryModules(modules, local.map(entry => entry.options.name))
-      }
       for (const entry of rows()) retained.set(entry.id, {
         entry, namespace: entry.moduleNamespace, fiber: entry.fiber,
       })
