@@ -62,7 +62,7 @@ if (command === 'serve') {
   const credentialFile = resolve(output, 'instance-credentials.json')
   let profiles = []
   try { profiles = JSON.parse(await readFile(routeFile, 'utf8')) } catch (error) { if (error.code !== 'ENOENT') throw error }
-  let credentials = { version: 1, entries: {} }
+  let credentials = { version: 2, entries: {} }
   try { credentials = JSON.parse(await readFile(credentialFile, 'utf8')) } catch (error) { if (error.code !== 'ENOENT') throw error }
   let routeWrite = Promise.resolve()
   const writePrivateJSON = async (file, value) => {
@@ -76,6 +76,7 @@ if (command === 'serve') {
     routeWrite = routeWrite.then(() => writePrivateJSON(credentialFile, value))
     return routeWrite
   } }) : undefined
+  if (router) await writePrivateJSON(routeFile, router.profiles())
   const assetRoot = await realpath(resolve(dist, 'assets'))
   const server = createServer(async (request, response) => {
     try {

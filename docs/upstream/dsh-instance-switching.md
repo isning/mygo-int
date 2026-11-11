@@ -15,7 +15,9 @@ the instance login. Only the first login (or a changed/revoked token)
 shows the original-style form for that target's private launch URL or token.
 The successful token and Host-issued cookie are stored in
 `.scratch/dsh-startup/instance-credentials.json` with mode `0600`, keyed by the
-exact instance/origin/authentication view. They are never returned to JavaScript,
+stable instance ID and authentication view. The saved origin limits reuse of
+the Host cookie; changing an address retains the token but requires a fresh
+native exchange at the new origin. They are never returned to JavaScript,
 placed in a profile or retained in the route URL, or shared with another
 instance. Mygo acts as the reverse proxy and injects only that instance's native
 credential upstream, preserving Peer/Gateway permission checks. Mygo user
@@ -31,6 +33,12 @@ settings available to select another one. It does not silently display data
 from the previous Host. Registered route metadata is retained privately in
 `.scratch/dsh-startup/instance-routes.json`; credentials live separately in the
 private credential store above.
+
+For one stable instance ID and authentication view, the newest connection
+profile is canonical. Historical route hashes resolve to that current carrier,
+so an old tab follows a restarted local DSH even when its loopback port changes.
+The deployment seed overrides its own persisted historical addresses; unrelated
+instances and authentication views remain separate.
 
 ## Reproduce the two-Host workflow
 

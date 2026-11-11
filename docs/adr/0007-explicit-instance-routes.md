@@ -37,11 +37,22 @@ Host never silently falls back to another Host. Bootstrap refusal/unavailability
 keeps the local shell and Instances settings usable for login or switching back.
 Unknown route identities fail explicitly.
 
+Connection profiles are canonical by stable instance ID and authentication view.
+Saving a replacement address retires the previous carrier while retaining its
+route hash as an in-process alias to the new carrier. The deployment-provided
+seed profile wins over persisted historical addresses for the same identity.
+This lets an already-open tab recover when a local DSH restart changes an
+ephemeral port, and compacts historical addresses out of the next route-file
+write. It does not merge different instance IDs or authentication views.
+
 The offline login form accepts the target's private launch link or token and
 exchanges it through original DSH token authentication. After a successful
 exchange, mygo stores the token and Host-issued cookie in its private credential
-file, keyed by the exact instance, origin and authentication view. A later 401
-can repeat the native exchange without asking for the link again. The token is
+file, keyed by the stable instance ID and authentication view. The stored origin
+guards the authority-bound cookie: when a connection address changes, mygo keeps
+the instance token, discards the old cookie for forwarding and exchanges the
+token at the new origin. A later 401 can repeat the native exchange without
+asking for the link again. The token is
 never placed in the profile catalog, browser storage, route URL after exchange,
 logs or client response, and another instance cannot select it. The carrier
 returns the original refusal status. Existing direct launch links are

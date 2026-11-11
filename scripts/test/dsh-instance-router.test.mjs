@@ -130,6 +130,44 @@ test('mygo stores a launch token per instance and restores the reverse proxy aft
   }
 })
 
+test('a stale route for the same instance identity follows the current connection profile', async () => {
+  const stale = { id: 'stable', name: 'Stable', address: 'http://127.0.0.1:1', authenticationViewId: 'owner' }
+  const currentHost = createServer((req, res) => {
+    const cookie = 'dsh-auth-' + createHash('sha256').update(req.headers.host).digest('base64url')
+    if (req.url === '/?token=stable-token') { res.writeHead(303, { 'set-cookie': `${cookie}=current; Path=/; HttpOnly` }).end(); return }
+    if (req.headers.cookie === `${cookie}=current`) { res.end('current'); return }
+    res.writeHead(401).end()
+  })
+  const currentOrigin = await listen(currentHost)
+  const current = { ...stale, address: currentOrigin }
+  const staleId = createHash('sha256').update(JSON.stringify(stale)).digest('hex')
+  const credentialId = createHash('sha256').update(JSON.stringify([stale.id, stale.authenticationViewId])).digest('hex')
+  const router = createInstanceRouter({ profile: current, profiles: [stale], credentials: { version: 2, entries: {
+    [credentialId]: { address: stale.address, token: 'stable-token', cookie: 'dsh-auth-old=stale' },
+  } } })
+  const req = { url: `/mygo-instance/${staleId}/proof` }
+  const server = createServer(async (req, res) => {
+    const route = router.resolve(req)
+    if (req.url === '/mygo-local/login') await router.control(req, res, route)
+    else route.carrier.handle(req, res)
+  })
+  const origin = await listen(server)
+  try {
+    const route = router.resolve(req)
+    assert.equal(route.profile.address, currentOrigin)
+    assert.equal(req.url, '/proof')
+    assert.deepEqual(router.profiles(), [current], 'historical addresses are omitted from persisted route metadata')
+    const prefix = `/mygo-instance/${staleId}`
+    assert.equal((await call(origin + prefix + '/proof')).status, 401, 'an authority-bound cookie is not reused at the new address')
+    const refreshed = await call(origin + prefix + '/mygo-local/login', { method: 'POST', headers: { origin, 'content-type': 'application/json' }, body: '{}' })
+    assert.equal(refreshed.status, 204, 'the stable instance token is exchanged at the new address')
+    assert.equal((await call(origin + prefix + '/proof')).text, 'current')
+  } finally {
+    router.close()
+    await Promise.all([server, currentHost].map(value => new Promise(resolve => value.close(resolve))))
+  }
+})
+
 test('route URLs preserve query/revision and remote storage cannot clear another instance or device preferences', () => {
   const prefix = '/mygo-instance/' + 'a'.repeat(64)
   const page = new URL('http://mygo.test' + prefix + '/')

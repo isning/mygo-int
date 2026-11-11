@@ -12,39 +12,60 @@ export function validateConnectionProfile(value) {
 
 const digest = value => createHash('sha256').update(value).digest('hex')
 
-export function createInstanceRouter({ profile, publicOrigins = [], profiles = [], onRegister, credentials = { version: 1, entries: {} }, onCredentials }) {
+export function createInstanceRouter({ profile, publicOrigins = [], profiles = [], onRegister, credentials = { version: 2, entries: {} }, onCredentials }) {
   const trusted = createCarrierTrust({ publicOrigins })
   const routes = new Map()
-  if (credentials?.version !== 1 || !credentials.entries || typeof credentials.entries !== 'object' || Array.isArray(credentials.entries)) throw Error('Invalid instance credentials')
-  for (const [credentialId, devices] of Object.entries(credentials.entries)) {
-    if (!/^[a-f0-9]{64}$/.test(credentialId) || !devices || typeof devices !== 'object' || Array.isArray(devices)
-      || typeof devices.token !== 'string' || !devices.token || devices.token.length > 4096
-      || typeof devices.cookie !== 'string' || !/^dsh-auth-[A-Za-z0-9_-]+=[^;\r\n]+$/.test(devices.cookie)
-      || Object.keys(devices).some(key => !['token', 'cookie'].includes(key))) throw Error('Invalid instance credentials')
+  const aliases = new Map()
+  const current = new Map()
+  if (![1, 2].includes(credentials?.version) || !credentials.entries || typeof credentials.entries !== 'object' || Array.isArray(credentials.entries)) throw Error('Invalid instance credentials')
+  for (const [credentialId, value] of Object.entries(credentials.entries)) {
+    if (!/^[a-f0-9]{64}$/.test(credentialId) || !value || typeof value !== 'object' || Array.isArray(value)
+      || typeof value.token !== 'string' || !value.token || value.token.length > 4096
+      || typeof value.cookie !== 'string' || !/^dsh-auth-[A-Za-z0-9_-]+=[^;\r\n]+$/.test(value.cookie)
+      || credentials.version === 2 && (typeof value.address !== 'string' || new URL(value.address).origin !== value.address)
+      || Object.keys(value).some(key => !['address', 'token', 'cookie'].includes(key))) throw Error('Invalid instance credentials')
   }
-  let savedCredentials = structuredClone(credentials)
+  let savedCredentials = credentials.version === 2 ? structuredClone(credentials) : { version: 2, entries: {} }
+  if (credentials.version === 1) {
+    for (const candidate of [...profiles, profile].map(validateConnectionProfile)) {
+      const legacyId = digest(JSON.stringify([candidate.id, candidate.address, candidate.authenticationViewId]))
+      const credentialId = digest(JSON.stringify([candidate.id, candidate.authenticationViewId]))
+      if (credentials.entries[legacyId]) savedCredentials.entries[credentialId] = { address: candidate.address, ...credentials.entries[legacyId] }
+    }
+  }
   function register(value) {
     const profile = validateConnectionProfile(value)
     const id = createHash('sha256').update(JSON.stringify(profile)).digest('hex')
-    const credentialId = digest(JSON.stringify([profile.id, profile.address, profile.authenticationViewId]))
-    if (!routes.has(id)) {
-      if (routes.size >= 256) throw Error('Instance route limit reached')
-      const namespace = JSON.stringify([profile.id, profile.address, profile.authenticationViewId])
-      const route = { id, profile, credentialId, credential: savedCredentials.entries[credentialId], prefix: '/mygo-instance/' + id }
-      route.carrier = createAuthenticatedCarrier({ origin: profile.address, publicOrigins, credentialNamespace: namespace, pathPrefix: route.prefix, getCredential: () => route.credential?.cookie })
-      routes.set(id, route)
+    const profileKey = JSON.stringify([profile.id, profile.authenticationViewId])
+    const credentialId = digest(JSON.stringify([profile.id, profile.authenticationViewId]))
+    if (routes.has(id)) return routes.get(id)
+    if (routes.size + aliases.size >= 256) throw Error('Instance route limit reached')
+    const namespace = JSON.stringify([profile.id, profile.address, profile.authenticationViewId])
+    const route = { id, profile, credentialId, credential: savedCredentials.entries[credentialId], prefix: '/mygo-instance/' + id }
+    route.carrier = createAuthenticatedCarrier({ origin: profile.address, publicOrigins, credentialNamespace: namespace, pathPrefix: route.prefix, getCredential: () => route.credential?.address === profile.address ? route.credential.cookie : undefined })
+    const previous = current.get(profileKey)
+    if (previous) {
+      routes.delete(previous.id)
+      aliases.set(previous.id, route)
+      for (const [alias, target] of aliases) if (target === previous) aliases.set(alias, route)
+      previous.carrier.close()
     }
-    return routes.get(id)
+    routes.set(id, route)
+    current.set(profileKey, route)
+    return route
   }
-  const initial = register(profile)
   for (const saved of profiles) register(saved)
+  // The deployment-provided profile is authoritative for its stable identity.
+  // Historical explicit routes remain aliases so open tabs recover after a
+  // local Host restart changes its ephemeral address.
+  const initial = register(profile)
   async function authenticate(req, res, route, token, options) {
     await route.carrier.login(req, res, token, {
       ...options,
       async onAccepted(cookie) {
         const entries = structuredClone(savedCredentials.entries)
-        entries[route.credentialId] = { token, cookie }
-        savedCredentials = { version: 1, entries }
+        entries[route.credentialId] = { address: route.profile.address, token, cookie }
+        savedCredentials = { version: 2, entries }
         route.credential = entries[route.credentialId]
         await onCredentials?.(savedCredentials)
       },
@@ -84,12 +105,13 @@ export function createInstanceRouter({ profile, publicOrigins = [], profiles = [
       const path = new URL(req.url, 'http://localhost').pathname
       if (!path.startsWith('/mygo-instance/')) return initial
       const match = /^\/mygo-instance\/([a-f0-9]{64})(\/.*)$/.exec(req.url)
-      const route = match && routes.get(match[1])
+      const route = match && (routes.get(match[1]) ?? aliases.get(match[1]))
       if (!route) return undefined
       req.url = match[2]
       return route
     },
     control,
+    profiles: () => [...routes.values()].map(route => route.profile),
     async loginLink(req, res, route) {
       if (!trusted(req) || req.method !== 'GET') { res.writeHead(403).end(); return }
       const url = new URL(req.url, 'http://localhost')
