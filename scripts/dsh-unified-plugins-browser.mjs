@@ -4,6 +4,8 @@ import { spawn } from 'node:child_process'
 import { readFile, mkdir, writeFile } from 'node:fs/promises'
 import { openSync } from 'node:fs'
 import { resolve } from 'node:path'
+const uiAudit = process.argv.includes('--ui-audit')
+const i18nOnly = process.argv.includes('--i18n-only') || uiAudit
 const scratch = resolve('.scratch/test-dsh')
 const profile = scratch + '/browser-unified-' + Date.now()
 await mkdir(profile, { recursive: true, mode: 0o700 })
@@ -52,44 +54,59 @@ try {
   }
   await send('Runtime.enable'); await send('Network.enable'); await send('Page.enable')
   await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false })
+  const selectOfflineLanguage = async id => {
+    await evaluate("document.querySelector('[data-mygo-language] button').click()")
+    await until(() => evaluate("!!document.querySelector('[role=menu]')"))
+    const label = {en:'English',zh:'中文',ja:'日本語',es:'Español',fr:'Français',de:'Deutsch',ru:'Русский',pt:'Português'}[id]
+    await evaluate(`[...document.querySelectorAll('[role=menu] [role=menuitem]')].find(item => item.innerText.trim() === ${JSON.stringify(label)}).click()`)
+  }
   const url = (await readFile(scratch + '/client-launch-url', 'utf8')).trim()
   await send('Page.navigate', { url: new URL(url).origin })
   await until(() => evaluate('document.readyState === "complete"'))
   assert.equal(await evaluate("fetch('/').then(r => r.status)"), 200)
-  if (process.argv.includes('--offline-only') || process.argv.includes('--i18n-only')) {
+  if (process.argv.includes('--offline-only') || i18nOnly) {
     stage = 'offline local shell'
     await until(() => evaluate("!!document.querySelector('[data-mygo-local-shell]') && document.body.innerText.includes('Not connected')"))
     assert.equal(await evaluate("fetch('/mygo/status').then(r=>r.status)"),401,'remote still denies anonymous access')
-    if (process.argv.includes('--i18n-only')) {
+    if (i18nOnly) {
       for (const [language, heading] of Object.entries({en:'Not connected',zh:'未连接',ja:'未接続',es:'Sin conexión',fr:'Non connecté',de:'Nicht verbunden',ru:'Нет подключения',pt:'Sem conexão'})) {
-        await evaluate(`(() => { const select=document.querySelector('[data-mygo-local-shell] select'); select.value=${JSON.stringify(language)}; select.dispatchEvent(new Event('change',{bubbles:true})); })()`)
+        await selectOfflineLanguage(language)
         await until(() => evaluate(`document.documentElement.lang===${JSON.stringify(language==='zh'?'zh-CN':language)} && document.querySelector('[data-mygo-local-shell] main h1')?.innerText===${JSON.stringify(heading)}`))
       }
     }
-    await evaluate("(() => { const select=document.querySelector('[data-mygo-local-shell] select'); select.value='zh'; select.dispatchEvent(new Event('change',{bubbles:true})); })()")
+    await selectOfflineLanguage('zh')
     await until(() => evaluate("document.documentElement.lang.startsWith('zh') && document.querySelector('[data-mygo-local-shell] main h1')?.innerText==='未连接'"))
     await send('Page.reload', {ignoreCache:true})
-    await until(() => evaluate("document.documentElement.lang.startsWith('zh') && !!document.querySelector('[data-mygo-local-shell] nav button')"))
-    await evaluate("document.querySelector('[data-mygo-local-shell] nav button').click()")
+    await until(() => evaluate("document.documentElement.lang.startsWith('zh') && !!document.querySelector('[data-mygo-open-settings]')"))
+    await evaluate("document.querySelector('[data-mygo-open-settings]').click()")
     await until(() => evaluate("document.querySelector('[data-mygo-instances] h2')?.innerText==='实例'"))
     assert.equal(await evaluate("document.querySelector('[data-mygo-instances]').innerText.includes('管理你的实例连接。')"),true)
     await evaluate("[...document.querySelectorAll('button')].find(x=>x.getAttribute('aria-label')==='关闭设置')?.click()")
-    await evaluate("(() => { const select=document.querySelector('[data-mygo-local-shell] select'); select.value='en'; select.dispatchEvent(new Event('change',{bubbles:true})); })()")
+    await selectOfflineLanguage('en')
     await until(() => evaluate("document.documentElement.lang==='en'"))
 
-    await evaluate("document.querySelector('[data-mygo-local-shell] nav button').click()")
+    await evaluate("document.querySelector('[data-mygo-open-settings]').click()")
     await until(() => evaluate("!!document.querySelector('[data-mygo-instances]')"))
     await evaluate("[...document.querySelectorAll('[data-mygo-instances] button')].find(x=>x.innerText==='Add instance').click()")
     await until(() => evaluate("!!document.querySelector('[data-instance-editor]')"))
-    await evaluate(`(() => { for (const [label,value] of [['Name','Offline saved profile'],['Address','https://offline.example']]) { const input=document.querySelector('[data-instance-editor] input[aria-label="'+label+'"]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,value); input.dispatchEvent(new Event('input',{bubbles:true})); } })()`)
+    await evaluate(`(() => { for (const [label,value] of [['Name',${JSON.stringify(uiAudit ? 'Offline saved profile ' + 'W'.repeat(100) : 'Offline saved profile')}],['Address',${JSON.stringify(uiAudit ? 'https://' + 'a'.repeat(60) + '.' + 'b'.repeat(60) + '.example' : 'https://offline.example')}]]) { const input=document.querySelector('[data-instance-editor] input[aria-label="'+label+'"]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,value); input.dispatchEvent(new Event('input',{bubbles:true})); } })()`)
     await evaluate("document.querySelector('[data-instance-editor] button[type=submit]').click()")
     await until(() => evaluate("!document.querySelector('[data-instance-editor]') && document.body.innerText.includes('Offline saved profile')"))
     await send('Page.reload', {ignoreCache:true})
-    await until(() => evaluate("!!document.querySelector('[data-mygo-local-shell] nav button')"))
-    await evaluate("document.querySelector('[data-mygo-local-shell] nav button').click()")
+    await until(() => evaluate("!!document.querySelector('[data-mygo-open-settings]')"))
+    await evaluate("document.querySelector('[data-mygo-open-settings]').click()")
     await until(() => evaluate("!!document.querySelector('[data-mygo-instances]') && document.body.innerText.includes('Offline saved profile')"))
     assert.deepEqual(mutations,[],'device profile editing issues no Host management writes')
-    await writeFile(scratch+'/offline-shell.png',Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'))
+    if (uiAudit) {
+      stage = 'offline responsive settings'
+      for (const width of [360, 390, 768, 1440]) {
+        await send('Emulation.setDeviceMetricsOverride', {width,height:900,deviceScaleFactor:1,mobile:width<768})
+        await pause(200)
+        assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'),true,`offline Instances fits ${width}px`)
+        await writeFile(scratch+`/ui-offline-instances-${width}.png`,Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'))
+      }
+    }
+    await writeFile(scratch+'/offline-shell.png' ,Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'))
     await writeFile(scratch+'/offline-shell-validation.json',JSON.stringify({ok:true,anonymousRemoteStatus:401,profileSavedWithoutRemote:true,profileSurvivedReload:true,hostManagementWrites:mutations}),{mode:0o600})
   }
   await send('Page.navigate', { url })
@@ -102,7 +119,7 @@ try {
   await evaluate("[...document.querySelectorAll('button,[role=button]')].find(x => ['Plugins','插件'].includes(x.innerText)).click()")
   await pause(700)
   await until(() => evaluate("!!document.querySelector('[data-plugin-panel] [data-plugin-package]')"))
-  if (process.argv.includes('--touch-only') || process.argv.includes('--offline-only') || process.argv.includes('--i18n-only')) {
+  if (process.argv.includes('--touch-only') || process.argv.includes('--offline-only') || i18nOnly) {
     await until(() => evaluate("!!document.querySelector('[data-mygo-shared-client]')"))
     assert.equal(await evaluate("document.querySelector('[data-mygo-shared-client]').dataset.platformSingletons"),'true','diagnostic plugin sees original shared runtime')
     stage = 'mobile touch feedback'
@@ -115,7 +132,7 @@ try {
     await until(() => evaluate("['Local','本地'].includes(document.querySelector('[role=tab][aria-selected=true]')?.innerText)"))
     assert.equal(await evaluate("document.documentElement.dataset.inputModality"),'pointer','real touch uses original pointer modality')
     assert.equal(await evaluate("getComputedStyle(document.querySelector('[role=tab][aria-selected=true]')).webkitTapHighlightColor"),'rgba(0, 0, 0, 0)','browser tap flash is transparent')
-    if (process.argv.includes('--i18n-only')) {
+    if (i18nOnly) {
       assert.equal(await evaluate("document.documentElement.lang"),'zh-CN','local UI adopts the real Host language')
       assert.equal(await evaluate("document.querySelector('[role=tab][aria-selected=true]').innerText"),'本地')
       assert.equal(await evaluate("document.querySelector('[data-plugin-package=\"./plugins/touch-feedback.js\"]').innerText.includes('触摸反馈')"),true)
@@ -136,6 +153,52 @@ try {
     assert.equal(keyboard.visible,true,'keyboard focus remains visible')
     assert.ok((keyboard.outline!=='none' && keyboard.width>0) || keyboard.shadow!=='none' || keyboard.decoration.includes('underline'),'original keyboard focus treatment is preserved')
     await writeFile(scratch+'/touch-feedback-validation.json',JSON.stringify({ok:true,touchNavigation:true,transparentTapHighlight:true,keyboard}),{mode:0o600})
+    if (uiAudit) {
+      stage = 'connected UI audit'
+      const capture = async name => {
+        for (const width of [360, 390, 768, 1440]) {
+          await send('Emulation.setDeviceMetricsOverride', {width,height:900,deviceScaleFactor:1,mobile:width<768})
+          await pause(200)
+          assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'),true,`${name} fits ${width}px`)
+          await writeFile(scratch+`/ui-${name}-${width}.png`,Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'))
+        }
+      }
+      await capture('plugins-local')
+      await evaluate("[...document.querySelectorAll('[role=tab]')].find(x=>x.innerText==='已安装').click()")
+      await until(() => evaluate("document.querySelectorAll('[data-plugin-item]').length>=4"))
+      await capture('plugins-installed')
+      await evaluate("document.querySelector('[data-plugin-item=subagent] button').click()")
+      await until(() => evaluate("!!document.querySelector('[data-plugin-item-detail=subagent] [data-mygo-runtime-details]')"))
+      assert.ok(await evaluate("document.querySelectorAll('[data-plugin-item-detail=subagent] input').length")>0,'original builtin configuration remains available')
+      await capture('builtin-detail')
+      await evaluate("document.querySelector('[data-plugin-item-detail=subagent] button').click()")
+      await evaluate("[...document.querySelectorAll('[role=tab]')].find(x=>x.innerText==='发现').click()")
+      await pause(300)
+      await capture('plugins-discover')
+      await evaluate("[...document.querySelectorAll('[role=tab]')].find(x=>x.innerText==='本地').click()")
+      await until(() => evaluate("!!document.querySelector('[data-plugin-package=\"./plugins/marker.js\"]')"))
+      await evaluate("document.querySelector('[data-plugin-package=\"./plugins/marker.js\"] button').click()")
+      await until(() => evaluate("!!document.querySelector('[data-plugin-detail]')"))
+      await capture('plugin-detail')
+      const originalNote = await evaluate("document.querySelector('#local-note-text').value")
+      await evaluate("(() => { const input=document.querySelector('#local-note-text'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'W'.repeat(160)); input.dispatchEvent(new Event('input',{bubbles:true})); })()")
+      await evaluate("[...document.querySelectorAll('[data-plugin-config] button')].find(x=>x.innerText==='保存').click()")
+      await until(() => evaluate("document.querySelector('[data-mygo-local-plugin=marker]')?.innerText==='W'.repeat(160)"))
+      assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'),true,'long note remains inside the sidebar')
+      await evaluate(`(() => { const input=document.querySelector('#local-note-text'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,${JSON.stringify(originalNote)}); input.dispatchEvent(new Event('input',{bubbles:true})); })()`)
+      await evaluate("[...document.querySelectorAll('[data-plugin-config] button')].find(x=>x.innerText==='保存').click()")
+      await until(() => evaluate(`document.querySelector('[data-mygo-local-plugin=marker]')?.innerText===${JSON.stringify(originalNote)}`))
+      await evaluate("document.querySelector('[data-mygo-navigation] button').click()")
+      await until(() => evaluate("[...document.querySelectorAll('[role=menuitem]')].some(x=>x.innerText==='管理实例')"))
+      await evaluate("[...document.querySelectorAll('[role=menuitem]')].find(x=>x.innerText==='管理实例').click()")
+      await until(() => evaluate("!!document.querySelector('[data-shortcut-modal=settings] [data-mygo-instances]')"))
+      await capture('instances')
+      await evaluate("[...document.querySelectorAll('[data-shortcut-modal=settings] nav button')].find(x=>x.innerText==='客户端').click()")
+      await until(() => evaluate("!!document.querySelector('[data-mygo-client-settings]')"))
+      await capture('client-settings')
+      assert.deepEqual(mutations,[],'UI inspection changes no Host management state')
+      await writeFile(scratch+'/ui-audit-validation.json',JSON.stringify({ok:true,widths:[360,390,768,1440],pages:['offline-instances','plugins-local','plugins-installed','builtin-detail','plugins-discover','plugin-detail','instances','client-settings'],longProfile:true,longNote:true,hostManagementWrites:mutations}),{mode:0o600})
+    }
     console.log('Real mobile touch navigation, transparent tap highlight and original keyboard focus passed')
     await Promise.race([send('Browser.close'),pause(5000)])
   } else {

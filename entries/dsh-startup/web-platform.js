@@ -1,4 +1,5 @@
 // Browser platform and available bundled plugins, not a fixed composition.
+import '../../.scratch/upstream/deepseek-harness/packages/client/ui-theme/src/styles/brand-font.css'
 import { getStaticModules } from '../../.scratch/upstream/deepseek-harness/packages/client/web/src/seed.ts'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import * as dshInstance from './local/plugins/dsh-instance.js'

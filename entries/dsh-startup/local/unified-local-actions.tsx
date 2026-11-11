@@ -3,6 +3,7 @@ import { useClientText, clientError } from './i18n'
 import React, { useEffect, useRef, useState } from 'react'
 import type { Context } from '@deepseek-ai/cordis'
 import { SettingsForm, SettingsValueField } from '@deepseek-ai/dsh-client-ui-primitives'
+import css from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-plugin-manager/src/client/PluginManagerPage.module.css'
 
 type InspectRow = { readonly entryId?: string; readonly rowId: string; readonly moduleName: string }
 type LocalRow = InspectRow & {
@@ -46,9 +47,9 @@ export function LocalPluginActions({ ctx, row, onChanged }: Props) {
     }
   }
   return <div data-local-plugin-actions="">
-    {status.diagnostic && <p role="alert">{status.diagnostic}</p>}
-    {current?.diagnostic && <p role="alert">{current.diagnostic}</p>}
-    {error && error !== status.diagnostic && <p role="alert">{error}</p>}
+    {status.diagnostic && <p role="alert" className={css.rowFailure}>{status.diagnostic}</p>}
+    {current?.diagnostic && <p role="alert" className={css.rowFailure}>{current.diagnostic}</p>}
+    {error && error !== status.diagnostic && <p role="alert" className={css.rowFailure}>{error}</p>}
     {!current?.entryId ? <p>{t('Local entry unavailable. Refresh inventory.')}</p> : current.readOnlyReason || !hasLocalPluginConfiguration(current) ?
       null : <LocalConfig t={t} key={current.entryId + ':' + status.revision} row={current} status={status} run={run} />}
   </div>

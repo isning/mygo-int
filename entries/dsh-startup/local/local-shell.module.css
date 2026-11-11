@@ -1,0 +1,49 @@
+/* Layout only. Controls, typography, surfaces and settings remain upstream UI. */
+.shell {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px;
+  color: var(--dsw-alias-label-primary);
+}
+
+.navigation,
+.actions,
+.status {
+  display: flex;
+  align-items: center;
+}
+
+.navigation {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 32px;
+}
+
+.actions {
+  flex-wrap: wrap;
+  gap: 12px;
+  min-width: 0;
+}
+
+.status {
+  gap: 8px;
+}
+
+.error {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 767px) {
+  .shell {
+    padding: 16px;
+  }
+
+  .actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

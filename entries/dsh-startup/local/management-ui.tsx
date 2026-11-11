@@ -7,7 +7,7 @@ export { registerInstanceNavigation } from './instance-navigation'
 import { useClientText, clientError } from './i18n'
 import React, { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { Button, ConnectionIndicator, IconPlusOutlineRegular, Modal, StateDot, closeTopModal, SettingsForm, SettingsValueField } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, ConnectionIndicator, IconPlusOutlineRegular, Modal, StateDot, Tag, closeTopModal, SettingsForm, SettingsValueField } from '@deepseek-ai/dsh-client-ui-primitives'
 import { SlotCore } from '@deepseek-ai/dsh-client-ui-slots'
 import { RowsSection } from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-plugin-manager/src/client/PluginManagerPage.tsx?mygo-rows'
 import { SettingsPanel } from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-settings-general/src/client/SettingsRoot.tsx?mygo-panel'
@@ -15,13 +15,22 @@ import generalCSS from '../../../.scratch/upstream/deepseek-harness/packages/cli
 import rowCSS from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-settings-general/src/client/DesktopChannelRow.module.css'
 import modelsCSS from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-settings-models/src/client/ModelsSection.module.css'
 import { en } from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-plugin-manager/src/client/locales.ts'
+import deviceCSS from './device-ui.module.css'
+
+export function registerLocalNote(ctx, label) {
+  ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register({
+    name: 'sidebar.footer.action', id: 'mygo-local-note', order: 100,
+  }, ({ wide }) => wide ? <aside className={deviceCSS.note} data-mygo-local-plugin="marker">
+    <Tag tone="neutral"><span className={deviceCSS.noteText}>{label}</span></Tag>
+  </aside> : null))
+}
 
 const translate = (key, params = {}) => Object.entries(params).reduce((text, [key, value]) => text.replaceAll(`{${key}}`, String(value)), key === undefined ? 'Protected local startup service' : en[key] ?? key)
 const labels = { unavailable: 'Local entry unavailable', readOnly: 'Protected startup service', saveFailed: 'Local configuration was rejected', save: 'Save and apply locally', saving: 'Applying…' }
 class LocalUIBoundary extends React.Component {
   state = { error: '' }
   static getDerivedStateFromError(error) { return { error: error.message } }
-  render() { return this.state.error ? <div role="alert">{this.props.ctx.mygoLocale.text('Local settings failed: {error}. Reload to recover.', { error: this.state.error })}</div> : this.props.children }
+  render() { return this.state.error ? <p role="alert" className={modelsCSS.error}>{this.props.ctx.mygoLocale.text('Local settings failed: {error}. Reload to recover.', { error: this.state.error })}</p> : this.props.children }
 }
 
 function useRefresh(service) {
@@ -90,7 +99,7 @@ export function ClientSettings({ ctx, run }) {
   }, [ctx])
   const status = service.status()
   return <div className={generalCSS.section} data-mygo-client-settings="">
-    {status.diagnostic && <p role="alert">{status.diagnostic}</p>}
+    {status.diagnostic && <p role="alert" className={modelsCSS.error}>{status.diagnostic}</p>}
     <div className={rowCSS.row}>
       <div className={rowCSS.rowText}>
         <div className={rowCSS.title}>{t('Plugins')}</div>
@@ -167,12 +176,12 @@ export function Instances({ ctx, run }) {
     {snapshot.diagnostic && <p className={modelsCSS.error} role="alert">{snapshot.diagnostic}</p>}
     {snapshot.selectedId !== snapshot.connectedId && <p className={modelsCSS.notice} role="status">{t('The selected profile is saved. Your active connection has not changed.')}</p>}
     <ul className={modelsCSS.rows}>
-      {snapshot.catalog.map(row => <li key={row.id} className={modelsCSS.rowCard} data-instance-id={row.id}>
-        <div className={modelsCSS.rowHead}>
-          <span className={modelsCSS.rowIdentity}>
+      {snapshot.catalog.map(row => <li key={row.id} className={`${modelsCSS.rowCard} ${deviceCSS.instanceCard}`} data-instance-id={row.id}>
+        <div className={`${modelsCSS.rowHead} ${deviceCSS.instanceHead}`}>
+          <span className={`${modelsCSS.rowIdentity} ${deviceCSS.instanceIdentity}`}>
             <span className={modelsCSS.rowName}>{row.name}</span>
             {row.id === snapshot.connectedId && <span className={modelsCSS.rowTag}>{snapshot.connectionStatus === 'authenticated' ? t('Current') : t('Configured')}</span>}
-            {row.id === snapshot.selectedId && row.id !== snapshot.connectedId && <span className={modelsCSS.rowTag}>Selected</span>}
+            {row.id === snapshot.selectedId && row.id !== snapshot.connectedId && <span className={modelsCSS.rowTag}>{t('Selected')}</span>}
           </span>
           <span className={modelsCSS.rowActions}>
             {row.id !== snapshot.selectedId && <button type="button" className={modelsCSS.secondaryButton}
@@ -183,7 +192,7 @@ export function Instances({ ctx, run }) {
               onClick={() => setEditing(editing?.id === row.id ? null : { id: row.id, draft: { ...row } })}>{t('Edit')}</button>
           </span>
         </div>
-        <span className={modelsCSS.editorRoute}>{row.address}</span>
+        <span className={`${modelsCSS.editorRoute} ${deviceCSS.address}`}>{row.address}</span>
         <div className={modelsCSS.editorHeader}>
           <StateDot state={row.id !== snapshot.connectedId ? 'idle' : snapshot.connectionStatus === 'checking' ? 'ongoing' : snapshot.connectionStatus === 'authenticated' ? 'done' : 'error'} size={8} />
           <span className={modelsCSS.editorRoute}>{status(row)}</span>
@@ -212,7 +221,7 @@ function NativeSection({ ctx, component: Component }) {
     setError('')
     try { await operation() } catch (error) { setError(clientError(ctx, error)) }
   }
-  return <LocalUIBoundary ctx={ctx}>{error && <p role="alert">{error}</p>}<Component ctx={ctx} run={run} /></LocalUIBoundary>
+  return <LocalUIBoundary ctx={ctx}>{error && <p role="alert" className={modelsCSS.error}>{error}</p>}<Component ctx={ctx} run={run} /></LocalUIBoundary>
 }
 
 export function registerSettings(ctx) {

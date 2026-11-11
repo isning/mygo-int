@@ -1,0 +1,21 @@
+/* Local content can contain arbitrary profile names, origins and note text.
+ * Preserve upstream control chrome; only allow those values to fit the outlet. */
+.instanceCard,
+.note {
+  min-width: 0;
+}
+
+.instanceHead {
+  flex-wrap: wrap;
+}
+
+.instanceIdentity {
+  flex: 1 1 160px;
+  overflow-wrap: anywhere;
+}
+
+.address,
+.noteText {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
