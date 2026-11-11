@@ -25,12 +25,12 @@ type InspectRow = Omit<PackageRow, 'entryId'> & { entryId?: string }
 type Translate = PluginManagerPageProps['t']
 
 const localPluginInfo: Record<string, { title: string; description: string; group: 'basic' | 'extensions' }> = {
-  './plugins/client-composition.js': { title: 'Startup preferences', description: 'Remembers enabled plugins and their options on this device. Required by local plugin management.', group: 'basic' },
+  './plugins/client-composition.js': { title: 'Startup preferences', description: 'Remembers enabled plugins and their options on this device.', group: 'basic' },
   './plugins/instance-manager.js': { title: 'Instance profiles', description: 'Stores your remote connection profiles. Manage them in Settings → Instances.', group: 'basic' },
-  './plugins/unified-plugin-manager.js': { title: 'Plugin manager', description: 'Adds this Local tab and plugin runtime details. Required to manage local plugins.', group: 'basic' },
-  './plugins/local-navigation.js': { title: 'Instance switcher', description: 'Shows the instance selector in the sidebar. Turn it off to hide the shortcut.', group: 'basic' },
-  './plugins/ui-client-manager.js': { title: 'Settings integration', description: 'Adds device preferences and instance profiles to Settings. Required for local settings.', group: 'basic' },
-  './plugins/marker.js': { title: 'Example note', description: 'Displays a sample note in the sidebar. Configure its text or turn it off.', group: 'extensions' },
+  './plugins/unified-plugin-manager.js': { title: 'Plugin manager', description: 'Adds this Local tab and plugin runtime details.', group: 'basic' },
+  './plugins/local-navigation.js': { title: 'Instance switcher', description: 'Shows the instance selector in the sidebar.', group: 'basic' },
+  './plugins/ui-client-manager.js': { title: 'Settings integration', description: 'Adds device preferences and instance profiles to Settings.', group: 'basic' },
+  './plugins/marker.js': { title: 'Example note', description: 'Displays a sample note in the sidebar.', group: 'extensions' },
 }
 
 function LocalPlugins({ ctx, t, facts }: { ctx: ClientContext; t: Translate; facts: PluginRuntimeFacts }) {
@@ -72,14 +72,12 @@ function LocalPlugins({ ctx, t, facts }: { ctx: ClientContext; t: Translate; fac
       .finally(() => setBusy(false))
   }
   return <div className={css.installedPanel} data-mygo-plugin-source="LOCAL">
-    <p className={css.detailDesc}>Plugins on this device. Changes here do not change your remote instance.</p>
     {error && <p role="alert" className={css.reason}>{error}</p>}
     {(['basic', 'extensions', 'bundles'] as const).map(group => {
       const members = rows.filter(row => (localPluginInfo[row.moduleName]?.group ?? 'bundles') === group)
       if (!members.length) return null
       return <section key={group} className={css.group} data-local-plugin-group={group}>
         <div className={css.groupHead}><h3 className={css.groupTitle}>{t(group === 'basic' ? 'basicTitle' : group === 'extensions' ? 'extensionsTitle' : 'bundlesTitle')}</h3></div>
-        <p className={css.detailDesc}>{group === 'basic' ? 'Built-in components of this client. Required components have a locked switch.' : group === 'extensions' ? 'Optional examples and experimental features. You can configure or disable them.' : 'Additional plugins installed on this device.'}</p>
         <ul className={css.cards}>{members.map(row => <PackageCard key={row.entryId ?? row.rowId}
           pkg={{ ...pkg, name: row.moduleName, enabled: row.enabled, rows: [row as PackageRow],
             meta: row.meta,
