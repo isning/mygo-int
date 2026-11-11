@@ -100,6 +100,28 @@ function Instances({ ctx, run }) {
   </div>
 }
 
+// Rendered by the original Settings outlet, under its existing React providers.
+function NativeSection({ ctx, component: Component }) {
+  const [error, setError] = useState('')
+  const run = async operation => {
+    setError('')
+    try { await operation() } catch (error) { setError(error.message) }
+  }
+  return <LocalUIBoundary>{error && <p role="alert">{error}</p>}<Component ctx={ctx} run={run} /></LocalUIBoundary>
+}
+
+export function registerSettings(ctx) {
+  for (const [id, label, order, Component] of [
+    ['mygo-local-plugins', 'LOCAL plugins', 40, LocalPlugins],
+    ['mygo-instances', 'Instances', 41, Instances],
+  ]) {
+    ctx.slots.inject('settings.section', () => ctx.slots.register({
+      name: 'settings.section', id, label, order,
+    }, () => <NativeSection ctx={ctx} component={Component} />))
+  }
+}
+
+// Opt-in legacy composition only; the supplied-root path uses registerSettings.
 export function mount(ctx) {
   ctx.effect(() => {
     const node = document.createElement('div')

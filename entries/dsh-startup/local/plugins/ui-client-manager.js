@@ -1,5 +1,10 @@
 // Replaceable local UI plugin; the base does not mount a product page.
 export const inject = ['clientComposition', 'instanceManager', 'mygoPlatform']
 export function apply(ctx) {
-  ctx.mygoPlatform.modules['mygo/dsh-management-ui'].mount(ctx)
+  const ui = ctx.mygoPlatform.modules['mygo/dsh-management-ui']
+  if (ctx.mygoStartup) {
+    ctx.inject(['slots'], scope => ui.registerSettings(scope))
+  } else {
+    ui.mount(ctx)
+  }
 }
