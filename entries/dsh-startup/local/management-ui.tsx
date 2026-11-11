@@ -1,3 +1,5 @@
+// Original implementation exposed to the navigation plugin; unchanged upstream.
+export { installWindowDragRecall } from '../../../.scratch/upstream/deepseek-harness/packages/client/web/src/window-drag/recall.ts'
 export { registerInstanceNavigation } from './instance-navigation'
 // Original DSH UI components are imported from the verified pin by the build adapter.
 // The injected face below is local only; no Host PluginManagerController/ConfigForms.

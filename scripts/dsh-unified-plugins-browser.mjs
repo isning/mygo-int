@@ -67,6 +67,8 @@ try {
   await pause(700)
   await until(() => evaluate("!!document.querySelector('[data-plugin-panel] [data-plugin-package]')"))
   if (process.argv.includes('--touch-only')) {
+    await until(() => evaluate("!!document.querySelector('[data-mygo-shared-client]')"))
+    assert.equal(await evaluate("document.querySelector('[data-mygo-shared-client]').dataset.platformSingletons"),'true','diagnostic plugin sees original shared runtime')
     stage = 'mobile touch feedback'
     await send('Emulation.setDeviceMetricsOverride', {width:390,height:844,deviceScaleFactor:1,mobile:true})
     await send('Emulation.setTouchEmulationEnabled', {enabled:true,maxTouchPoints:1})

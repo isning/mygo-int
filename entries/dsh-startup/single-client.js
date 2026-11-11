@@ -8,7 +8,7 @@ import { protectLocalEntryModules } from './local-entry-boundary.js'
 import { bootClient, assertEntriesActive } from '../../.scratch/upstream/deepseek-harness/packages/client/web/src/boot-client.ts'
 import { mountClient } from '../../.scratch/upstream/deepseek-harness/packages/client/web/src/mount.ts'
 import { BootPage } from '../../.scratch/upstream/deepseek-harness/packages/client/web/src/boot-page.ts'
-import { installWindowDragRecall } from '../../.scratch/upstream/deepseek-harness/packages/client/web/src/window-drag/recall.ts'
+import { createSharedRuntimeDiagnostics } from './local/plugins/shared-runtime-diagnostics.js'
 import '../../.scratch/upstream/deepseek-harness/packages/client/web/src/base.css'
 import '@deepseek-ai/dsh-client-ui-theme/brand-font.css'
 
@@ -29,39 +29,13 @@ export async function startSingleClient() {
   const diagnosticName = '@mygo/single-client-contribution'
   const localEntries = new Set()
   let configuration
-  let stopDragRecall
   const dispose = async () => {
-    stopDragRecall?.()
     await ctx.fiber.dispose()
     localEntries.clear()
     page.dispose()
   }
   addEventListener('pagehide', event => { if (!event.persisted) void dispose() })
-  // This service belongs to the MYGO-created root, before official boot.
-  ctx.reflect.provide('mygoMigration', Object.freeze({ label: 'MYGO supplied Context service' }))
-  staticModules[diagnosticName] = {
-    inject: ['slots', 'modules', 'mygoMigration'],
-    async apply(scope) {
-      const react = await scope.modules.import('react')
-      const cordis = await scope.modules.import('@deepseek-ai/cordis')
-      const localEntries = [...scope.loader.entries()].filter(entry =>
-        configuration.entries.some(options => options.id === entry.options.id))
-      const localModulesShared = (await Promise.all(localEntries.filter(entry => !entry.disabled).map(async entry =>
-        await scope.modules.import(entry.options.name) === entry.moduleNamespace))).every(Boolean)
-      scope.slots.inject('shell.overlay', () => scope.slots.register({ name: 'shell.overlay', id: 'mygo-shared-runtime-diagnostic' }, () => {
-        const [label] = React.useState(scope.mygoMigration.label)
-        const entries = [...scope.loader.entries()]
-        return React.createElement('aside', {
-          hidden: true,
-          'data-mygo-shared-client': '',
-          'data-local-active': String(localEntries.length > 0 && localEntries.every(entry => entry.disabled || entry.fiber?.state === 2)),
-          'data-local-entry': localEntries.map(entry => entry.options.name).join(','),
-          'data-session-active': String(entries.some(entry => entry.options.name === '@deepseek-ai/dsh-client-ui-session' && entry.fiber?.state === 2)),
-          'data-platform-singletons': String(localModulesShared && react === React && cordis.Context === Context && scope instanceof Context && scope.modules === scope.loader.internal),
-        }, label)
-      }))
-    },
-  }
+  staticModules[diagnosticName] = createSharedRuntimeDiagnostics({ React, Context, getConfiguration: () => configuration })
   try {
     const response = await fetch('/mygo-local/startup.json', { cache: 'no-store' })
     if (!response.ok) throw Error(`Local startup configuration HTTP ${response.status}`)
@@ -138,7 +112,6 @@ export async function startSingleClient() {
       && !entry.disabled && entry.fiber?.state !== 2)) {
       throw Error(warnings.join('\n') || 'Local startup entries did not activate')
     }
-    stopDragRecall = installWindowDragRecall({ document: container.ownerDocument })
     await mountClient(ctx, container)
   } catch (reason) {
     console.error(reason)

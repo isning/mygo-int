@@ -22,8 +22,9 @@ uses the existing clearly labelled local model mock.
 platform seed and supplies it to pinned `bootClient`, then `mountClient`. It never
 constructs `AppWebEntry`. `bootClient` installs the original Loader and starts the
 original ClientEntries managed roster. A local contribution loads through that
-same Loader and static module seed. It consumes the root's `mygoMigration`
-service and contributes to the original `shell.bottom` Slot, under the official
+same Loader and static module seed. Its diagnostic plugin owns a scoped
+`mygoMigration` service and contributes a hidden node to the original
+`shell.overlay` Slot, under the official
 React renderer. It observes its own and the original session entry's active
 states and checks the original React/Cordis module identities. Original boot
 progress, activation audits, error text and window-drag behavior are retained.
@@ -172,3 +173,6 @@ Evidence is under ignored `.scratch/`: `ticket49-{red,green,disabled-red,disable
 `test-dsh/single-management-browser.json`. No credential is included here.
 The normal default composition remains legacy. Integration with the parallel
 owner-scoping and Slot-override tickets remains the parent's responsibility.
+
+For the current plugin/bootstrap split and exact build-time adaptations, see
+[dsh-plugin-boundaries.md](dsh-plugin-boundaries.md).
