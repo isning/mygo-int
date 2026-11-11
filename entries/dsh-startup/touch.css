@@ -1,0 +1,5 @@
+/* Replace the browser's tap flash with the controls' existing feedback.
+ * Focus-visible outlines remain owned by the original theme. */
+:where(button, a[href], [role='button'], [role='menuitem'], [role='tab'], summary) {
+  -webkit-tap-highlight-color: transparent;
+}

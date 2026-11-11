@@ -229,3 +229,18 @@ entries, absence of diagnostic copy, original Settings navigation and unchanged
 Host state. Screenshot: `.scratch/test-dsh/instance-switcher.png`. The original
 composer MODEL MOCK checkpoint and 27 repository tests pass. No custom sidebar
 stylesheet or upstream source edits are introduced.
+
+## Touch feedback
+
+The default single-root entry imports `touch.css`, which only sets
+`-webkit-tap-highlight-color: transparent` on interactive controls. Original
+hover/active styles, input behavior, focus-visible rules and keyboard modality
+remain unchanged. No upstream stylesheets are edited.
+
+`node scripts/dsh-unified-plugins-browser.mjs --touch-only` verifies trusted CDP
+touch events at a 390px viewport activate Local, publish pointer modality and
+produce a transparent tap-highlight color. Tab then restores keyboard modality
+and the original SegmentedTabs underline focus indicator. Evidence is saved to
+`.scratch/test-dsh/touch-feedback-validation.json`. This is Chromium touch
+emulation, not a physical Android device check; it does not claim the broader
+English-only management workflow was rerun against a changed Host locale.

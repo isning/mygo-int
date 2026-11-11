@@ -60,12 +60,33 @@ try {
   await until(() => evaluate("!!document.querySelector('[data-mygo-local-plugin=marker]')"))
   await evaluate("[...document.querySelectorAll('button')].find(x => x.innerText === 'Continue')?.click()")
   await evaluate("[...document.querySelectorAll('button')].find(x => x.getAttribute('aria-label') === 'Open sidebar')?.click()")
-  await until(() => evaluate("[...document.querySelectorAll('button,[role=button]')].some(x => x.innerText === 'Plugins')"))
+  await until(() => evaluate("[...document.querySelectorAll('button,[role=button]')].some(x => ['Plugins','插件'].includes(x.innerText))"))
   // Initial onboarding may explicitly save Host preferences; inspect only the Plugins workflow.
   mutations.length = 0
-  await evaluate("[...document.querySelectorAll('button,[role=button]')].find(x => x.innerText === 'Plugins').click()")
+  await evaluate("[...document.querySelectorAll('button,[role=button]')].find(x => ['Plugins','插件'].includes(x.innerText)).click()")
   await pause(700)
   await until(() => evaluate("!!document.querySelector('[data-plugin-panel] [data-plugin-package]')"))
+  if (process.argv.includes('--touch-only')) {
+    stage = 'mobile touch feedback'
+    await send('Emulation.setDeviceMetricsOverride', {width:390,height:844,deviceScaleFactor:1,mobile:true})
+    await send('Emulation.setTouchEmulationEnabled', {enabled:true,maxTouchPoints:1})
+    await pause(200)
+    const point = await evaluate("(() => { const el=[...document.querySelectorAll('[role=tab]')].find(x=>x.innerText==='Local'); const r=el.getBoundingClientRect(); return {x:r.x+r.width/2,y:r.y+r.height/2} })()")
+    await send('Input.dispatchTouchEvent', {type:'touchStart',touchPoints:[point]})
+    await send('Input.dispatchTouchEvent', {type:'touchEnd',touchPoints:[]})
+    await until(() => evaluate("document.querySelector('[role=tab][aria-selected=true]')?.innerText==='Local'"))
+    assert.equal(await evaluate("document.documentElement.dataset.inputModality"),'pointer','real touch uses original pointer modality')
+    assert.equal(await evaluate("getComputedStyle(document.querySelector('[role=tab][aria-selected=true]')).webkitTapHighlightColor"),'rgba(0, 0, 0, 0)','browser tap flash is transparent')
+    await send('Input.dispatchKeyEvent', {type:'keyDown',key:'Tab',code:'Tab',windowsVirtualKeyCode:9})
+    await send('Input.dispatchKeyEvent', {type:'keyUp',key:'Tab',code:'Tab',windowsVirtualKeyCode:9})
+    const keyboard = await evaluate("(() => { const el=document.querySelector('[role=tab][aria-selected=true]'); el.focus(); const s=getComputedStyle(el); return {modality:document.documentElement.dataset.inputModality,visible:el.matches(':focus-visible'),outline:s.outlineStyle,width:parseFloat(s.outlineWidth),shadow:s.boxShadow,decoration:s.textDecorationLine} })()")
+    assert.equal(keyboard.modality,'keyboard')
+    assert.equal(keyboard.visible,true,'keyboard focus remains visible')
+    assert.ok((keyboard.outline!=='none' && keyboard.width>0) || keyboard.shadow!=='none' || keyboard.decoration.includes('underline'),'original keyboard focus treatment is preserved')
+    await writeFile(scratch+'/touch-feedback-validation.json',JSON.stringify({ok:true,touchNavigation:true,transparentTapHighlight:true,keyboard}),{mode:0o600})
+    console.log('Real mobile touch navigation, transparent tap highlight and original keyboard focus passed')
+    await Promise.race([send('Browser.close'),pause(5000)])
+  } else {
   assert.equal(await evaluate("!!document.querySelector('[data-mygo-unified-plugins]')"), false, 'the custom replacement page is removed')
   assert.equal(await evaluate("!!document.querySelector('[data-plugin-toolbar]')"), true, 'original header and toolbar remain')
   await until(() => evaluate("document.querySelectorAll('[data-plugin-item] [data-plugin-side=Client][data-active=true]').length === 4"))
@@ -301,6 +322,7 @@ try {
   await writeFile(scratch+'/original-plugins-validation.json',JSON.stringify({ok:true,localCount,markers,builtinDetails:true,componentDetails:true,localGroups:true,originalMain:true,originalRowDetail:true,localToggle:true,localConfig:true,hostMutations:mutations,narrowViewport:true}),{mode:0o600})
   console.log('Original Plugins page, native Local tab and Remote/Client badges, local lifecycle/configuration and narrow viewport passed')
   await Promise.race([send('Browser.close'), pause(5000)])
+  }
   }
 } catch (error) {
   await writeFile(scratch + '/unified-plugin-failure.json', JSON.stringify({ stage, error: error.message, errors, mutations, text: evaluate ? await evaluate('document.body.innerText').catch(() => '') : '' }), { mode: 0o600 })
