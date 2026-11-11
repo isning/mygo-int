@@ -131,7 +131,6 @@ function InstanceEditor({ ctx, service, target, onClose }) {
   const [draft, setDraft] = useState(() => ({ ...target.draft }))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const bound = target.id === service.snapshot().connectedId
   const field = (key, label, disabled = false) => <label className={modelsCSS.field} key={key}>
     <span className={modelsCSS.fieldLabel}>{label}</span>
     <input className={modelsCSS.input} aria-label={label} value={draft[key]}
@@ -145,7 +144,7 @@ function InstanceEditor({ ctx, service, target, onClose }) {
   }}>
     <div className={modelsCSS.editorHeader}><span className={modelsCSS.editorTitle}>{target.id ? t('Edit instance') : t('Add instance')}</span></div>
     {field('name', t('Name'))}
-    {field('address', t('Address'), bound)}
+    {field('address', t('Address'))}
     <details className={modelsCSS.customized}>
       <summary className={modelsCSS.customizedSummary}>{t('Advanced')}</summary>
       <div className={modelsCSS.customizedBody}>
@@ -165,23 +164,24 @@ export function Instances({ ctx, run }) {
   const service = ctx.instanceManager
   useRefresh(service)
   const snapshot = service.snapshot()
+  const isConnected = service.isConnectedProfile
   const [editing, setEditing] = useState(null)
   const [selecting, setSelecting] = useState(false)
-  const status = row => row.id !== snapshot.connectedId ? t('Not connected')
+  const status = row => !isConnected(row) ? t('Not connected')
     : snapshot.connectionStatus === 'checking' ? t('Checking…')
     : snapshot.connectionStatus === 'authenticated' ? t('Available') : t('Unavailable')
   return <div className={modelsCSS.section} data-mygo-instances="">
     <h2 className={modelsCSS.title}>{t('Instances')}</h2>
     <p className={modelsCSS.intro}>{t('Manage your instance connections.')}</p>
     {snapshot.diagnostic && <p className={modelsCSS.error} role="alert">{snapshot.diagnostic}</p>}
-    {snapshot.selectedId !== snapshot.connectedId && <p className={modelsCSS.notice} role="status">{t('The selected profile is saved. Your active connection has not changed.')}</p>}
+    {!isConnected(snapshot.catalog.find(row => row.id === snapshot.selectedId)) && <p className={modelsCSS.notice} role="status">{t('The selected profile is saved. Your active connection has not changed.')}</p>}
     <ul className={modelsCSS.rows}>
       {snapshot.catalog.map(row => <li key={row.id} className={`${modelsCSS.rowCard} ${deviceCSS.instanceCard}`} data-instance-id={row.id}>
         <div className={`${modelsCSS.rowHead} ${deviceCSS.instanceHead}`}>
           <span className={`${modelsCSS.rowIdentity} ${deviceCSS.instanceIdentity}`}>
             <span className={modelsCSS.rowName}>{row.name}</span>
-            {row.id === snapshot.connectedId && <span className={modelsCSS.rowTag}>{snapshot.connectionStatus === 'authenticated' ? t('Current') : t('Configured')}</span>}
-            {row.id === snapshot.selectedId && row.id !== snapshot.connectedId && <span className={modelsCSS.rowTag}>{t('Selected')}</span>}
+            {isConnected(row) && <span className={modelsCSS.rowTag}>{snapshot.connectionStatus === 'authenticated' ? t('Current') : t('Configured')}</span>}
+            {row.id === snapshot.selectedId && !isConnected(row) && <span className={modelsCSS.rowTag}>{t('Selected')}</span>}
           </span>
           <span className={modelsCSS.rowActions}>
             {row.id !== snapshot.selectedId && <button type="button" className={modelsCSS.secondaryButton}
@@ -194,9 +194,9 @@ export function Instances({ ctx, run }) {
         </div>
         <span className={`${modelsCSS.editorRoute} ${deviceCSS.address}`}>{row.address}</span>
         <div className={modelsCSS.editorHeader}>
-          <StateDot state={row.id !== snapshot.connectedId ? 'idle' : snapshot.connectionStatus === 'checking' ? 'ongoing' : snapshot.connectionStatus === 'authenticated' ? 'done' : 'error'} size={8} />
+          <StateDot state={!isConnected(row) ? 'idle' : snapshot.connectionStatus === 'checking' ? 'ongoing' : snapshot.connectionStatus === 'authenticated' ? 'done' : 'error'} size={8} />
           <span className={modelsCSS.editorRoute}>{status(row)}</span>
-          {row.id === snapshot.connectedId && <button type="button" className={modelsCSS.linkButton}
+          {isConnected(row) && <button type="button" className={modelsCSS.linkButton}
             disabled={snapshot.connectionStatus === 'checking'} onClick={() => run(service.refresh)}>{t('Check connection')}</button>}
         </div>
         {editing?.id === row.id && <InstanceEditor ctx={ctx} key={row.id} service={service} target={editing} onClose={() => setEditing(null)} />}
@@ -206,7 +206,7 @@ export function Instances({ ctx, run }) {
       {editing?.id === null ? <InstanceEditor ctx={ctx} key="new-instance" service={service} target={editing} onClose={() => setEditing(null)} />
         : <div className={modelsCSS.addActions}><button type="button" className={modelsCSS.addButton}
             disabled={snapshot.catalog.length >= 32} onClick={() => setEditing({ id: null, draft: {
-              id: 'instance-' + Array.from(crypto.getRandomValues(new Uint8Array(12)), value => value.toString(16).padStart(2, '0')).join(''), name: '', address: '', authenticationViewId: snapshot.catalog.find(row => row.id === snapshot.connectedId).authenticationViewId,
+              id: 'instance-' + Array.from(crypto.getRandomValues(new Uint8Array(12)), value => value.toString(16).padStart(2, '0')).join(''), name: '', address: '', authenticationViewId: snapshot.connectedProfile.authenticationViewId,
             } })}><IconPlusOutlineRegular size={14} />{t('Add instance')}</button></div>}
     </div>
     <p className={modelsCSS.advancedHint}>{t('Additional profiles can be saved; connecting to them is not available yet.')}</p>

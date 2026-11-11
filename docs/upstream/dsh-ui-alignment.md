@@ -20,10 +20,15 @@ page designs.
   allow long names and origins to wrap without pushing actions off screen.
 - The deployed startup response describes the bound DSH origin separately from
   the mygo document origin. The default profile displays the actual fixed carrier
-  target from `DSH_ORIGIN`. Existing saved default profiles retain their name and
-  selection while the deployment-owned address is refreshed, including after a
-  test Host restart changes its port. Other saved profiles are preserved. This
-  metadata does not change routing or expose the loopback Host on the network.
+  target from `DSH_ORIGIN` initially. Seeded and added profiles have the same name
+  and address editing rules. Version-1 profiles migrate their formerly locked
+  address; version-2 storage preserves explicit edits across reload and deployment
+  changes. Only an untouched seed address follows a changed test Host port.
+  Running connection metadata remains separate: matching an ID alone is not
+  sufficient for a Current badge or available connection action. An edited address
+  shows saved-but-not-switched status until an actual connection matches it.
+  Other saved profiles are preserved. This metadata does not change routing or
+  expose the loopback Host on the network.
 - Local settings and configuration errors use original error classes. The
   selected-profile badge uses the existing translated copy.
 - The default example note contributes an original neutral Tag through
@@ -53,7 +58,7 @@ bash scripts/dsh-upstream.sh verify
 git diff --check
 ```
 
-The repository suite passes 37 tests. Both adapted builds pass. The real Chromium
+The repository suite passes 39 tests. Both adapted builds pass. The real Chromium
 audit covers 360, 390, 768 and 1440 CSS-pixel widths for offline Instances, Local,
 Installed, Discover, built-in details, local plugin details, connected Instances
 and Client settings. It exercises all eight offline locales, reload persistence,

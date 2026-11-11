@@ -94,7 +94,7 @@ try {
     await evaluate(`(() => { for (const [label,value] of [['Name',${JSON.stringify(uiAudit ? 'Offline saved profile ' + 'W'.repeat(100) : 'Offline saved profile')}],['Address',${JSON.stringify(uiAudit ? 'https://' + 'a'.repeat(60) + '.' + 'b'.repeat(60) + '.example' : 'https://offline.example')}]]) { const input=document.querySelector('[data-instance-editor] input[aria-label="'+label+'"]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,value); input.dispatchEvent(new Event('input',{bubbles:true})); } })()`)
     await evaluate("document.querySelector('[data-instance-editor] button[type=submit]').click()")
     await until(() => evaluate("!document.querySelector('[data-instance-editor]') && document.body.innerText.includes('Offline saved profile')"))
-    await evaluate("(() => { const key=Object.keys(localStorage).find(key=>key.startsWith('mygo.instances.v1:')); const saved=JSON.parse(localStorage.getItem(key)); const bound=saved.catalog.find(row=>row.id==='local-test-dsh'); bound.address=location.origin; localStorage.setItem(key,JSON.stringify(saved)); })()")
+    await evaluate("(() => { const key=Object.keys(localStorage).find(key=>key.startsWith('mygo.instances.v1:')); const saved=JSON.parse(localStorage.getItem(key)); const bound=saved.catalog.find(row=>row.id==='local-test-dsh'); bound.address=location.origin; saved.version=1; localStorage.setItem(key,JSON.stringify(saved)); })()")
     await send('Page.reload', {ignoreCache:true})
     await until(() => evaluate("!!document.querySelector('[data-mygo-open-settings]')"))
     await evaluate("document.querySelector('[data-mygo-open-settings]').click()")
@@ -102,6 +102,22 @@ try {
     const remoteAddress = await evaluate("fetch('/mygo-local/startup.json').then(r=>r.json()).then(config=>config.selectedInstance.address)")
     assert.notEqual(remoteAddress,new URL(url).origin,'remote instance address differs from the client entry')
     assert.equal(await evaluate(`document.querySelector('[data-instance-id="local-test-dsh"]').innerText.includes(${JSON.stringify(remoteAddress)})`),true,'saved legacy client-origin address migrates to the actual carrier target')
+    const editSeed = async (name,address) => {
+      await evaluate("document.querySelector('[data-instance-id=\"local-test-dsh\"] button:last-child').click()")
+      await until(() => evaluate("!!document.querySelector('[data-instance-editor]')"))
+      assert.equal(await evaluate("document.querySelector('[data-instance-editor] input[aria-label=Address]').disabled"),false,'seed address is editable like every other profile')
+      await evaluate(`(() => { for(const [label,value] of [['Name',${JSON.stringify(name)}],['Address',${JSON.stringify(address)}]]) { const input=document.querySelector('[data-instance-editor] input[aria-label="'+label+'"]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,value); input.dispatchEvent(new Event('input',{bubbles:true})); } })()`)
+      await evaluate("document.querySelector('[data-instance-editor] button[type=submit]').click()")
+      await until(() => evaluate("!document.querySelector('[data-instance-editor]')"))
+    }
+    await editSeed('Personal DSH','https://personal.example')
+    assert.equal(await evaluate("document.querySelector('[data-mygo-instances]').innerText.includes('Your active connection has not changed')"),true,'saving a new address is not misreported as a connection switch')
+    await send('Page.reload',{ignoreCache:true})
+    await until(() => evaluate("!!document.querySelector('[data-mygo-open-settings]')"))
+    await evaluate("document.querySelector('[data-mygo-open-settings]').click()")
+    await until(() => evaluate("!!document.querySelector('[data-mygo-instances]')"))
+    assert.equal(await evaluate("document.querySelector('[data-instance-id=\"local-test-dsh\"]').innerText.includes('https://personal.example')"),true,'edited seed address survives reload')
+    await editSeed('Local test DSH',remoteAddress)
     assert.deepEqual(mutations,[],'device profile editing issues no Host management writes')
     if (uiAudit) {
       stage = 'offline responsive settings'

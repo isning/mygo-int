@@ -1,4 +1,4 @@
-// Device-local catalog. Only the operator-bound carrier is connectable.
+// Device-local profiles and the currently running carrier are separate state.
 export const inject = ['mygoStartup']
 export function apply(ctx) {
   const boot = ctx.mygoStartup, bound = boot.configuration.selectedInstance
@@ -12,16 +12,16 @@ export function apply(ctx) {
     let address
     try { address = new URL(row.address) } catch { throw Error('Invalid URL') }
     if (!['http:', 'https:'].includes(address.protocol) || address.username || address.password || address.search || address.hash || address.pathname !== '/') throw Error('Use an HTTP(S) origin without credentials, path or token')
-    if (row.id === bound.id && (address.origin !== binding.address || row.authenticationViewId !== bound.authenticationViewId)) throw Error('The carrier binding is operator configured; its address and authentication view cannot be changed here')
     return { id: row.id, name: row.name.trim(), address: address.origin, authenticationViewId: row.authenticationViewId }
   }
   try {
     const saved = JSON.parse(localStorage.getItem(key) || 'null')
     if (saved) {
-      if (saved.version !== 1 || !Number.isSafeInteger(saved.revision) || !Array.isArray(saved.catalog) || saved.catalog.length > 32) throw Error('Invalid catalog')
-      // The carrier target is deployment-owned and can change ports on restart.
-      // Preserve device names/selection and other profiles; refresh only its address.
-      const rows = saved.catalog.map(row => validate(row?.id === bound.id ? { ...row, address: binding.address } : row))
+      if (![1, 2].includes(saved.version) || !Number.isSafeInteger(saved.revision) || !Array.isArray(saved.catalog) || saved.catalog.length > 32) throw Error('Invalid catalog')
+      // Old profiles could not edit the seeded address. Once editable, only
+      // untouched seed values follow deployment changes; user edits always win.
+      const rows = saved.catalog.map(row => validate(row?.id === bound.id
+        && (saved.version === 1 || row.address === saved.seedAddress) ? { ...row, address: binding.address } : row))
       if (new Set(rows.map(r => r.id)).size !== rows.length || !rows.some(r => r.id === bound.id) || !rows.some(r => r.id === saved.selectedId)) throw Error('Invalid catalog identities')
       catalog = rows; selectedId = saved.selectedId; revision = saved.revision
     }
@@ -30,7 +30,7 @@ export function apply(ctx) {
     const expectedRevision = revision
     const saved = JSON.parse(localStorage.getItem(key) || 'null')
     if (expectedRevision !== revision || (saved?.revision ?? 0) !== revision) throw Error('Catalog changed during this edit; reload before saving')
-    localStorage.setItem(key, JSON.stringify({ version: 1, revision: revision + 1, catalog: rows, selectedId: selection }))
+    localStorage.setItem(key, JSON.stringify({ version: 2, seedAddress: binding.address, revision: revision + 1, catalog: rows, selectedId: selection }))
     catalog = rows; selectedId = selection; revision++; notify()
   }
   async function refresh() {
@@ -39,9 +39,12 @@ export function apply(ctx) {
     notify()
   }
   void refresh()
+  const isConnectedProfile = row => row?.id === binding.id && row.address === binding.address
+    && row.authenticationViewId === binding.authenticationViewId
   ctx.provide('instanceManager', {
-    snapshot: () => ({ catalog, selectedId, connectedId: bound.id, diagnostic, connectionStatus }),
-    availability: row => row.id === bound.id ? `Bound carrier · ${connectionStatus} (DSH admission probe)` : 'Unavailable · external carrier not configured',
+    snapshot: () => ({ catalog, selectedId, connectedId: bound.id, connectedProfile: binding, diagnostic, connectionStatus }),
+    isConnectedProfile,
+    availability: row => isConnectedProfile(row) ? `Bound carrier · ${connectionStatus} (DSH admission probe)` : 'Unavailable · external carrier not configured',
     refresh,
     async save(row, editingId) {
       if (editingId && editingId !== row.id) throw Error('Stable instance id cannot be changed')

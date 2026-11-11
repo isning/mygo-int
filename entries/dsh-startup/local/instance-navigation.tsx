@@ -34,14 +34,14 @@ export function registerInstanceNavigation(ctx) {
       <Menu open={open} onClose={() => setOpen(false)} portal side="top" autoFocus
         className={css.anchor} listClassName={css.signedOutMenu}
         anchor={<button ref={trigger} type="button" className={css.trigger} data-signed-out="true" data-collapsed={!wide}
-          aria-label={t('Instances')} aria-haspopup="menu" aria-expanded={open} title={`${name} · ${status}`}
+          aria-label={t('Instances')} aria-haspopup="menu" aria-expanded={open} title={`${name} · ${status} · ${snapshot.connectedProfile.address}`}
           onClick={() => setOpen(value => !value)}>
           <IconDatabaseOutlineRegular size={16} />
           {wide && <><span className={css.label}>{name}</span><StateDot state={dot} size={8} /><IconChevronDownOutlineRegular size={12} /></>}
         </button>}>
-        {snapshot.catalog.map(row => <MenuItemButton key={row.id} current={row.id === snapshot.connectedId}
-          icon={<StateDot state={row.id === snapshot.connectedId ? dot : 'idle'} size={8} />}
-          disabled={row.id !== snapshot.connectedId}
+        {snapshot.catalog.map(row => <MenuItemButton key={row.id} current={manager.isConnectedProfile(row)}
+          icon={<StateDot state={manager.isConnectedProfile(row) ? dot : 'idle'} size={8} />}
+          disabled={!manager.isConnectedProfile(row)}
           disabledReason={t('No connection is available for this instance yet.')}
           onSelect={() => setOpen(false)}>{row.name}</MenuItemButton>)}
         {state !== 'connected' && <MenuItemButton separatorBefore icon={<IconRefreshOutlineRegular size={16} />}
