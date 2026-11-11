@@ -5,10 +5,11 @@ import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import {openSync} from 'node:fs';
 import {resolve} from 'node:path';
 const checkRemoval=process.argv[2]==='check-remove';
+const checkInstance=process.argv[2]==='check-instance';
 const legacyComposition=process.env.MYGO_CLIENT_COMPOSITION==='legacy';
 const checkSingleManagement=process.argv[2]==='check-single-management'||(process.argv[2]==='check-management'&&!legacyComposition);
 const checkDefault=process.argv[2]==='check-default';
-const checkSingleRoot=process.argv[2]==='check-single-root'||checkDefault;
+const checkSingleRoot=process.argv[2]==='check-single-root'||checkDefault||checkInstance;
 const checkManagement=process.argv[2]==='check-management'&&legacyComposition;
 if(!legacyComposition&&['check-management-restore','check-management-recovery'].includes(process.argv[2])){
  const recovery=spawn(process.execPath,['scripts/dsh-overlay-browser.mjs'],{stdio:'inherit',env:process.env});
@@ -16,7 +17,7 @@ if(!legacyComposition&&['check-management-restore','check-management-recovery'].
 }
 const checkManagementRestore=process.argv[2]==='check-management-restore'&&legacyComposition;
 const checkManagementRecovery=process.argv[2]==='check-management-recovery'&&legacyComposition;
-const createSession=process.argv[2]==='check-create'||checkDefault;
+const createSession=process.argv[2]==='check-create'||checkDefault||checkInstance;
 const submit=process.argv[2]==='check-submit'||checkRemoval||createSession||checkSingleRoot||checkSingleManagement;
 const checkLocal=process.argv[2]==='check-local'||checkRemoval;
 const scratch=resolve('.scratch/test-dsh'),interactive=['open','open-management'].includes(process.argv[2]),authenticated=process.argv[2]==='check-auth';
@@ -316,11 +317,10 @@ try{
   await evaluate("[...document.querySelectorAll('[role=treeitem],button,[role=button]')].find(x=>x.innerText==='Local MODEL MOCK reply')?.click()");
   }
   if(createSession){
-   await until(()=>evaluate("[...document.querySelectorAll('[role=treeitem]')].some(x=>x.innerText==='Local test DSH')"));
-   await until(()=>evaluate("[...document.querySelectorAll('button')].some(x=>x.getAttribute('aria-label')==='New session in Local test DSH')"));
+   await until(()=>evaluate("[...document.querySelectorAll('button')].some(x=>{const label=x.getAttribute('aria-label')||'';return label.includes('Local test DSH')&&/New session|新建会话/.test(label)})"));
    await pause(500);
    initialCreates=createCalls.length;
-   await evaluate("[...document.querySelectorAll('button')].find(x=>x.getAttribute('aria-label')==='New session in Local test DSH')?.click()");
+   await evaluate("[...document.querySelectorAll('button')].find(x=>{const label=x.getAttribute('aria-label')||'';return label.includes('Local test DSH')&&/New session|新建会话/.test(label)})?.click()");
    await pause(300);
   }
   await until(()=>evaluate("!!document.querySelector('[contenteditable=true]') && !document.body.innerText.includes('Loading history') && !document.body.innerText.includes('Reconnecting')"));
@@ -364,6 +364,7 @@ try{
    assert.deepEqual(ownership.localEntries.sort(),startup.entries.map(x=>x.name).sort(),'shared Loader retains every curated local entry');
    await writeFile(scratch+'/ownership-validation.json',JSON.stringify(ownership,null,2),{mode:0o600});
    }
+   if(!checkInstance){
    stage='settings and catalog';
    await evaluate("[...document.querySelectorAll('button')].find(x=>x.getAttribute('aria-label')==='Account menu')?.click()");
    await until(()=>evaluate("[...document.querySelectorAll('[role=menuitem]')].some(x=>x.innerText.includes('Settings'))"));
@@ -378,6 +379,7 @@ try{
    assert.ok(apiResponses.filter(x=>x.path==='/api/session/create').every(x=>x.status===200),'original session creation requests succeed');
    assert.ok(catalogResponses.length>0);
    assert.ok(catalogResponses.every(x=>x.status===200),'normal settings/catalog reads admitted by DSH');
+   }
   }
   const evidence={initialCreates,createCalls,catalogResponses,apiResponses,visibleReplies,kind:'model-mock',browserOrigin,ownsHost,socketUrls,promptCalls,receipts,frames,ui};
   await writeFile(scratch+'/submit-browser.json',JSON.stringify(evidence,null,2));

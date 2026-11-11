@@ -10,8 +10,9 @@ export function validateLocalStartup(value) {
     typeof selected[key] === 'string' && /^[a-zA-Z0-9_-]{1,128}$/.test(selected[key]))) {
     throw Error('Expected explicit selectedInstance id and authenticationViewId')
   }
+  if (value.bootstrap !== undefined && (!Array.isArray(value.bootstrap) || value.bootstrap.length > 16)) throw Error('Invalid bootstrap plugin list')
   const ids = new Set()
-  for (const entry of value.entries) {
+  for (const entry of [...(value.bootstrap ?? []), ...value.entries]) {
     if (!entry || typeof entry.id !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(entry.id) || ids.has(entry.id)
       || typeof entry.name !== 'string' || !/^\.\/plugins\/[a-zA-Z0-9_-]+\.js$/.test(entry.name)
       || Object.keys(entry).some(key => !['id', 'name', 'config', 'disabled', 'inject'].includes(key))

@@ -17,17 +17,25 @@ An unchanged checkout does not mean the built application has no adaptations.
   services, original singletons and actual Loader entries. It remains explicitly
   installed by the DSH bootstrap for compatibility with existing acceptance tools;
   it is instrumentation, not a user-facing product feature or an independently
-  selectable startup entry.
+  selectable startup entry. Its owner is now the `dsh-instance` plugin.
 
 These plugins share the original client Context/Loader. Local management does not
 implicitly issue Host management RPCs. Trusted plugin code is not sandboxed.
 
 ## Bootstrap and platform responsibilities
 
-`single-client.js` creates the root, seeds module namespaces, obtains the local
-configuration and authenticated DSH bootstrap, starts the original module system,
-boots original Host entries, creates configured local entries and mounts the
-original renderer. Original base/theme styles remain platform imports.
+`single-client.js` supplies browser I/O to `client-base.js`. The base creates one
+Context/Loader and loads only local configured entries. It can run without DSH.
+`web-platform.js` supplies original shared library singletons and available bundled
+local plugin namespaces; availability does not activate an official feature.
+
+The local `dsh-instance` bootstrap plugin owns authenticated DSH bootstrap, the
+original module system and remote manifest, original managed-entry activation,
+activation audit, BootPage and renderer mount. It reuses the existing root/Loader.
+`client-overrides` owns local UI namespaces and the explicit remote plugin-manager
+client-half override. Official product entries are never enumerated locally:
+they come from the remote manifest. Original base/theme styles belong to the
+DSH compatibility plugin. See [ADR 0005](../adr/0005-instance-owned-client-loading.md).
 
 The pre-boot ownership boundary in `local-entry-boundary.js` wraps original
 `ClientEntries.sync` and its observable diagnostics. It prevents Host graphs from
@@ -73,3 +81,19 @@ whitespace and pinned-source integrity checks passed. No full adapter TypeScript
 semantic checker is claimed. The older combined submit/default acceptance runner
 timed out before submission against the current Chinese/persisted fixture UI;
 this cleanup does not claim a new successful end-to-end model reply validation.
+
+## Instance-plugin refactor verification
+
+Real Cordis/Loader tests cover an empty composition with no DSH dependency and a
+bootstrap/feature composition with exactly one Loader and normal disposal. Default
+Web build and real browser shared-runtime/touch-plugin checks are required for the
+instance-plugin path. These checks do not constitute real-model inference.
+
+The current instance-plugin path passed the production Web build, 30 repository
+tests, and `node scripts/dsh-unified-plugins-browser.mjs --touch-only`. The focused
+`node scripts/dsh-test-browser.mjs check-instance` also passed: original shared
+runtime diagnostic, original New Session, one composer prompt/accepted receipt,
+one MODEL MOCK reply and cleared draft. It accepts the original English/Chinese
+New Session accessible label without changing Host locale. It deliberately does
+not run the older combined Settings/catalog workflow. No full adapter semantic
+TypeScript/checkJs coverage or real-LLM inference is claimed.

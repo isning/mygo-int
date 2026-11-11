@@ -28,3 +28,13 @@ test('instance and authentication view are explicit local identities, not endpoi
     assert.throws(() => validate({ schemaVersion: 1, entries: [], selectedInstance }))
   }
 })
+
+
+test('bootstrap plugins use original Entry options and cannot collide with feature entries', () => {
+  const bootstrap = [{ id: 'instance', name: './plugins/dsh-instance.js' }]
+  const value = validateLocalStartup({ schemaVersion: 1, bootstrap, entries: [] })
+  assert.deepEqual(value.bootstrap, bootstrap)
+  assert.throws(() => validateLocalStartup({ schemaVersion: 1, bootstrap, entries: bootstrap }))
+  assert.throws(() => validateLocalStartup({ schemaVersion: 1, bootstrap: [{ id: 'instance', name: 'https://remote.invalid/plugin.js' }], entries: [] }))
+  assert.throws(() => validateLocalStartup({ schemaVersion: 1, bootstrap: {}, entries: [] }))
+})

@@ -1,6 +1,10 @@
 {
   "schemaVersion": 1,
   "selectedInstance": { "id": "local-test-dsh", "authenticationViewId": "owner" },
+  "bootstrap": [
+    { "id": "dsh-instance", "name": "./plugins/dsh-instance.js" },
+    { "id": "client-overrides", "name": "./plugins/client-overrides.js" }
+  ],
   "entries": [
     { "id": "client-composition", "name": "./plugins/client-composition.js" },
     { "id": "instance-manager", "name": "./plugins/instance-manager.js" },

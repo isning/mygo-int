@@ -9,6 +9,9 @@ This glossary defines domain terms; project requirements live in
 **Base**:
 The platform foundation that hosts the client runtime, plugin lifecycle and platform
 bridges without owning harness-specific or fixed client-product behavior.
+The base can start without a harness integration. Instance plugins load remote
+client packages into its existing Loader; local override plugins select local
+implementations without starting a bundled official product composition.
 _Avoid_: Monolithic client core, built-in universal session manager
 
 **Client composition**:

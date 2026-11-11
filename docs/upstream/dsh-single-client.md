@@ -176,3 +176,10 @@ owner-scoping and Slot-override tickets remains the parent's responsibility.
 
 For the current plugin/bootstrap split and exact build-time adaptations, see
 [dsh-plugin-boundaries.md](dsh-plugin-boundaries.md).
+
+Current startup ownership is defined by
+[ADR 0005](../adr/0005-instance-owned-client-loading.md): the base installs the
+original Loader once; `dsh-instance` starts the original managed remote roster on
+that Loader, and `client-overrides` supplies local namespace overrides. The base
+no longer calls DSH bootstrap or imports official product plugins. The earlier
+bootClient description above records the original migration checkpoint.
