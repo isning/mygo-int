@@ -71,7 +71,7 @@ export async function startSingleClient() {
       }
     }
     ctx.provide('mygoStartup', Object.freeze({
-      configuration, FiberState,
+      configuration, FiberState, sharedClient: true,
       ownsEntry: entry => localEntries.has(entry),
       async admit() {
         const response = await fetch('/mygo-local/admission', { cache: 'no-store', credentials: 'same-origin' })

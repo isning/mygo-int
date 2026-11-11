@@ -8,7 +8,7 @@ use `clientComposition` and `instanceManager`; Host sections keep their original
 services. Configuration protection and local save/admission behavior are unchanged.
 
 `ui-client-manager` selects this registration when the supplied-root
-`mygoStartup` service exists. It waits for the original `slots` service through
+`mygoStartup.sharedClient` flag is set. It waits for the original `slots` service through
 Cordis injection; Slot declaration and registration lifetimes follow the plugin
 scope. This path calls neither the legacy mount nor `createRoot`, and creates no
 floating launcher. The legacy composition retains its existing presentation until

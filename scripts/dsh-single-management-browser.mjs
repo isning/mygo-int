@@ -1,8 +1,16 @@
 // Browser acceptance slice: real local management, then the harness opens a session.
 import assert from 'node:assert/strict'
 export async function checkSharedManagement({ evaluate, until, apiRequests }) {
-  assert.equal(await evaluate('!!document.querySelector(\'[aria-label="Local client settings"]\')'), true,
-    'existing management UI is available in the shared client runtime')
+  assert.equal(await evaluate('!!document.querySelector(\'[aria-label="Local client settings"]\')'), false,
+    'single-root settings do not use a separate floating launcher')
+  async function openLocalSettings() {
+    await until(() => evaluate('!!document.querySelector(\'[aria-label="Account menu"]\')'))
+    await evaluate('document.querySelector(\'[aria-label="Account menu"]\').click()')
+    await until(() => evaluate("[...document.querySelectorAll('[role=menuitem]')].some(x=>x.innerText.includes('Settings'))"))
+    await evaluate("[...document.querySelectorAll('[role=menuitem]')].find(x=>x.innerText.includes('Settings')).click()")
+    await until(() => evaluate('!!document.querySelector("[data-shortcut-modal=settings]")'))
+    await evaluate("[...document.querySelectorAll('[data-shortcut-modal=settings] button')].find(x=>x.innerText==='LOCAL plugins').click()")
+  }
   const describeHost = () => evaluate(`fetch('/api/settings/describe', {
     method:'POST', headers:{'content-type':'application/json'},
     body:JSON.stringify({type:'client-request',rpcId:'local-management-read-'+Date.now(),method:'settings/describe',payload:{args:{}}})
@@ -12,10 +20,11 @@ export async function checkSharedManagement({ evaluate, until, apiRequests }) {
   const before = await describeHost()
   assert.equal(before.result?.ok, true, 'original Host settings read succeeds with browser authority')
   assert.ok(before.result.value.namespaces.length > 0)
-  await evaluate('document.querySelector(\'[aria-label="Local client settings"]\').click()')
+  await openLocalSettings()
   await until(() => evaluate('!!document.querySelector("[data-plugin-row=local-note]")'))
   const ids = await evaluate('[...document.querySelectorAll("[data-plugin-row]")].map(node=>node.dataset.pluginRow).sort()')
-  assert.deepEqual(ids, ['client-composition', 'instance-manager', 'local-note', 'ui-client-manager'],
+  const expectedIds = await evaluate("fetch('/mygo-local/startup.json').then(r=>r.json()).then(c=>c.entries.map(e=>e.id).sort())")
+  assert.deepEqual(ids, expectedIds,
     'local management contains only the actual local startup entries, excluding Host entries')
   if (process.env.MYGO_EXPECT_NOTE_DISABLED === '1') {
     assert.equal(await evaluate('!!document.querySelector("[data-mygo-local-plugin=marker]")'), false,
@@ -49,7 +58,9 @@ export async function checkSharedManagement({ evaluate, until, apiRequests }) {
   await evaluate("[...document.querySelectorAll('button')].find(x=>x.innerText==='LOCAL plugins').click()")
   await evaluate('globalThis.__MYGO_MANAGEMENT_RELOAD_MARK__=true')
   await evaluate("[...document.querySelectorAll('button')].find(x=>x.innerText==='Reload saved composition').click()")
-  await until(() => evaluate('globalThis.__MYGO_MANAGEMENT_RELOAD_MARK__!==true && document.querySelector("[data-mygo-local-plugin=marker]")?.textContent === "Shared runtime local edit" && !!document.querySelector(\'[aria-label="Local client settings"]\')'))
+  await until(() => evaluate('globalThis.__MYGO_MANAGEMENT_RELOAD_MARK__!==true && document.querySelector("[data-mygo-local-plugin=marker]")?.textContent === "Shared runtime local edit"'))
+  await openLocalSettings()
+  assert.equal(await evaluate('!!document.querySelector("[data-plugin-row=local-note]")'), true, 'local settings reopen after reload')
   return { localRows: ids, hostSettingsUnchanged: true, hostManagementWrites: false,
     sharedPlatformModules: true, configApplied: true, overlayRestored: true,
     enabledFromDisabledStartup: process.env.MYGO_EXPECT_NOTE_DISABLED === '1' }
