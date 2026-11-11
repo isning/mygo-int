@@ -2,10 +2,11 @@
 // The injected face below is local only; no Host PluginManagerController/ConfigForms.
 import React, { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { Button, ConnectionIndicator, SettingsForm, SettingsValueField } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, ConnectionIndicator, Modal, closeTopModal, SettingsForm, SettingsValueField } from '@deepseek-ai/dsh-client-ui-primitives'
 import { SlotCore } from '@deepseek-ai/dsh-client-ui-slots'
 import { RowsSection } from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-plugin-manager/src/client/PluginManagerPage.tsx?mygo-rows'
 import { SettingsPanel } from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-settings-general/src/client/SettingsRoot.tsx?mygo-panel'
+import settingsCSS from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-settings-plugins/src/client/PluginsSettingsSection.module.css'
 import { en } from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-plugin-manager/src/client/locales.ts'
 
 const translate = (key, params = {}) => Object.entries(params).reduce((text, [key, value]) => text.replaceAll(`{${key}}`, String(value)), key === undefined ? 'Protected local startup service' : en[key] ?? key)
@@ -63,6 +64,45 @@ function LocalPlugins({ ctx, run }) {
   </div>
 }
 
+function ClientSettings({ ctx, run }) {
+  const service = ctx.clientComposition
+  useRefresh(service)
+  const [confirmReset, setConfirmReset] = useState(false)
+  const [openPlugins, setOpenPlugins] = useState(null)
+  useEffect(() => {
+    let live = true
+    const fiber = ctx.inject(['pluginNavigation'], scope => {
+      if (live) setOpenPlugins(() => () => {
+        scope.pluginNavigation.openTab('mygo-local')
+        closeTopModal(document)
+      })
+      scope.effect(() => () => { if (live) setOpenPlugins(null) })
+    })
+    return () => { live = false; void fiber.dispose() }
+  }, [ctx])
+  const status = service.status()
+  return <div className={settingsCSS.section} data-mygo-client-settings="">
+    <h2 className={settingsCSS.heading}>Client</h2>
+    {status.diagnostic && <p role="alert">{status.diagnostic}</p>}
+    <section className={settingsCSS.presetSettings}>
+      <h3 className={settingsCSS.presetSettingsTitle}>Plugins</h3>
+      <p className={settingsCSS.intro}>Manage plugins installed on this device.</p>
+      <div><Button variant="outline" disabled={!openPlugins} onClick={openPlugins}>Manage plugins</Button></div>
+    </section>
+    <details className={settingsCSS.presetSettings} data-client-advanced="">
+      <summary>Advanced</summary>
+      <p className={settingsCSS.intro}>Restore this device’s plugin preferences to their defaults.</p>
+      <div><Button variant="outline" disabled={status.busy} onClick={() => setConfirmReset(true)}>Restore defaults</Button></div>
+    </details>
+    <Modal open={confirmReset} title="Restore client defaults?" closeLabel="Close"
+      description="Reset local plugin options and enabled states. The page will reload."
+      onClose={() => setConfirmReset(false)} footer={<>
+        <Button variant="outline" onClick={() => setConfirmReset(false)}>Cancel</Button>
+        <Button variant="primary" disabled={status.busy} onClick={() => run(() => service.reset())}>Restore defaults</Button>
+      </>} />
+  </div>
+}
+
 function Instances({ ctx, run }) {
   const service = ctx.instanceManager
   useRefresh(service)
@@ -112,7 +152,7 @@ function NativeSection({ ctx, component: Component }) {
 
 export function registerSettings(ctx) {
   for (const [id, label, order, Component] of [
-    ['mygo-local-plugins', 'LOCAL plugins', 40, LocalPlugins],
+    ['mygo-local-plugins', 'Client', 40, ClientSettings],
     ['mygo-instances', 'Instances', 41, Instances],
   ]) {
     ctx.slots.inject('settings.section', () => ctx.slots.register({

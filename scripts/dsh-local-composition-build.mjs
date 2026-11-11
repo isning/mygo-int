@@ -2,7 +2,7 @@
 import { createRequire } from 'node:module'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { adaptPluginPage } from './dsh-plugin-page-adapter.mjs'
+import { adaptPluginPage, adaptPluginManagerClient } from './dsh-plugin-page-adapter.mjs'
 const root = process.cwd()
 const composition = process.env.MYGO_CLIENT_COMPOSITION ?? 'single-root'
 if (!['legacy', 'single-root'].includes(composition)) throw Error('MYGO_CLIENT_COMPOSITION must be legacy or single-root')
@@ -35,7 +35,7 @@ await build({
       }
     },
     async load(id) {
-      if (id.endsWith('?mygo-plugin-manager')) return (await readFile(id.slice(0, -'?mygo-plugin-manager'.length), 'utf8')).replace("from './PluginManagerPage.tsx'", "from './PluginManagerPage.tsx?mygo-rows'")
+      if (id.endsWith('?mygo-plugin-manager')) return adaptPluginManagerClient(await readFile(id.slice(0, -'?mygo-plugin-manager'.length), 'utf8')).replace("from './PluginManagerPage.tsx'", "from './PluginManagerPage.tsx?mygo-rows'")
       if (id.endsWith('?mygo-rows')) return adaptPluginPage(await readFile(id.slice(0, -'?mygo-rows'.length), 'utf8')) + '\nexport { RowsSection, RowDetail, PackageCard, PackageDetail, ItemCard, ItemDetail };'
       if (id.endsWith('?mygo-panel')) return (await readFile(id.slice(0, -'?mygo-panel'.length), 'utf8')) + '\nexport { SettingsPanel };'
       if (id !== web + '/src/main.ts') return

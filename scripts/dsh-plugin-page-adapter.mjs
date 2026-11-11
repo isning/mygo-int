@@ -5,7 +5,8 @@ export function adaptPluginPage(source) {
     source = source.replace(before, after)
   }
   replace('  const selectedTab = props.useStore(state => state.tab)', `  const selectedTab = props.useStore(state => state.tab)
-  const [contributedView, setContributedView] = useState<{ tab: string; entryId?: string; component?: boolean }>()`)
+  const [contributedView, setContributedView] = useState<{ tab: string; entryId?: string; component?: boolean }>()
+  useEffect(() => { setContributedView(undefined) }, [view])`)
   replace('  const showsCards = !onInstalled || (openPkg === undefined && openItem === undefined)', `  const showsCards = !onInstalled
     ? contributedView?.tab !== tab || contributedView.entryId === undefined
     : openPkg === undefined && openItem === undefined`)
@@ -16,4 +17,16 @@ export function adaptPluginPage(source) {
                 },
                 install: props.installFrom,`)
   return source
+}
+
+export function adaptPluginManagerClient(source) {
+  const anchor = '        openList: () => {'
+  if (source.split(anchor).length !== 2) throw Error('Pinned pluginNavigation anchor changed')
+  source = source.replace('      openList(): void', '      openList(): void\n      openTab(tabId: string): void')
+  return source.replace(anchor, `        openTab: (tabId: string) => {
+          ctx.layout.selectPanel(PANEL_ID)
+          instance.actions.setTab(tabId)
+          instance.actions.setView({ kind: 'list' })
+        },
+${anchor}`)
 }

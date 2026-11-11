@@ -137,3 +137,26 @@ Local list navigation, actual configuration save/restore, toggle behavior and
 unchanged Host state. `plugins-local-header.png` now captures the correct Local
 detail **without** the list header. Adapted TSX is Vite-compiled; adapter-wide
 semantic TypeScript checking is not claimed.
+
+## Client settings
+
+The default Settings section keeps its existing stable id `mygo-local-plugins`
+but is now labeled **Client**. It uses the original Settings section styles and
+Button/Modal components. It contains one Manage plugins action, which closes
+Settings and opens Plugins → Local through an added `pluginNavigation.openTab`
+method on the pinned client-half adapter. Local detail selection is cleared by
+external navigation so this action consistently returns to the list.
+
+The repeated Loader roster, runtime summaries and JSON editor are absent from
+this section. Recovery is under a closed-by-default Advanced disclosure; Restore
+defaults requires a normal confirmation dialog and uses the existing device-only
+reset operation. Cancel preserves preferences. The recovery UI does not depend
+on pluginNavigation being available; that optional service only enables the
+Manage plugins action. Instances retains its own section. Explicit legacy
+composition remains unchanged.
+
+The focused browser checkpoint also verifies Client structure, optional recovery
+visibility, cancel, management navigation, confirmed reset/reload in a fresh
+isolated browser profile, and unchanged Host settings/inventory. Screenshot:
+`.scratch/test-dsh/settings-client.png`. The existing overlay browser workflow
+uses the updated Client/Advanced/confirmation path.
