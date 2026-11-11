@@ -19,7 +19,7 @@ async function until(fn) {
   }
   throw Error('Slot browser readiness timed out')
 }
-let ws, evaluate, stage = 'login'
+let ws, evaluate, restoreBadgeFixture, stage = 'login'
 const errors = [];
 const mutations = []
 try {
@@ -98,29 +98,40 @@ try {
   }
   await save('Original page local configuration')
   await save(originalLabel)
-  await tab('Instance client')
-  await until(() => evaluate("!!document.querySelector('[data-mygo-plugin-source=\"INSTANCE CLIENT\"] [data-plugin-row]')"))
-  const clientCount = await evaluate("document.querySelectorAll('[data-mygo-plugin-source=\"INSTANCE CLIENT\"] [data-plugin-row]').length")
-  assert.equal(await evaluate("document.querySelectorAll('[data-mygo-plugin-source=\"INSTANCE CLIENT\"] [role=switch]').length"), 0, 'client delivery has no Host switches')
-  await evaluate("document.querySelector('[data-mygo-plugin-source=\"INSTANCE CLIENT\"] [data-plugin-row] button').click()")
-  await until(() => evaluate("!!document.querySelector('[data-plugin-row-detail] [data-instance-client-actions]')"))
+  assert.equal(await evaluate("[...document.querySelectorAll('[role=tab]')].some(x=>x.innerText==='Instance client')"), false, 'no separate client inventory tab')
   assert.deepEqual(settings(await rpc('settings/describe')), beforeSettings, 'local management preserves Host settings/revisions')
   assert.deepEqual(await rpc('pluginInventory/list').then(answer=>answer.result), beforeInventory.result, 'local management preserves actual Host inventory')
   assert.equal(mutations.length,0,'local workflows perform no Host management writes')
   await tab('Installed')
   await until(() => evaluate("document.querySelectorAll('[data-plugin-package]').length > 0"))
+  await until(() => evaluate("!!document.querySelector('[data-plugin-package] [data-plugin-side=Remote]')"))
+  assert.equal(await evaluate("[...document.querySelectorAll('[data-plugin-package]')].every(x=>x.querySelectorAll('[data-plugin-side=Remote]').length===1)"), true, 'original remote cards receive one Remote marker each')
+  await evaluate("[...document.querySelectorAll('[data-plugin-panel] button')].find(x=>x.innerText.trim()==='More')?.click()")
+  await pause(300)
+  const fixture = '[data-plugin-package="@deepseek-ai/dsh-experimental-plugin-market-bundle"] [role=switch]'
+  const initiallyEnabled = await evaluate(`document.querySelector('${fixture}').getAttribute('aria-checked') === 'true'`)
+  if (!initiallyEnabled) {
+    restoreBadgeFixture = () => evaluate(`(() => { const el=document.querySelector('${fixture}'); if(el?.getAttribute('aria-checked')==='true') el.click() })()`)
+    await evaluate(`document.querySelector('${fixture}').click()`)
+  }
+  await until(() => evaluate("!!document.querySelector('[data-plugin-side=Client][data-active=true]')"))
+  const markers = await evaluate("[...document.querySelectorAll('[data-plugin-package]')].map(x=>({name:x.dataset.pluginPackage,sides:[...x.querySelectorAll('[data-plugin-side]')].map(y=>({side:y.dataset.pluginSide,active:y.dataset.active}))}))")
+  assert.equal(new Set(markers.map(x=>x.name)).size,markers.length,'client matching never adds duplicate cards')
+  assert.ok(markers.some(x=>x.sides.some(y=>y.side==='Client'&&y.active==='true')),'matching actual active client entries gives a green Client marker')
   await writeFile(scratch+'/plugins-original-desktop.png',Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'))
   await send('Emulation.setDeviceMetricsOverride', {width:390,height:844,deviceScaleFactor:1,mobile:true})
   await pause(400)
   assert.equal(await evaluate('document.documentElement.scrollWidth <= window.innerWidth'),true,'original page fits a narrow viewport')
   await writeFile(scratch+'/plugins-original-mobile.png',Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'))
-  await writeFile(scratch+'/original-plugins-validation.json',JSON.stringify({ok:true,localCount,clientCount,originalMain:true,originalRowDetail:true,localToggle:true,localConfig:true,hostMutations:mutations,narrowViewport:true}),{mode:0o600})
-  console.log('Original Plugins page, native source tabs/details, local lifecycle/configuration and narrow viewport passed')
+  if (restoreBadgeFixture) { await restoreBadgeFixture(); await until(() => evaluate(`document.querySelector('${fixture}').getAttribute('aria-checked') === 'false'`)); restoreBadgeFixture=undefined }
+  await writeFile(scratch+'/original-plugins-validation.json',JSON.stringify({ok:true,localCount,markers,originalMain:true,originalRowDetail:true,localToggle:true,localConfig:true,hostMutations:mutations,narrowViewport:true}),{mode:0o600})
+  console.log('Original Plugins page, native Local tab and Remote/Client badges, local lifecycle/configuration and narrow viewport passed')
   await Promise.race([send('Browser.close'), pause(5000)])
 } catch (error) {
   await writeFile(scratch + '/unified-plugin-failure.json', JSON.stringify({ stage, error: error.message, errors, mutations, text: evaluate ? await evaluate('document.body.innerText').catch(() => '') : '' }), { mode: 0o600 })
   throw error
 } finally {
+  await restoreBadgeFixture?.().catch(() => {})
   ws?.close()
   if (browser.exitCode === null) { browser.kill('SIGTERM'); await new Promise(r => browser.once('exit', r)) }
 }

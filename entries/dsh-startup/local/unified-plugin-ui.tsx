@@ -10,9 +10,8 @@ import type { PackageRow, PackageView } from '../../../.scratch/upstream/deepsee
 import type { PluginManagerPageProps } from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-plugin-manager/src/client/PluginManagerPage.tsx'
 import css from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-plugin-manager/src/client/PluginManagerPage.module.css'
 import { LocalPluginActions, type LocalCompositionService } from './unified-local-actions'
-import { InstanceClientActions } from './unified-instance-actions'
+import { installPluginSideBadges } from './plugin-side-badges'
 
-type Source = 'LOCAL' | 'INSTANCE CLIENT'
 type ClientContext = Context & {
   clientComposition: LocalCompositionService
   mygoStartup: {
@@ -23,9 +22,8 @@ type ClientContext = Context & {
 }
 type InspectRow = Omit<PackageRow, 'entryId'> & { entryId?: string }
 type Translate = PluginManagerPageProps['t']
-const phases = ['pending', 'loading', 'active', 'failed', null, 'unloading'] as const
 
-function ClientPlugins({ ctx, source, t }: { ctx: ClientContext; source: Source; t: Translate }) {
+function LocalPlugins({ ctx, t }: { ctx: ClientContext; t: Translate }) {
   const [, refresh] = useState(0)
   const [selected, select] = useState<string>()
   const [error, setError] = useState('')
@@ -39,35 +37,27 @@ function ClientPlugins({ ctx, source, t }: { ctx: ClientContext; source: Source;
     return () => { off(); status(); clearInterval(timer) }
   }, [ctx])
   const local = ctx.clientComposition.rows()
-  const rows: InspectRow[] = source === 'LOCAL' ? local.map(row => ({ ...row,
+  const rows: InspectRow[] = local.map(row => ({ ...row,
     ...(row.readOnlyReason ? { readOnlyReason: 'management-required' as const } : {}),
-  })) : [...ctx.loader.entries()].filter(entry => !ctx.mygoStartup.ownsEntry(entry)
-    && ctx.modules.manifest.plugins.some(plugin => plugin.id === entry.options.name)).map(entry => ({
-      entryId: entry.id, rowId: entry.options.id, moduleName: entry.options.name,
-      enabled: !entry.disabled, phase: entry.fiber ? phases[entry.fiber.state] ?? null : null,
-    }))
+  }))
   const row = rows.find(row => row.entryId === selected)
-  const scope = source === 'LOCAL' ? 'This device' : ctx.mygoStartup.configuration.selectedInstance.id
-  const pkg: PackageView = { name: scope, meta: { title: source === 'LOCAL' ? 'Local plugins' : 'Instance client' },
+  const scope = 'This device'
+  const pkg: PackageView = { name: scope, meta: { title: 'Local plugins' },
     official: false, installed: false, availability: 'profile', optional: false, removable: false,
     updatable: false, enabled: true, rows: rows as PackageRow[] }
   if (row) return <RowDetail pkg={pkg} row={row} t={t} resolveText={resolveText} form={undefined}
     onBack={() => select(undefined)} renderSlot={(key, owner) => {
-      if (key === 'plugins.detail.badge') return <Tag tone="neutral">{source === 'LOCAL' ? 'Local' : 'Instance client'}</Tag>
+      if (key === 'plugins.detail.badge') return <Tag tone="neutral">Local</Tag>
       if (key !== 'plugins.row.config') return null
-      if (owner.view === 'summary') return source === 'LOCAL' ? 'Runs on this device.' : `Supplied by ${scope}; runs on this device.`
-      return source === 'LOCAL'
-        ? <LocalPluginActions ctx={ctx} row={row} onChanged={() => refresh(value => value + 1)} />
-        : <InstanceClientActions ctx={ctx} row={row} onChanged={() => refresh(value => value + 1)} />
+      if (owner.view === 'summary') return 'Runs on this device.'
+      return <LocalPluginActions ctx={ctx} row={row} onChanged={() => refresh(value => value + 1)} />
     }} />
-  return <section className={css.group} data-mygo-plugin-source={source}>
-    <p className={css.pageIntro}>{source === 'LOCAL'
-      ? 'Plugins on this device. Changes here do not modify your Host.'
-      : `Client plugins supplied by ${scope}. Their versions follow the instance.`}</p>
+  return <section className={css.group} data-mygo-plugin-source="LOCAL">
+    <p className={css.pageIntro}>Plugins on this device. Changes here do not modify your Host.</p>
     {error && <p role="alert" className={css.reason}>{error}</p>}
     <RowsSection rows={rows} t={t} resolveText={resolveText}
       configure={{ has: row => row.entryId !== undefined, open: row => select(row.entryId) }}
-      toggle={source === 'LOCAL' ? {
+      toggle={{
         busy: () => busy || ctx.clientComposition.status().busy,
         onSetEnabled: (row, enabled) => {
           if (busy || !row.entryId) return
@@ -76,18 +66,17 @@ function ClientPlugins({ ctx, source, t }: { ctx: ClientContext; source: Source;
             .catch(error => setError(error instanceof Error ? error.message : String(error)))
             .finally(() => setBusy(false))
         },
-      } : undefined} />
+      }} />
   </section>
 }
 
 export function register(ctx: ClientContext) {
+  installPluginSideBadges(ctx, entry => ctx.mygoStartup.ownsEntry(entry))
   // The original main entry owns the page and its child-slot declarations.
   // Contributions use those declarations rather than replacing the page or
   // duplicating its controller, navigation state, header, CSS or dialogs.
   ctx.slots.inject('plugins.tab', function* () {
     yield ctx.slots.register({ name: 'plugins.tab', id: 'mygo-local', label: 'Local', order: -20, locale: 'pluginManager' },
-      ({ t }) => <ClientPlugins ctx={ctx} source="LOCAL" t={t} />)
-    yield ctx.slots.register({ name: 'plugins.tab', id: 'mygo-instance-client', label: 'Instance client', order: -10, locale: 'pluginManager' },
-      ({ t }) => <ClientPlugins ctx={ctx} source="INSTANCE CLIENT" t={t} />)
+      ({ t }) => <LocalPlugins ctx={ctx} t={t} />)
   })
 }
