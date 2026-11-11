@@ -2,7 +2,7 @@
 export const inject = ['loader', 'mygoStartup']
 const clone = value => JSON.parse(JSON.stringify(value))
 const phases = ['pending', 'loading', 'active', 'failed', 'disposed', 'unloading']
-const protectedNames = new Set(['./plugins/client-composition.js', './plugins/instance-manager.js', './plugins/ui-client-manager.js'])
+const protectedNames = new Set(['./plugins/client-composition.js', './plugins/instance-manager.js', './plugins/ui-client-manager.js', './plugins/unified-plugin-manager.js'])
 
 export function apply(ctx) {
   const boot = ctx.mygoStartup
