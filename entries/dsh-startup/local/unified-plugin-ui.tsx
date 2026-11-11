@@ -33,6 +33,20 @@ const translate = (key: keyof typeof en, params: Record<string, string> = {}) =>
   Object.entries(params).reduce((text, [name, value]) => text.replaceAll(`{${name}}`, value), en[key] ?? key)
 const resolveText = (text: string | Record<string, string> | undefined) => typeof text === 'string' ? text : text?.en ?? ''
 
+function inventoryFailure(error: unknown) {
+  const original = error && typeof error === 'object'
+    ? error as { code?: unknown; message?: unknown; details?: unknown }
+    : undefined
+  const code = original?.code === undefined ? '' : String(original.code)
+  const message = original?.message === undefined ? String(error) : String(original.message)
+  const category = code === 'remote-access/denied' || /\bHTTP (401|403)\b/.test(message)
+    ? 'authentication or permission refusal'
+    : /transport failure|Failed to fetch|NetworkError|fetch failed|Load failed/i.test(message)
+      ? 'transport failure' : 'Remote failure'
+  const details = original?.details === undefined ? '' : JSON.stringify(original.details)
+  return `Host inventory unavailable: ${category} · ${[code, message, details].filter(Boolean).join(' · ')}`
+}
+
 function PluginInventory({ ctx }: { ctx: SurfaceContext }) {
   const [, update] = useState(0)
   const [source, setSource] = useState('all'), [instance, setInstance] = useState('all')
@@ -53,7 +67,7 @@ function PluginInventory({ ctx }: { ctx: SurfaceContext }) {
     setHostStatus('Loading Host inventory…')
     void ctx.remote.pluginInventory.list().then(answer => {
       if (!live) return
-      if (!answer.ok) { setHostStatus('Host inventory unavailable: original Remote denied or failed'); return }
+      if (!answer.ok) { setHostStatus(inventoryFailure(answer.error)); return }
       setHostRows(answer.value.entries.map(entry => ({
         entryId: entry.entryId, rowId: entry.entryId, moduleName: entry.moduleName,
         enabled: entry.enabled, phase: entry.fiberPhase,
@@ -61,7 +75,7 @@ function PluginInventory({ ctx }: { ctx: SurfaceContext }) {
         ...(entry.diagnostic ? { diagnostic: entry.diagnostic } : {}),
       })))
       setHostStatus('Host inventory read through original Remote')
-    }).catch(() => { if (live) setHostStatus('Host inventory unavailable: original Remote read failed') })
+    }).catch(error => { if (live) setHostStatus(inventoryFailure(error)) })
     return () => { live = false }
   }, [ctx, refresh])
   const catalog = ctx.instanceManager.snapshot()

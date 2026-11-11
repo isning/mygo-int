@@ -61,6 +61,8 @@ try {
   await evaluate("[...document.querySelectorAll('button')].find(x => x.innerText === 'Continue')?.click()")
   await evaluate("[...document.querySelectorAll('button')].find(x => x.getAttribute('aria-label') === 'Open sidebar')?.click()")
   await until(() => evaluate("[...document.querySelectorAll('button,[role=button]')].some(x => x.innerText === 'Plugins')"))
+  // Initial onboarding may explicitly save Host preferences; inspect only the Plugins workflow.
+  mutations.length = 0
   await evaluate("[...document.querySelectorAll('button,[role=button]')].find(x => x.innerText === 'Plugins').click()")
   await pause(700)
   assert.equal(await evaluate("!!document.querySelector('[data-mygo-unified-plugins]')"), true,
@@ -86,6 +88,26 @@ try {
   assert.deepEqual(await evaluate("[...new Set([...document.querySelectorAll('[data-plugin-source]')].map(x=>x.dataset.pluginSource))]"),['LOCAL'])
   assert.equal(await evaluate("!!document.querySelector('[data-module-name=\"./plugins/marker.js\"] [data-local-plugin-actions]')"),true,'unified page exposes device-local lifecycle actions')
   assert.equal(mutations.length,0,'inspection performs no Host mutation')
+  if (process.env.MYGO_CHECK_INVENTORY_ERRORS === '1') {
+    await select('Plugin source', 'all')
+    await select('Plugin instance', 'all')
+    const refresh = () => evaluate("[...document.querySelectorAll('button')].find(x => x.innerText === 'Refresh inventory').click()")
+    const status = () => evaluate("document.querySelector('[data-mygo-unified-plugins] > p[role=status]').innerText")
+    await send('Network.setBlockedURLs', { urls: ['*/api/pluginInventory/list*'] })
+    await refresh()
+    await until(async () => (await status()).startsWith('Host inventory unavailable:'))
+    const transport = await status()
+    assert.match(transport, /transport failure.*gateway\/internal.*Failed to fetch/i, 'inventory retains the original transport failure and code')
+    await send('Network.setBlockedURLs', { urls: [] })
+    await refresh()
+    await until(async () => (await status()) === 'Host inventory read through original Remote')
+    await send('Network.clearBrowserCookies')
+    await refresh()
+    await until(async () => (await status()).startsWith('Host inventory unavailable:'))
+    const authentication = await status()
+    assert.match(authentication, /authentication or permission refusal.*gateway\/internal.*HTTP 401/i, 'inventory retains original authentication refusal and code')
+    await writeFile(scratch + '/inventory-errors-result.json', JSON.stringify({ ok: true, transport, authentication }), { mode: 0o600 })
+  }
   await writeFile(scratch+'/unified-plugin-result.json',JSON.stringify({ok:true,rows,sourceFilters:true,instanceFilter:true,packageCollision:true,hostMutations:mutations}),{mode:0o600})
   await writeFile(scratch+'/unified-plugin.png',Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'))
   console.log('Original Plugins Slot: three actual sources, qualified collisions and source/instance filters passed')

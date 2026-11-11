@@ -128,6 +128,27 @@ Private evidence remains under `.scratch/test-dsh/`: `default-red.log`,
 Original gate output is `.scratch/upstream/logs/build.log`; Web checking output is
 `web-typecheck-final.log`. The Plugins screenshot was visually inspected.
 
+## Review correction
+
+The Spec review found that inventory failures discarded original Remote codes
+and details. The unified page now retains the original code, message and details,
+with distinct labels for authentication/permission refusal, transport failure and
+other Remote failures. The original calls and authorization behavior are unchanged.
+
+The parent reproduced RED through a browser-blocked inventory request: the old
+page showed only `original Remote denied or failed`. GREEN retained
+`gateway/internal` and the original `Failed to fetch` diagnosis; clearing the
+browser cookie retained the original HTTP 401 under a separate authentication
+label. These are genuine browser/Remote failures, not replacement response bodies.
+Run `MYGO_CHECK_INVENTORY_ERRORS=1 node scripts/dsh-unified-plugins-browser.mjs`
+against an owned authenticated test Host to repeat both checks. Initial explicit
+onboarding saves precede the Plugins workflow's mutation observation boundary.
+
+The corrected adapted build and full repository suite passed in the parent
+workspace (27/27). Private evidence is in
+`.scratch/test-dsh/inventory-errors-result.json` and
+`.scratch/single-client-tickets/inventory-errors-{red,green}.log`.
+
 T3 preview status/open was attempted first; open explicitly reported missing host
 libraries. Documented Nix Chromium supplied browser proof on ordinary port 4223,
 without an allowed-port override. Normal shutdown closed owned Host/carrier/mock
