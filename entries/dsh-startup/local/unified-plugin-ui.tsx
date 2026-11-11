@@ -9,7 +9,7 @@ import { PackageCard, PackageDetail, ItemCard, ItemDetail, RowDetail } from '../
 import type { PackageRow, PackageView } from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-plugin-manager/src/client/manager-store.ts'
 import type { PluginManagerPageProps } from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-plugin-manager/src/client/PluginManagerPage.tsx'
 import css from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-plugin-manager/src/client/PluginManagerPage.module.css'
-import { LocalPluginActions, type LocalCompositionService } from './unified-local-actions'
+import { LocalPluginActions, hasLocalPluginConfiguration, type LocalCompositionService } from './unified-local-actions'
 import { installPluginSideBadges, type PluginRuntimeFacts } from './plugin-side-badges'
 import { installRuntimeDetails, RuntimeDetails } from './plugin-runtime-details'
 
@@ -38,7 +38,7 @@ type LocalNavigation = {
   open(entryId?: string, component?: boolean): void
 }
 
-function LocalPlugins({ ctx, t, facts, navigation }: { ctx: ClientContext; t: Translate; facts: PluginRuntimeFacts; navigation: LocalNavigation }) {
+function LocalPlugins({ ctx, t, facts, navigation, renderConfiguration }: { ctx: ClientContext; t: Translate; facts: PluginRuntimeFacts; navigation: LocalNavigation; renderConfiguration: PluginManagerPageProps['renderSlot'] }) {
   const [, refresh] = useState(0)
   const selected = navigation.view?.entryId
   const component = navigation.view?.component ?? false
@@ -51,8 +51,9 @@ function LocalPlugins({ ctx, t, facts, navigation }: { ctx: ClientContext; t: Tr
     const update = () => refresh(value => value + 1)
     const off = ctx.clientComposition.subscribe(update)
     const status = ctx.on('internal/status', update)
+    const configurations = ctx.slots.subscribe('plugins.bundle.config', update)
     const timer = setInterval(update, 1000)
-    return () => { off(); status(); clearInterval(timer) }
+    return () => { off(); status(); configurations(); clearInterval(timer) }
   }, [ctx])
   const local = ctx.clientComposition.rows()
   const rows: InspectRow[] = local.map(row => ({ ...row,
@@ -76,11 +77,12 @@ function LocalPlugins({ ctx, t, facts, navigation }: { ctx: ClientContext; t: Tr
     ...(row.readOnlyReason ? { readOnlyReason: row.readOnlyReason } : {}),
   })
   const itemFor = (row: InspectRow) => ({ id: row.rowId, label: localPluginInfo[row.moduleName]?.title ?? row.moduleName })
-  const renderLocal: PluginManagerPageProps['renderSlot'] = (key, owner) => {
+  const renderLocal: PluginManagerPageProps['renderSlot'] = (key, owner, options) => {
     if (!row) return null
     if (key === 'plugins.detail.section') return <RuntimeDetails ctx={ctx} facts={facts} modules={[row.moduleName]} local />
     if (key === 'plugins.detail.badge') return <Tag tone="neutral">Local</Tag>
-    if (key !== 'plugins.row.config' && key !== 'plugins.item') return null
+    if (key === 'plugins.bundle.config' || key === 'plugins.row.config') return renderConfiguration(key, owner, options)
+    if (key !== 'plugins.item') return null
     if (owner.view === 'summary') return localPluginInfo[row.moduleName]?.description ?? null
     return <LocalPluginActions ctx={ctx} row={row} onChanged={() => refresh(value => value + 1)} />
   }
@@ -92,7 +94,7 @@ function LocalPlugins({ ctx, t, facts, navigation }: { ctx: ClientContext; t: Tr
     if (component) return <><RowDetail pkg={selectedPackage} row={row as PackageRow} t={t}
       resolveText={resolveText} form={undefined} renderSlot={renderLocal} onBack={() => setComponent(false)} /></>
     return <><PackageDetail pkg={selectedPackage} t={t} resolveText={resolveText}
-      busy={busy || ctx.clientComposition.status().busy} rowBusy={() => busy} configured={false}
+      busy={busy || ctx.clientComposition.status().busy} rowBusy={() => busy} configured={ctx.slots.entries('plugins.bundle.config').some(entry => entry.options.key === row.moduleName)}
       configure={{ has: () => true, open: () => setComponent(true) }} renderSlot={renderLocal}
       inMore={false} versions={undefined} detail={null} onBack={back}
       onSetEnabled={enabled => change(row, enabled)} onSetRowEnabled={(entry, enabled) => change(entry, enabled)}
@@ -123,11 +125,19 @@ function LocalPlugins({ ctx, t, facts, navigation }: { ctx: ClientContext; t: Tr
 export function register(ctx: ClientContext) {
   const facts = installPluginSideBadges(ctx, entry => ctx.mygoStartup.ownsEntry(entry))
   installRuntimeDetails(ctx, facts)
+  // This local example contributes configuration through the same contract as
+  // official bundle plugins. The page only projects the configuration ledger.
+  ctx.slots.inject('plugins.bundle.config', () => ctx.slots.register({
+    name: 'plugins.bundle.config', key: './plugins/marker.js',
+  }, function LocalNoteConfiguration() {
+    const row = ctx.clientComposition.rows().find(hasLocalPluginConfiguration)
+    return row ? <LocalPluginActions ctx={ctx} row={row} onChanged={() => {}} /> : null
+  }))
   // The original main entry owns the page and its child-slot declarations.
   // Contributions use those declarations rather than replacing the page or
   // duplicating its controller, navigation state, header, CSS or dialogs.
   ctx.slots.inject('plugins.tab', function* () {
     yield ctx.slots.register({ name: 'plugins.tab', id: 'mygo-local', label: 'Local', order: -20, locale: 'pluginManager' },
-      ({ t, navigation }) => <LocalPlugins ctx={ctx} t={t} facts={facts} navigation={navigation} />)
+      ({ t, navigation, renderConfiguration }) => <LocalPlugins ctx={ctx} t={t} facts={facts} navigation={navigation} renderConfiguration={renderConfiguration} />)
   })
 }

@@ -101,8 +101,8 @@ all 27 repository tests. The upstream source pin remains unchanged.
 Local built-in settings now use the unchanged upstream `ItemCard` and
 `ItemDetail`, matching Installed's built-in settings rather than presenting
 startup services as switchable packages. Experimental/installed local plugins
-use upstream `PackageCard` → `PackageDetail` → `RowDetail`; Components opens
-actual local configuration. The build adapter only exposes these existing
+use upstream `PackageCard` → `PackageDetail` → `RowDetail`; plugin-level configuration
+appears on the package page, while Components opens component-specific content. The build adapter only exposes these existing
 components; upstream files remain unchanged. Lifecycle and configuration writes
 still target the local composition service.
 
@@ -183,3 +183,25 @@ selection, reload persistence and 390px layout checks. Screenshots are
 `settings-client.png`, `settings-instances.png`, and
 `settings-instances-mobile.png` under `.scratch/test-dsh/`. All original CSS
 sources remain pristine; no replacement theme or custom stylesheet is added.
+
+## Native configuration entries
+
+Local bundle forms now register through the original `plugins.bundle.config`
+keyed Slot. The contributed-tab adapter forwards the original page’s scoped
+configuration renderer, and Local reads actual Slot registrations to determine
+`configured`; it no longer hardcodes this false or invents a Configure action.
+Row pages dispatch `plugins.row.config` separately, so a bundle form is not
+mistaken for component configuration.
+
+The local example supplies a Text field using unchanged `SettingsValueField`
+and `SettingsForm` components, with the original Save footer and staged-edit
+behavior. Its writer remains the concrete local Entry/revision adapter. The
+extra Configure locally/Enable locally buttons and generic JSON editor are
+removed. Unknown plugins do not gain an invented settings editor; their own
+configuration contributions remain the contract. Upstream UI files and styles
+are unchanged.
+
+The focused browser workflow verifies direct plugin-page visibility, validation
+blocking Save, edit-without-write, actual save/restore, discard on leaving,
+separate Components information, and zero Host management writes. The existing
+original composer MODEL MOCK checkpoint and 27 repository tests passed.

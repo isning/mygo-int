@@ -11,6 +11,7 @@ export function adaptPluginPage(source) {
     ? contributedView?.tab !== tab || contributedView.entryId === undefined
     : openPkg === undefined && openItem === undefined`)
   replace("              {renderSlot('plugins.tab', {\n                install: props.installFrom,", `              {renderSlot('plugins.tab', {
+                renderConfiguration: renderSlot,
                 navigation: {
                   view: contributedView?.tab === tab ? contributedView : undefined,
                   open: (entryId?: string, component = false) => setContributedView({ tab, entryId, component }),

@@ -1,7 +1,7 @@
 // Local actions over the original Context's device-overlay/lifecycle adapter.
 import React, { useEffect, useRef, useState } from 'react'
 import type { Context } from '@deepseek-ai/cordis'
-import { Button, SettingsForm } from '@deepseek-ai/dsh-client-ui-primitives'
+import { SettingsForm, SettingsValueField } from '@deepseek-ai/dsh-client-ui-primitives'
 
 type InspectRow = { readonly entryId?: string; readonly rowId: string; readonly moduleName: string }
 type LocalRow = InspectRow & {
@@ -15,13 +15,14 @@ export type LocalCompositionService = {
   subscribe(listener: () => void): () => void
   change(id: string, patch: { config?: Record<string, unknown>; disabled?: boolean }, revision?: number): Promise<void>
 }
+export const hasLocalPluginConfiguration = (row: InspectRow) => row.moduleName === './plugins/marker.js'
+
 type Props = { ctx: Context & { clientComposition: LocalCompositionService }; row: InspectRow; onChanged: () => void }
-const labels = { unavailable: 'Local entry unavailable', readOnly: 'Read only', saveFailed: 'Local configuration was rejected', save: 'Save and apply locally', saving: 'Applying…' }
+const labels = { unavailable: 'Local entry unavailable', readOnly: 'Read only', saveFailed: 'Local configuration was rejected', save: 'Save', saving: 'Saving…' }
 
 export function LocalPluginActions({ ctx, row, onChanged }: Props) {
   const service = ctx.clientComposition
   const [, refresh] = useState(0)
-  const [open, setOpen] = useState(false)
   const [error, setError] = useState('')
   const alive = useRef(false)
   useEffect(() => {
@@ -46,23 +47,21 @@ export function LocalPluginActions({ ctx, row, onChanged }: Props) {
     {status.diagnostic && <p role="alert">{status.diagnostic}</p>}
     {current?.diagnostic && <p role="alert">{current.diagnostic}</p>}
     {error && error !== status.diagnostic && <p role="alert">{error}</p>}
-    {!current?.entryId ? <p>Local entry unavailable. Refresh inventory.</p> : current.readOnlyReason ?
-      null : <>
-        <Button disabled={status.busy} aria-label={current.enabled ? 'Disable local plugin' : 'Enable local plugin'} onClick={() => void run({ disabled: current.enabled })}>{current.enabled ? 'Disable locally' : 'Enable locally'}</Button>{' '}
-        <Button aria-label="Configure local plugin" onClick={() => setOpen(value => !value)}>{open ? 'Close local configuration' : 'Configure locally'}</Button>
-        {open && <LocalConfig key={current.entryId + ':' + status.revision} row={current} status={status} run={run} />}
-      </>}
+    {!current?.entryId ? <p>Local entry unavailable. Refresh inventory.</p> : current.readOnlyReason || !hasLocalPluginConfiguration(current) ?
+      null : <LocalConfig key={current.entryId + ':' + status.revision} row={current} status={status} run={run} />}
   </div>
 }
 
 function LocalConfig({ row, status, run }: { row: LocalRow; status: ReturnType<LocalCompositionService['status']>; run(patch: { config: Record<string, unknown> }, revision: number): Promise<void> }) {
-  const [draft, setDraft] = useState(() => JSON.stringify(row.config, null, 2))
+  const [text, setText] = useState(() => typeof row.config.label === 'string' ? row.config.label : '')
   const [revision] = useState(status.revision)
-  let value: Record<string, unknown> = {}, invalid = false
-  try { value = JSON.parse(draft); invalid = !value || Array.isArray(value) || typeof value !== 'object' } catch { invalid = true }
-  return <SettingsForm labels={labels} state={{ available: true, writable: true, dirty: draft !== JSON.stringify(row.config, null, 2), invalid, saving: status.busy, failed: false }} onSave={() => void run({ config: value }, revision)} onDiscard={() => {}}>
-    <label>Local plugin configuration<textarea aria-label="Local plugin configuration" rows={7} style={{ width: '100%', fontFamily: 'monospace' }} value={draft} onChange={event => setDraft(event.target.value)} /></label>
-    {invalid && <p role="alert">Enter a JSON object.</p>}
-    {JSON.stringify(row.desired.config ?? {}) !== JSON.stringify(row.config) && <p>Saved desired configuration differs from runtime.</p>}
+  const invalid = !text.trim() || text.length > 160
+  return <SettingsForm labels={labels}
+    state={{ available: true, writable: true, dirty: text !== row.config.label, invalid, saving: status.busy, failed: false }}
+    onSave={() => void run({ config: { ...row.config, label: text } }, revision)} onDiscard={() => {}}>
+    <SettingsValueField id="local-note-text" label="Text" text={text}
+      disabled={status.busy} overridden={false} invalid={invalid} overriddenLabel="Modified"
+      resetLabel="Reset" invalidLabel="Enter 1–160 characters."
+      onEdit={setText} onReset={() => setText(typeof row.config.label === 'string' ? row.config.label : '')} />
   </SettingsForm>
 }
