@@ -112,3 +112,63 @@ Only inference used the model mock. Credentials, Host authorization and fixed-ta
 transport remained original; local startup performs no Host management writes.
 The owned Host, carrier and inference mock were stopped normally after the final
 browser check. Final green output is in `green-local-entry-final.log`.
+
+## Shared local management services (ticket 49)
+
+The explicit `single-root` roster now also selects the existing
+`client-composition`, `instance-manager`, and `ui-client-manager` local plugins.
+`mygoStartup` supplies their original configuration, lifecycle state constants,
+read-only browser admission probe and concrete local Entry membership.
+`mygoPlatform` supplies the original platform seed and existing management UI
+adapter. They use the same Context and original Loader as the Host client roster;
+Host ClientEntries keeps its existing managed map. Local membership is recorded
+only for Entries created from local startup, without attaching the old ownership
+helper over the shared tree or claiming remote Entries.
+
+All configured local namespaces, including disabled Entries, are seeded before
+boot so original Loader enablement can import them later. Startup entries pass
+through the existing overlay middleware, and failed saved activation can invoke
+its existing recovery hook. This preserves the current device overlay contract;
+deep migration/recovery scenarios remain ticket 58. The floating management
+presentation is temporarily retained until ticket 53. No outer workbench, new
+navigation, Context, Loader or Host-management backend is introduced. The existing
+build adapter already resolves the management UI's original-source imports.
+
+Run the focused browser workflow against the explicit entry on an owned Host:
+
+```bash
+node scripts/dsh-test-browser.mjs check-single-management
+```
+
+It checks actual local-only manager rows, shared platform identities, a visible
+configuration application, original Host settings values/revisions before and
+after that edit, absence of Host management mutation requests, the authenticated
+instance catalog, overlay restoration through reload, and subsequent original
+session opening/composer submission. Inference alone uses MODEL MOCK. To also
+exercise operator-disabled startup, provide a workspace-local copy of
+`single-root.json` with `local-note.disabled: true` as `MYGO_STARTUP_CONFIG` when
+starting the carrier, then set `MYGO_EXPECT_NOTE_DISABLED=1` on the browser check.
+
+Validation on parent `eda7730`:
+
+- RED: the authenticated complete client booted, but the management entry was
+  absent. GREEN: the four existing local rows appeared, configuration applied,
+  and the original session/composer workflow passed afterward.
+- Disabled-startup RED: with disabled namespaces omitted from the seed, enabling
+  the actual local Entry was rejected with `no fiber` and rolled back to Off;
+  the browser timed out waiting for activation. GREEN: seeding that namespace
+  allowed real UI enablement, config application, reload restoration and the
+  subsequent original session/composer workflow.
+- Fresh pristine pinned artifact build: 8/8 original gates passed. Adapted Web
+  builds and original Web `tsc -b` passed. Repository tests: 27 passed. Changed
+  JavaScript syntax checks, source-pin verification and `git diff --check` passed.
+  There is no adapter-wide `checkJs` project; these checks do not claim full
+  static type checking of JavaScript orchestration.
+
+T3 preview reported missing host browser libraries, so the repository Nix
+Chromium/CDP fallback ran on ordinary Tailscale port 4212, bound to `0.0.0.0`.
+Own preparation, caches, builds and private evidence stayed in this workspace.
+Evidence is under ignored `.scratch/`: `ticket49-{red,green,disabled-red,disabled-green,final-green,single-root-regression}.log` and
+`test-dsh/single-management-browser.json`. No credential is included here.
+The normal default composition remains legacy. Integration with the parallel
+owner-scoping and Slot-override tickets remains the parent's responsibility.

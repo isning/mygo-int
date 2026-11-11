@@ -1,4 +1,6 @@
 // Explicit migration entry for the pinned single-instance Web composition.
+import * as managementUI from './local/management-ui.tsx'
+import { FIBER_STATE as FiberState } from '../../.scratch/upstream/deepseek-harness/packages/client/web/src/loader-status.ts'
 import { getStaticModules } from '@deepseek-ai/dsh-client-web'
 import { protectLocalEntryModules } from './local-entry-boundary.js'
 import { bootClient, assertEntriesActive } from '../../.scratch/upstream/deepseek-harness/packages/client/web/src/boot-client.ts'
@@ -13,15 +15,18 @@ export async function startSingleClient() {
   if (!container) throw Error('mygo single client: missing #root')
   const page = new BootPage(container)
   const staticModules = getStaticModules()
+  staticModules['mygo/dsh-management-ui'] = managementUI
   const { Context } = staticModules['@deepseek-ai/cordis']
   const React = staticModules.react
   const ctx = new Context()
   const diagnosticName = '@mygo/single-client-contribution'
+  const localEntries = new Set()
   let configuration
   let stopDragRecall
   const dispose = async () => {
     stopDragRecall?.()
     await ctx.fiber.dispose()
+    localEntries.clear()
     page.dispose()
   }
   addEventListener('pagehide', event => { if (!event.persisted) void dispose() })
@@ -56,8 +61,8 @@ export async function startSingleClient() {
     // ClientModuleSystem's original seed-first import/require contract composes
     // trusted native local modules with unchanged Host bundle resolution. Keep
     // the startup specifiers intact; do not replace loader.internal or ctx.modules.
-    for (const { name, disabled } of configuration.entries) {
-      if (disabled || Object.hasOwn(staticModules, name)) continue
+    for (const { name } of configuration.entries) {
+      if (Object.hasOwn(staticModules, name)) continue
       const url = new URL(name, new URL('/mygo-local/', location.href)).href
       try {
         staticModules[name] = await import(/* @vite-ignore */ url)
@@ -65,6 +70,15 @@ export async function startSingleClient() {
         throw Error(`Local module ${name} failed to import: ${String(reason)}`)
       }
     }
+    ctx.provide('mygoStartup', Object.freeze({
+      configuration, FiberState,
+      ownsEntry: entry => localEntries.has(entry),
+      async admit() {
+        const response = await fetch('/mygo-local/admission', { cache: 'no-store', credentials: 'same-origin' })
+        if (!response.ok) throw Error(`DSH browser admission required (${response.status}); reopen the private launch entry`)
+      },
+    }))
+    ctx.reflect.provide('mygoPlatform', Object.freeze({ modules: Object.freeze(staticModules) }))
     const bootstrapUrl = '/mygo-boot/bootstrap.js'
     await import(/* @vite-ignore */ bootstrapUrl)
     await globalThis.__DSH_BOOT_READY__?.promise
@@ -97,7 +111,16 @@ export async function startSingleClient() {
       if ([...ctx.loader.entries()].some(entry => entry.options.id === options.id)) {
         throw Error(`Local startup Entry id already exists: ${options.id}`)
       }
-      await ctx.loader.create(options)
+      const desired = await ctx.waterfall('mygo/startup-entry', options, () => options)
+      await ctx.loader.create(desired)
+      // Keep concrete Entry identity; the shared Loader also contains the Host
+      // roster, which must never become the local management service's scope.
+      localEntries.add(ctx.loader.resolve(options.id))
+    }
+    await ctx.loader.await()
+    for (const entry of localEntries) {
+      if (entry.disabled || entry.fiber?.state === FiberState.ACTIVE) continue
+      await ctx.serial('mygo/startup-failed', entry)
     }
     await ctx.loader.create({ id: 'mygo-single-client', name: diagnosticName })
     await ctx.loader.await()

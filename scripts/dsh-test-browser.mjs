@@ -5,12 +5,13 @@ import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import {openSync} from 'node:fs';
 import {resolve} from 'node:path';
 const checkRemoval=process.argv[2]==='check-remove';
+const checkSingleManagement=process.argv[2]==='check-single-management';
 const checkSingleRoot=process.argv[2]==='check-single-root';
 const checkManagement=process.argv[2]==='check-management';
 const checkManagementRestore=process.argv[2]==='check-management-restore';
 const checkManagementRecovery=process.argv[2]==='check-management-recovery';
 const createSession=process.argv[2]==='check-create';
-const submit=process.argv[2]==='check-submit'||checkRemoval||createSession||checkSingleRoot;
+const submit=process.argv[2]==='check-submit'||checkRemoval||createSession||checkSingleRoot||checkSingleManagement;
 const checkLocal=process.argv[2]==='check-local'||checkRemoval;
 const scratch=resolve('.scratch/test-dsh'),interactive=['open','open-management'].includes(process.argv[2]),authenticated=process.argv[2]==='check-auth';
 const profileName=checkManagementRestore||checkManagementRecovery||process.argv[2]==='open-management' ? (await readFile(scratch+'/management-profile','utf8')).trim() : 'browser-'+Date.now();
@@ -22,6 +23,7 @@ const pause=ms=>new Promise(r=>setTimeout(r,ms));
 async function until(fn){for(let i=0;i<240;i++){if(child.exitCode!==null)throw Error('Chromium exited; inspect private browser.log');if(stage==='local-management'&&evaluate){const failure=await evaluate("document.querySelector('[data-local-management] [role=alert]')?.textContent");if(failure?.startsWith('Local settings failed'))throw Error(failure)}try{const x=await fn();if(x)return x;}catch{}await pause(250);}throw Error('Browser readiness timed out');}
 let ws,evaluate,stage='boot',initialCreates=0;
 const apiResponses=[];
+const apiRequests=[];
 const browserErrors=[];
 try{
  const port=await until(async()=>{
@@ -38,6 +40,7 @@ try{
  const previous=ws.onmessage;
  ws.onmessage=e=>{const m=JSON.parse(e.data),p=m.params;
   if(m.method==='Network.requestWillBeSent'&&new URL(p.request.url).pathname==='/api/session/create')createCalls.push(JSON.parse(p.request.postData));
+  if(m.method==='Network.requestWillBeSent'&&new URL(p.request.url).pathname.startsWith('/api/'))apiRequests.push(new URL(p.request.url).pathname);
   if(m.method==='Runtime.exceptionThrown')browserErrors.push(p.exceptionDetails.exception?.description ?? p.exceptionDetails.text);
   if(m.method==='Network.responseReceived'&&new URL(p.response.url).pathname.startsWith('/api/'))apiResponses.push({path:new URL(p.response.url).pathname,status:p.response.status});
   if(m.method==='Network.responseReceived'&&/\/api\/(settings|models|plugins|provider|config|skill|mcp)/.test(new URL(p.response.url).pathname))catalogResponses.push({path:new URL(p.response.url).pathname,status:p.response.status});
@@ -95,8 +98,14 @@ try{
   const marker=await evaluate("document.querySelector('[data-mygo-local-plugin=marker]')?.textContent");
   const localEntry=await evaluate("document.querySelector('[data-mygo-shared-client]')?.dataset.localEntry");
   assert.equal(marker,'Local note · editable','curated existing local marker runs alongside unchanged official client entries');
-  assert.equal(localEntry,'./plugins/marker.js','the active local entry retains its original startup module identity');
+  assert.equal(localEntry?.split(',').includes('./plugins/marker.js'),true,'the active local entry retains its original startup module identity');
   await writeFile(scratch+'/single-root-browser.json',JSON.stringify({...contribution,marker,localEntry}),{mode:0o600});
+ }
+ if(checkSingleManagement){
+  stage='shared local management';
+  const {checkSharedManagement}=await import('./dsh-single-management-browser.mjs');
+  const management=await checkSharedManagement({evaluate,until,apiRequests});
+  await writeFile(scratch+'/single-management-browser.json',JSON.stringify(management),{mode:0o600});
  }
  await evaluate("[...document.querySelectorAll('button')].find(x=>x.innerText==='Continue')?.click()");
  await pause(300);
