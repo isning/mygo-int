@@ -15,7 +15,8 @@ export async function startSingleClient() {
   const { Context } = staticModules['@deepseek-ai/cordis']
   const React = staticModules.react
   const ctx = new Context()
-  const localName = '@mygo/single-client-contribution'
+  const diagnosticName = '@mygo/single-client-contribution'
+  let configuration
   let stopDragRecall
   const dispose = async () => {
     stopDragRecall?.()
@@ -25,24 +26,44 @@ export async function startSingleClient() {
   addEventListener('pagehide', event => { if (!event.persisted) void dispose() })
   // This service belongs to the MYGO-created root, before official boot.
   ctx.reflect.provide('mygoMigration', Object.freeze({ label: 'MYGO supplied Context service' }))
-  staticModules[localName] = {
+  staticModules[diagnosticName] = {
     inject: ['slots', 'modules', 'mygoMigration'],
     async apply(scope) {
       const react = await scope.modules.import('react')
       const cordis = await scope.modules.import('@deepseek-ai/cordis')
+      const localEntries = [...scope.loader.entries()].filter(entry =>
+        configuration.entries.some(options => options.id === entry.options.id))
+      const localModulesShared = (await Promise.all(localEntries.filter(entry => !entry.disabled).map(async entry =>
+        await scope.modules.import(entry.options.name) === entry.moduleNamespace))).every(Boolean)
       scope.slots.inject('shell.bottom', () => scope.slots.register({ name: 'shell.bottom' }, () => {
         const [label] = React.useState(scope.mygoMigration.label)
         const entries = [...scope.loader.entries()]
         return React.createElement('aside', {
           'data-mygo-shared-client': '',
-          'data-local-active': String(entries.some(entry => entry.options.name === localName && entry.fiber?.state === 2)),
+          'data-local-active': String(localEntries.length > 0 && localEntries.every(entry => entry.disabled || entry.fiber?.state === 2)),
+          'data-local-entry': localEntries.map(entry => entry.options.name).join(','),
           'data-session-active': String(entries.some(entry => entry.options.name === '@deepseek-ai/dsh-client-ui-session' && entry.fiber?.state === 2)),
-          'data-platform-singletons': String(react === React && cordis.Context === Context && scope instanceof Context && scope.modules === scope.loader.internal),
+          'data-platform-singletons': String(localModulesShared && react === React && cordis.Context === Context && scope instanceof Context && scope.modules === scope.loader.internal),
         }, label)
       }))
     },
   }
   try {
+    const response = await fetch('/mygo-local/startup.json', { cache: 'no-store' })
+    if (!response.ok) throw Error(`Local startup configuration HTTP ${response.status}`)
+    configuration = await response.json()
+    // ClientModuleSystem's original seed-first import/require contract composes
+    // trusted native local modules with unchanged Host bundle resolution. Keep
+    // the startup specifiers intact; do not replace loader.internal or ctx.modules.
+    for (const { name, disabled } of configuration.entries) {
+      if (disabled || Object.hasOwn(staticModules, name)) continue
+      const url = new URL(name, new URL('/mygo-local/', location.href)).href
+      try {
+        staticModules[name] = await import(/* @vite-ignore */ url)
+      } catch (reason) {
+        throw Error(`Local module ${name} failed to import: ${String(reason)}`)
+      }
+    }
     const bootstrapUrl = '/mygo-boot/bootstrap.js'
     await import(/* @vite-ignore */ bootstrapUrl)
     await globalThis.__DSH_BOOT_READY__?.promise
@@ -55,16 +76,32 @@ export async function startSingleClient() {
       ...(transport?.resolveAsset ? { resolveAsset: transport.resolveAsset } : {}),
     })
     const manifest = modules.manifest
-    page.setTotal(manifest.plugins.length + 1)
+    for (const { id, name } of configuration.entries) {
+      if (manifest.modules.some(row => row.id === name) || id === 'mygo-single-client') {
+        throw Error(`Local startup identity conflicts with client entry: ${id} (${name})`)
+      }
+    }
+    page.setTotal(manifest.plugins.length + configuration.entries.filter(entry => !entry.disabled).length + 1)
     await Promise.all(manifest.plugins.filter(row => row.immediately).map(row => modules.prefetch(row.id).catch(() => {})))
     await bootClient({ ctx, modules, manifest, onEntryState: (name, state) => {
       if (state !== 'failed') page.setState(name, state)
     } })
-    // Use the same module seed and original Loader; Host ClientEntries retains
-    // its own managed roster. Migrating the existing local entries is ticket 48.
-    await ctx.loader.create({ id: 'mygo-single-client', name: localName })
+    // Host ClientEntries owns only its managed roster. These configured entries
+    // belong to local startup and retain original Loader config/inject semantics.
+    for (const options of configuration.entries) {
+      if ([...ctx.loader.entries()].some(entry => entry.options.id === options.id)) {
+        throw Error(`Local startup Entry id already exists: ${options.id}`)
+      }
+      await ctx.loader.create(options)
+    }
+    await ctx.loader.create({ id: 'mygo-single-client', name: diagnosticName })
     await ctx.loader.await()
-    await assertEntriesActive(ctx, modules)
+    const warnings = []
+    await assertEntriesActive(ctx, modules, message => { warnings.push(message); console.warn(message) })
+    if ([...ctx.loader.entries()].some(entry => configuration.entries.some(options => options.id === entry.options.id)
+      && !entry.disabled && entry.fiber?.state !== 2)) {
+      throw Error(warnings.join('\n') || 'Local startup entries did not activate')
+    }
     stopDragRecall = installWindowDragRecall({ document: container.ownerDocument })
     await mountClient(ctx, container)
   } catch (reason) {

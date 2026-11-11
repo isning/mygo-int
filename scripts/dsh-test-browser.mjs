@@ -92,7 +92,11 @@ try{
    return node && {text:node.textContent,local:node.dataset.localActive,session:node.dataset.sessionActive,singletons:node.dataset.platformSingletons};
   })()`);
   assert.deepEqual(contribution,{text:'MYGO supplied Context service',local:'true',session:'true',singletons:'true'},'local Loader contribution consumes the supplied Context service inside the original UI, sharing active session entries and platform modules');
-  await writeFile(scratch+'/single-root-browser.json',JSON.stringify(contribution),{mode:0o600});
+  const marker=await evaluate("document.querySelector('[data-mygo-local-plugin=marker]')?.textContent");
+  const localEntry=await evaluate("document.querySelector('[data-mygo-shared-client]')?.dataset.localEntry");
+  assert.equal(marker,'Local note · editable','curated existing local marker runs alongside unchanged official client entries');
+  assert.equal(localEntry,'./plugins/marker.js','the active local entry retains its original startup module identity');
+  await writeFile(scratch+'/single-root-browser.json',JSON.stringify({...contribution,marker,localEntry}),{mode:0o600});
  }
  await evaluate("[...document.querySelectorAll('button')].find(x=>x.innerText==='Continue')?.click()");
  await pause(300);

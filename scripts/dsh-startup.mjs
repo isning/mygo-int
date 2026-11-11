@@ -16,7 +16,9 @@ if (!['legacy', 'single-root'].includes(composition)) throw Error('MYGO_CLIENT_C
 if (composition === 'single-root' && !bootEnabled) throw Error('single-root composition requires DSH_ORIGIN')
 if (process.env.DSH_COOKIE_FILE) throw new Error('Server-side DSH_COOKIE_FILE is retired; use original browser login')
 const localStartup = bootEnabled ? await readLocalStartup(workspace,
-  process.env.MYGO_STARTUP_CONFIG ?? 'entries/dsh-startup/local/startup.json') : undefined
+  process.env.MYGO_STARTUP_CONFIG ?? (composition === 'single-root'
+    ? 'entries/dsh-startup/local/single-root.json'
+    : 'entries/dsh-startup/local/startup.json')) : undefined
 const dist = bootEnabled ? resolve(workspace, composition === 'single-root' ? '.scratch/dsh-single-client/dist' : '.scratch/dsh-local-composition/dist') : resolve(upstream, 'apps/web/dist')
 const output = resolve(workspace, '.scratch/dsh-startup')
 const command = process.argv[2]

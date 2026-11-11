@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "selectedInstance": { "id": "local-test-dsh", "authenticationViewId": "owner" },
+  "entries": [
+    { "id": "local-note", "name": "./plugins/marker.js", "inject": ["modules"], "config": { "label": "Local note · editable" } }
+  ]
+}
