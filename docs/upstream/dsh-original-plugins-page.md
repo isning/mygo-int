@@ -152,11 +152,32 @@ this section. Recovery is under a closed-by-default Advanced disclosure; Restore
 defaults requires a normal confirmation dialog and uses the existing device-only
 reset operation. Cancel preserves preferences. The recovery UI does not depend
 on pluginNavigation being available; that optional service only enables the
-Manage plugins action. Instances retains its own section. Explicit legacy
-composition remains unchanged.
+Manage plugins action. Instances retains its own section. Legacy composition mechanics are retained; its Instances section uses the same updated UI.
 
 The focused browser checkpoint also verifies Client structure, optional recovery
 visibility, cancel, management navigation, confirmed reset/reload in a fresh
 isolated browser profile, and unchanged Host settings/inventory. Screenshot:
 `.scratch/test-dsh/settings-client.png`. The existing overlay browser workflow
 uses the updated Client/Advanced/confirmation path.
+
+## Settings visual alignment
+
+Client now uses GeneralSection's column and DesktopChannelRow's label/description
+and right-side action layout. Advanced uses Models' existing disclosure styling;
+there is no duplicate Client heading or stacked subsection/button layout.
+
+Instances directly imports ModelsSection's styles for its title, cards, action
+buttons, inset editor, inputs, advanced fields and dashed Add instance row.
+It presents one editor at a time; Name/Address are primary, while stable Instance
+ID and Authentication view are advanced. New IDs are generated with
+`crypto.getRandomValues`, which also works on the HTTP Tailscale demo. Bound
+address/authentication are read-only. Save failures retain drafts; Cancel writes
+nothing. Existing catalog validation, admission, persistence and selection are
+unchanged. Availability indicates the admission check, not a new transport;
+selecting an additional saved profile never changes the active carrier.
+
+The focused browser checkpoint adds real create/edit/rejected-save/cancel,
+selection, reload persistence and 390px layout checks. Screenshots are
+`settings-client.png`, `settings-instances.png`, and
+`settings-instances-mobile.png` under `.scratch/test-dsh/`. All original CSS
+sources remain pristine; no replacement theme or custom stylesheet is added.

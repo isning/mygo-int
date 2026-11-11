@@ -2,11 +2,13 @@
 // The injected face below is local only; no Host PluginManagerController/ConfigForms.
 import React, { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { Button, ConnectionIndicator, Modal, closeTopModal, SettingsForm, SettingsValueField } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, ConnectionIndicator, IconPlusOutlineRegular, Modal, StateDot, closeTopModal, SettingsForm, SettingsValueField } from '@deepseek-ai/dsh-client-ui-primitives'
 import { SlotCore } from '@deepseek-ai/dsh-client-ui-slots'
 import { RowsSection } from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-plugin-manager/src/client/PluginManagerPage.tsx?mygo-rows'
 import { SettingsPanel } from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-settings-general/src/client/SettingsRoot.tsx?mygo-panel'
-import settingsCSS from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-settings-plugins/src/client/PluginsSettingsSection.module.css'
+import generalCSS from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-settings-general/src/client/GeneralSection.module.css'
+import rowCSS from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-settings-general/src/client/DesktopChannelRow.module.css'
+import modelsCSS from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-settings-models/src/client/ModelsSection.module.css'
 import { en } from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-plugin-manager/src/client/locales.ts'
 
 const translate = (key, params = {}) => Object.entries(params).reduce((text, [key, value]) => text.replaceAll(`{${key}}`, String(value)), key === undefined ? 'Protected local startup service' : en[key] ?? key)
@@ -81,18 +83,24 @@ function ClientSettings({ ctx, run }) {
     return () => { live = false; void fiber.dispose() }
   }, [ctx])
   const status = service.status()
-  return <div className={settingsCSS.section} data-mygo-client-settings="">
-    <h2 className={settingsCSS.heading}>Client</h2>
+  return <div className={generalCSS.section} data-mygo-client-settings="">
     {status.diagnostic && <p role="alert">{status.diagnostic}</p>}
-    <section className={settingsCSS.presetSettings}>
-      <h3 className={settingsCSS.presetSettingsTitle}>Plugins</h3>
-      <p className={settingsCSS.intro}>Manage plugins installed on this device.</p>
-      <div><Button variant="outline" disabled={!openPlugins} onClick={openPlugins}>Manage plugins</Button></div>
-    </section>
-    <details className={settingsCSS.presetSettings} data-client-advanced="">
-      <summary>Advanced</summary>
-      <p className={settingsCSS.intro}>Restore this device’s plugin preferences to their defaults.</p>
-      <div><Button variant="outline" disabled={status.busy} onClick={() => setConfirmReset(true)}>Restore defaults</Button></div>
+    <div className={rowCSS.row}>
+      <div className={rowCSS.rowText}>
+        <div className={rowCSS.title}>Plugins</div>
+        <div className={rowCSS.description}>Manage plugins installed on this device.</div>
+      </div>
+      <Button variant="outline" size="sm" disabled={!openPlugins} onClick={openPlugins}>Manage plugins</Button>
+    </div>
+    <details className={modelsCSS.customized} data-client-advanced="">
+      <summary className={modelsCSS.customizedSummary}>Advanced</summary>
+      <div className={rowCSS.row}>
+        <div className={rowCSS.rowText}>
+          <div className={rowCSS.title}>Restore defaults</div>
+          <div className={rowCSS.description}>Reset this device’s plugin preferences.</div>
+        </div>
+        <Button variant="outline" size="sm" disabled={status.busy} onClick={() => setConfirmReset(true)}>Restore defaults</Button>
+      </div>
     </details>
     <Modal open={confirmReset} title="Restore client defaults?" closeLabel="Close"
       description="Reset local plugin options and enabled states. The page will reload."
@@ -103,40 +111,89 @@ function ClientSettings({ ctx, run }) {
   </div>
 }
 
+function InstanceEditor({ service, target, onClose }) {
+  const [draft, setDraft] = useState(() => ({ ...target.draft }))
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const bound = target.id === service.snapshot().connectedId
+  const field = (key, label, disabled = false) => <label className={modelsCSS.field} key={key}>
+    <span className={modelsCSS.fieldLabel}>{label}</span>
+    <input className={modelsCSS.input} aria-label={label} value={draft[key]}
+      disabled={saving || disabled} required onChange={event => setDraft({ ...draft, [key]: event.target.value })} />
+  </label>
+  return <form className={modelsCSS.editor} data-instance-editor="" onSubmit={async event => {
+    event.preventDefault(); setSaving(true); setError('')
+    try { await service.save(draft, target.id); onClose() }
+    catch (error) { setError(error.message) }
+    finally { setSaving(false) }
+  }}>
+    <div className={modelsCSS.editorHeader}><span className={modelsCSS.editorTitle}>{target.id ? 'Edit instance' : 'Add instance'}</span></div>
+    {field('name', 'Name')}
+    {field('address', 'Address', bound)}
+    <details className={modelsCSS.customized}>
+      <summary className={modelsCSS.customizedSummary}>Advanced</summary>
+      <div className={modelsCSS.customizedBody}>
+        {field('id', 'Instance ID', !!target.id)}
+        {field('authenticationViewId', 'Authentication view', bound)}
+      </div>
+    </details>
+    {error && <p className={modelsCSS.error} role="alert">{error}</p>}
+    <div className={modelsCSS.editorActions}>
+      <button type="button" className={modelsCSS.secondaryButton} disabled={saving} onClick={onClose}>Cancel</button>
+      <button type="submit" className={modelsCSS.primaryButton} disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
+    </div>
+  </form>
+}
+
 function Instances({ ctx, run }) {
   const service = ctx.instanceManager
   useRefresh(service)
   const snapshot = service.snapshot()
-  const empty = { id: '', name: '', address: '', authenticationViewId: 'owner' }
-  const [draft, setDraft] = useState(empty), [editingId, setEditingId] = useState(null)
-  const [saving, setSaving] = useState(false)
-  const selected = snapshot.catalog.find(row => row.id === snapshot.selectedId)
-  return <div>
-    <h2>Instance connections</h2>
-    <ConnectionIndicator state={snapshot.connectionStatus === 'checking' ? 'connecting' : snapshot.connectionStatus === 'unavailable' ? 'disconnected' : undefined}
-      disconnectedLabel="Bound carrier unavailable or browser admission expired" connectingLabel="Checking original DSH admission" recoveredLabel="DSH admission accepted"
-      reconnectActionLabel="Check again" restartActionLabel="Reload" onReconnect={service.refresh} />
-    <Button onClick={() => run(service.refresh)}>Refresh connection status</Button>
-    <p>Catalog selection: <strong>{selected?.name}</strong>. Connected DSH outlet: <strong>{snapshot.connectedId}</strong>.</p>
-    {snapshot.selectedId !== snapshot.connectedId && <p role="status">Selected target is unavailable. The existing DSH outlet remains bound to {snapshot.connectedId}; no connection was switched.</p>}
-    <p>One operator-configured carrier and owner browser session. External addresses are saved metadata; this client does not probe or connect to them.</p>
-    {snapshot.diagnostic && <p role="alert">{snapshot.diagnostic}</p>}
-    <ul>{snapshot.catalog.map(row => <li key={row.id} data-instance-id={row.id}>
-      <h3>{row.name}</h3><p><code>{row.id}</code> · {row.address} · authentication view: {row.authenticationViewId}</p>
-      <p>{service.availability(row)}</p>
-      <Button onClick={() => { setDraft({ ...row }); setEditingId(row.id) }}>Edit {row.name}</Button>{' '}
-      <Button disabled={row.id === snapshot.selectedId} onClick={() => run(() => service.select(row.id))}>Select {row.name}</Button>
-    </li>)}</ul>
-    <h3>{editingId ? 'Edit connection profile' : 'Add instance profile'}</h3>
-    <SettingsForm labels={{ ...labels, save: 'Save connection profile' }} state={{ available: true, writable: true, dirty: true, invalid: false, saving, failed: false }}
-      onSave={() => run(async () => { setSaving(true); try { await service.save(draft, editingId); setDraft(empty); setEditingId(null) } finally { setSaving(false) } })} onDiscard={() => {}}>
-      {['id', 'name', 'address', 'authenticationViewId'].map(key => <SettingsValueField key={key} id={`mygo-instance-${key}`} label={`Instance ${key}`}
-        text={draft[key]} disabled={key === 'id' && !!editingId} overridden={false} invalid={false}
-        overriddenLabel="Device override" resetLabel="Reset draft" invalidLabel="Invalid value"
-        onEdit={text => setDraft({ ...draft, [key]: text })} onReset={() => setDraft({ ...draft, [key]: empty[key] })} />)}
-      <p>Do not enter credentials. Launch tokens and cookies remain in original DSH authentication; this catalog stores none.</p>
-    </SettingsForm>
-    <Button onClick={() => { setEditingId(null); setDraft(empty) }}>New profile</Button>
+  const [editing, setEditing] = useState(null)
+  const [selecting, setSelecting] = useState(false)
+  const status = row => row.id !== snapshot.connectedId ? 'Not connected'
+    : snapshot.connectionStatus === 'checking' ? 'Checking…'
+    : snapshot.connectionStatus === 'authenticated' ? 'Available' : 'Unavailable'
+  return <div className={modelsCSS.section} data-mygo-instances="">
+    <h2 className={modelsCSS.title}>Instances</h2>
+    <p className={modelsCSS.intro}>Manage your instance connections.</p>
+    {snapshot.diagnostic && <p className={modelsCSS.error} role="alert">{snapshot.diagnostic}</p>}
+    {snapshot.selectedId !== snapshot.connectedId && <p className={modelsCSS.notice} role="status">The selected profile is saved. Your active connection has not changed.</p>}
+    <ul className={modelsCSS.rows}>
+      {snapshot.catalog.map(row => <li key={row.id} className={modelsCSS.rowCard} data-instance-id={row.id}>
+        <div className={modelsCSS.rowHead}>
+          <span className={modelsCSS.rowIdentity}>
+            <span className={modelsCSS.rowName}>{row.name}</span>
+            {row.id === snapshot.connectedId && <span className={modelsCSS.rowTag}>Current</span>}
+            {row.id === snapshot.selectedId && row.id !== snapshot.connectedId && <span className={modelsCSS.rowTag}>Selected</span>}
+          </span>
+          <span className={modelsCSS.rowActions}>
+            {row.id !== snapshot.selectedId && <button type="button" className={modelsCSS.secondaryButton}
+              aria-label={'Select ' + row.name} disabled={selecting} onClick={() => run(async () => {
+                setSelecting(true); try { await service.select(row.id) } finally { setSelecting(false) }
+              })}>Select</button>}
+            <button type="button" className={modelsCSS.secondaryButton} aria-label={'Edit ' + row.name}
+              onClick={() => setEditing(editing?.id === row.id ? null : { id: row.id, draft: { ...row } })}>Edit</button>
+          </span>
+        </div>
+        <span className={modelsCSS.editorRoute}>{row.address}</span>
+        <div className={modelsCSS.editorHeader}>
+          <StateDot state={row.id !== snapshot.connectedId ? 'idle' : snapshot.connectionStatus === 'checking' ? 'ongoing' : snapshot.connectionStatus === 'authenticated' ? 'done' : 'error'} size={8} />
+          <span className={modelsCSS.editorRoute}>{status(row)}</span>
+          {row.id === snapshot.connectedId && <button type="button" className={modelsCSS.linkButton}
+            disabled={snapshot.connectionStatus === 'checking'} onClick={() => run(service.refresh)}>Check connection</button>}
+        </div>
+        {editing?.id === row.id && <InstanceEditor key={row.id} service={service} target={editing} onClose={() => setEditing(null)} />}
+      </li>)}
+    </ul>
+    <div className={modelsCSS.addBlock}>
+      {editing?.id === null ? <InstanceEditor key="new-instance" service={service} target={editing} onClose={() => setEditing(null)} />
+        : <div className={modelsCSS.addActions}><button type="button" className={modelsCSS.addButton}
+            disabled={snapshot.catalog.length >= 32} onClick={() => setEditing({ id: null, draft: {
+              id: 'instance-' + Array.from(crypto.getRandomValues(new Uint8Array(12)), value => value.toString(16).padStart(2, '0')).join(''), name: '', address: '', authenticationViewId: 'owner',
+            } })}><IconPlusOutlineRegular size={14} />Add instance</button></div>}
+    </div>
+    <p className={modelsCSS.advancedHint}>Additional profiles can be saved; connecting to them is not available yet.</p>
   </div>
 }
 
