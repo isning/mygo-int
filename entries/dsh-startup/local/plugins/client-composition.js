@@ -1,4 +1,6 @@
 // Local authority adapter over the one original Loader. Never calls Host Remote.
+import { matchesLegacyDeviceOverlay } from './legacy-device-overlay.js'
+
 export const inject = ['loader', 'mygoStartup']
 const clone = value => JSON.parse(JSON.stringify(value))
 const phases = ['pending', 'loading', 'active', 'failed', 'disposed', 'unloading']
@@ -14,15 +16,17 @@ export function apply(ctx) {
   try {
     const saved = JSON.parse(localStorage.getItem(key) || 'null')
     if (saved) {
-      if (saved.version !== 1 || saved.base !== base || !Number.isSafeInteger(saved.revision) || saved.revision < 0 || !saved.overrides || typeof saved.overrides !== 'object' || Array.isArray(saved.overrides)) throw Error('Invalid overlay or operator composition changed; reset this device overlay')
+      const legacy = matchesLegacyDeviceOverlay(saved.base, boot)
+      if (saved.version !== 1 || (saved.base !== base && !legacy) || !Number.isSafeInteger(saved.revision) || saved.revision < 0 || !saved.overrides || typeof saved.overrides !== 'object' || Array.isArray(saved.overrides)) throw Error('Invalid overlay or operator composition changed; reset this device overlay')
       for (const [id, value] of Object.entries(saved.overrides)) {
         const original = boot.configuration.entries.find(entry => entry.id === id)
-        if (!original || protectedNames.has(original.name) || !value || Object.keys(value).some(k => !['config', 'disabled'].includes(k)) || typeof value.disabled !== 'boolean' || !value.config || typeof value.config !== 'object' || Array.isArray(value.config)) throw Error('Overlay no longer matches curated startup')
+        if (!original || (legacy && id !== 'local-note') || protectedNames.has(original.name) || !value || Object.keys(value).some(k => !['config', 'disabled'].includes(k)) || typeof value.disabled !== 'boolean' || !value.config || typeof value.config !== 'object' || Array.isArray(value.config)) throw Error(`Saved override ${id} no longer matches curated startup`)
       }
       overrides = saved.overrides
       revision = saved.revision
+      if (legacy) diagnostic = 'Legacy device overlay restored to retained local entries. The next accepted edit saves the shared-root composition.'
     }
-  } catch (error) { diagnostic = `Saved overlay ignored: ${error.message}` }
+  } catch (error) { diagnostic = `Saved overlay ignored: ${error.message}. Operator configuration is running; saved data is retained. Reset this device overlay to recover.` }
   const desiredEntry = entry => ({ ...clone(entry), ...clone(overrides[entry.id] || {}) })
   const errors = new WeakMap()
   const rows = () => [...ctx.loader.entries()].filter(boot.ownsEntry).map(entry => ({
