@@ -24,6 +24,15 @@ type ClientContext = Context & {
 type InspectRow = Omit<PackageRow, 'entryId'> & { entryId?: string }
 type Translate = PluginManagerPageProps['t']
 
+const localPluginInfo: Record<string, { title: string; description: string; group: 'basic' | 'extensions' }> = {
+  './plugins/client-composition.js': { title: 'Startup preferences', description: 'Remembers enabled plugins and their options on this device. Required by local plugin management.', group: 'basic' },
+  './plugins/instance-manager.js': { title: 'Instance profiles', description: 'Stores your remote connection profiles. Manage them in Settings → Instances.', group: 'basic' },
+  './plugins/unified-plugin-manager.js': { title: 'Plugin manager', description: 'Adds this Local tab and plugin runtime details. Required to manage local plugins.', group: 'basic' },
+  './plugins/local-navigation.js': { title: 'Instance switcher', description: 'Shows the instance selector in the sidebar. Turn it off to hide the shortcut.', group: 'basic' },
+  './plugins/ui-client-manager.js': { title: 'Settings integration', description: 'Adds device preferences and instance profiles to Settings. Required for local settings.', group: 'basic' },
+  './plugins/marker.js': { title: 'Example note', description: 'Displays a sample note in the sidebar. Configure its text or turn it off.', group: 'extensions' },
+}
+
 function LocalPlugins({ ctx, t, facts }: { ctx: ClientContext; t: Translate; facts: PluginRuntimeFacts }) {
   const [, refresh] = useState(0)
   const [selected, select] = useState<string>()
@@ -39,6 +48,7 @@ function LocalPlugins({ ctx, t, facts }: { ctx: ClientContext; t: Translate; fac
   }, [ctx])
   const local = ctx.clientComposition.rows()
   const rows: InspectRow[] = local.map(row => ({ ...row,
+    meta: { ...row.meta, ...(localPluginInfo[row.moduleName] ? { title: localPluginInfo[row.moduleName].title, description: localPluginInfo[row.moduleName].description } : {}) },
     ...(row.readOnlyReason ? { readOnlyReason: 'management-required' as const } : {}),
   }))
   const row = rows.find(row => row.entryId === selected)
@@ -54,14 +64,6 @@ function LocalPlugins({ ctx, t, facts }: { ctx: ClientContext; t: Translate; fac
       if (owner.view === 'summary') return 'Runs on this device.'
       return <LocalPluginActions ctx={ctx} row={row} onChanged={() => refresh(value => value + 1)} />
     }} />
-  const names: Record<string, { title: string; description: string; group: 'basic' | 'extensions' }> = {
-    './plugins/client-composition.js': { title: 'Client composition', description: 'Manage local plugins and device startup preferences.', group: 'basic' },
-    './plugins/instance-manager.js': { title: 'Instances', description: 'Save and select connection profiles on this device.', group: 'basic' },
-    './plugins/unified-plugin-manager.js': { title: 'Plugin management', description: 'Extend Plugins with local controls and runtime information.', group: 'basic' },
-    './plugins/local-navigation.js': { title: 'Instance navigation', description: 'Access instance profiles from the application sidebar.', group: 'basic' },
-    './plugins/ui-client-manager.js': { title: 'Local settings', description: 'Manage this client from the original Settings page.', group: 'basic' },
-    './plugins/marker.js': { title: 'Local note', description: 'An experimental example of a local UI contribution.', group: 'extensions' },
-  }
   const change = (row: InspectRow, enabled: boolean) => {
     if (busy || !row.entryId) return
     setBusy(true); setError('')
@@ -70,16 +72,17 @@ function LocalPlugins({ ctx, t, facts }: { ctx: ClientContext; t: Translate; fac
       .finally(() => setBusy(false))
   }
   return <div className={css.installedPanel} data-mygo-plugin-source="LOCAL">
+    <p className={css.detailDesc}>Plugins on this device. Changes here do not change your remote instance.</p>
     {error && <p role="alert" className={css.reason}>{error}</p>}
     {(['basic', 'extensions', 'bundles'] as const).map(group => {
-      const members = rows.filter(row => (names[row.moduleName]?.group ?? 'bundles') === group)
+      const members = rows.filter(row => (localPluginInfo[row.moduleName]?.group ?? 'bundles') === group)
       if (!members.length) return null
       return <section key={group} className={css.group} data-local-plugin-group={group}>
         <div className={css.groupHead}><h3 className={css.groupTitle}>{t(group === 'basic' ? 'basicTitle' : group === 'extensions' ? 'extensionsTitle' : 'bundlesTitle')}</h3></div>
+        <p className={css.detailDesc}>{group === 'basic' ? 'Built-in components of this client. Required components have a locked switch.' : group === 'extensions' ? 'Optional examples and experimental features. You can configure or disable them.' : 'Additional plugins installed on this device.'}</p>
         <ul className={css.cards}>{members.map(row => <PackageCard key={row.entryId ?? row.rowId}
           pkg={{ ...pkg, name: row.moduleName, enabled: row.enabled, rows: [row as PackageRow],
-            meta: { ...row.meta, title: names[row.moduleName]?.title ?? row.moduleName,
-              description: names[row.moduleName]?.description ?? row.moduleName },
+            meta: row.meta,
             ...(row.readOnlyReason ? { readOnlyReason: row.readOnlyReason } : {}),
           }} t={t} resolveText={resolveText} busy={busy || ctx.clientComposition.status().busy}
           highlighted={false} newer={undefined} onOpen={() => select(row.entryId)} onSetEnabled={enabled => change(row, enabled)} />)}</ul>
