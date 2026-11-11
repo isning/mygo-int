@@ -114,10 +114,26 @@ Evidence: `.scratch/test-dsh/local-structure-validation.json`,
 `plugins-local.png`, and `plugins-local-package.png`. This focused checkpoint
 passed; it does not claim a rerun of the full remote Components checkpoint.
 
-Local navigation resets the original `[data-plugin-body]` scroller on item,
-package and component transitions. Without that reset, opening a card after
-scrolling the narrow list retained scrollTop=128 and scrolled the shared Plugins
-title/intro out of view. The focused browser checkpoint reproduces this on a
-390×600 viewport and now asserts scrollTop=0 and the original title/intro after
-navigation. `plugins-local-header.png` captures the corrected shared header.
-No duplicate header or alternative page CSS is introduced.
+## Shared outer navigation for Local details
+
+The earlier scroll-to-top workaround was removed: upstream hides the list header
+and tabs on details; retaining that header was the wrong behavior.
+
+The default single-root composition seeds a client-half override of
+`@deepseek-ai/dsh-client-ui-plugin-manager` (and its `/client` alias) using the
+pinned original plugin source. Its apply, controller, Remote access, registration,
+store, locale and child-slot ownership remain original. The build adapter changes
+only three checked anchors in `PluginManagerPage` to supply contributed tabs with
+page-owned detail navigation and include that state in the original `showsCards`
+condition. No source files in the pinned checkout are edited. Local cards use
+this navigation instead of private selection state. The original page controls
+header visibility; no DOM/CSS header hiding, scroll reset or second controller
+is installed. Missing/changed source anchors fail the build.
+
+The focused browser checkpoint verifies the original Installed detail first,
+then narrow-screen Local item navigation: both lack the header/tabs; returning
+restores the Local list/header. It also checks package → component → package →
+Local list navigation, actual configuration save/restore, toggle behavior and
+unchanged Host state. `plugins-local-header.png` now captures the correct Local
+detail **without** the list header. Adapted TSX is Vite-compiled; adapter-wide
+semantic TypeScript checking is not claimed.

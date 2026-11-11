@@ -1,6 +1,6 @@
 // Extend the original Plugins page through its native tab contract. The original
 // main registration, page, Host controller, cards and dialogs stay in charge.
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
 import type {} from '@deepseek-ai/dsh-client-modules/client'
@@ -33,15 +33,17 @@ const localPluginInfo: Record<string, { title: string; description: string; grou
   './plugins/marker.js': { title: 'Example note', description: 'Displays a sample note in the sidebar.', group: 'extensions' },
 }
 
-function LocalPlugins({ ctx, t, facts }: { ctx: ClientContext; t: Translate; facts: PluginRuntimeFacts }) {
+type LocalNavigation = {
+  view?: { entryId?: string; component?: boolean }
+  open(entryId?: string, component?: boolean): void
+}
+
+function LocalPlugins({ ctx, t, facts, navigation }: { ctx: ClientContext; t: Translate; facts: PluginRuntimeFacts; navigation: LocalNavigation }) {
   const [, refresh] = useState(0)
-  const [selected, select] = useState<string>()
-  const [component, setComponent] = useState(false)
-  const panelRef = useRef<HTMLDivElement>(null)
-  useLayoutEffect(() => {
-    // Local navigation shares the original page's scroller and header.
-    panelRef.current?.closest('[data-plugin-body]')?.scrollTo({ top: 0, behavior: 'instant' })
-  }, [selected, component])
+  const selected = navigation.view?.entryId
+  const component = navigation.view?.component ?? false
+  const select = (entryId?: string) => navigation.open(entryId)
+  const setComponent = (value: boolean) => navigation.open(selected, value)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const resolveText = (text: Parameters<typeof ctx.locale.resolveText>[0]) => ctx.locale.resolveText(text)
@@ -82,22 +84,22 @@ function LocalPlugins({ ctx, t, facts }: { ctx: ClientContext; t: Translate; fac
     if (owner.view === 'summary') return localPluginInfo[row.moduleName]?.description ?? null
     return <LocalPluginActions ctx={ctx} row={row} onChanged={() => refresh(value => value + 1)} />
   }
-  const back = () => { select(undefined); setComponent(false) }
+  const back = () => select(undefined)
   if (row) {
-    if (localPluginInfo[row.moduleName]?.group === 'basic') return <div ref={panelRef}><ItemDetail
-      item={itemFor(row)} t={t} form={undefined} renderSlot={renderLocal} onBack={back} /></div>
+    if (localPluginInfo[row.moduleName]?.group === 'basic') return <><ItemDetail
+      item={itemFor(row)} t={t} form={undefined} renderSlot={renderLocal} onBack={back} /></>
     const selectedPackage = packageFor(row)
-    if (component) return <div ref={panelRef}><RowDetail pkg={selectedPackage} row={row as PackageRow} t={t}
-      resolveText={resolveText} form={undefined} renderSlot={renderLocal} onBack={() => setComponent(false)} /></div>
-    return <div ref={panelRef}><PackageDetail pkg={selectedPackage} t={t} resolveText={resolveText}
+    if (component) return <><RowDetail pkg={selectedPackage} row={row as PackageRow} t={t}
+      resolveText={resolveText} form={undefined} renderSlot={renderLocal} onBack={() => setComponent(false)} /></>
+    return <><PackageDetail pkg={selectedPackage} t={t} resolveText={resolveText}
       busy={busy || ctx.clientComposition.status().busy} rowBusy={() => busy} configured={false}
       configure={{ has: () => true, open: () => setComponent(true) }} renderSlot={renderLocal}
       inMore={false} versions={undefined} detail={null} onBack={back}
       onSetEnabled={enabled => change(row, enabled)} onSetRowEnabled={(entry, enabled) => change(entry, enabled)}
       onUninstall={() => {}} onUpdate={() => {}} onEnsureVersions={() => {}}
-      onCheckVersions={() => {}} onUpdateVersion={() => {}} /></div>
+      onCheckVersions={() => {}} onUpdateVersion={() => {}} /></>
   }
-  return <div ref={panelRef} className={css.installedPanel} data-mygo-plugin-source="LOCAL">
+  return <div className={css.installedPanel} data-mygo-plugin-source="LOCAL">
     {error && <p role="alert" className={css.reason}>{error}</p>}
     {(['basic', 'extensions', 'bundles'] as const).map(group => {
       const members = rows.filter(row => (localPluginInfo[row.moduleName]?.group ?? 'bundles') === group)
@@ -108,10 +110,10 @@ function LocalPlugins({ ctx, t, facts }: { ctx: ClientContext; t: Translate; fac
           ? <ItemCard key={row.entryId ?? row.rowId} item={itemFor(row)} t={t}
               renderSlot={(key, owner) => key === 'plugins.item' && owner.view === 'summary'
                 ? localPluginInfo[row.moduleName]?.description ?? null : null}
-              onOpen={() => { select(row.entryId); setComponent(false) }} />
+              onOpen={() => select(row.entryId)} />
           : <PackageCard key={row.entryId ?? row.rowId} pkg={packageFor(row)} t={t}
               resolveText={resolveText} busy={busy || ctx.clientComposition.status().busy}
-              highlighted={false} newer={undefined} onOpen={() => { select(row.entryId); setComponent(false) }}
+              highlighted={false} newer={undefined} onOpen={() => select(row.entryId)}
               onSetEnabled={enabled => change(row, enabled)} />)}</ul>
       </section>
     })}
@@ -126,6 +128,6 @@ export function register(ctx: ClientContext) {
   // duplicating its controller, navigation state, header, CSS or dialogs.
   ctx.slots.inject('plugins.tab', function* () {
     yield ctx.slots.register({ name: 'plugins.tab', id: 'mygo-local', label: 'Local', order: -20, locale: 'pluginManager' },
-      ({ t }) => <LocalPlugins ctx={ctx} t={t} facts={facts} />)
+      ({ t, navigation }) => <LocalPlugins ctx={ctx} t={t} facts={facts} navigation={navigation} />)
   })
 }

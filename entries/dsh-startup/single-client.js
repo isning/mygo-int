@@ -1,6 +1,7 @@
 // Explicit migration entry for the pinned single-instance Web composition.
 import * as managementUI from './local/management-ui.tsx'
 import * as unifiedUI from './local/unified-plugin-ui.tsx'
+import * as pluginManagerClient from '../../.scratch/upstream/deepseek-harness/packages/client/ui-plugin-manager/src/client/index.ts?mygo-plugin-manager'
 import { FIBER_STATE as FiberState } from '../../.scratch/upstream/deepseek-harness/packages/client/web/src/loader-status.ts'
 import { getStaticModules } from '@deepseek-ai/dsh-client-web'
 import { protectLocalEntryModules } from './local-entry-boundary.js'
@@ -18,6 +19,10 @@ export async function startSingleClient() {
   const staticModules = getStaticModules()
   staticModules['mygo/dsh-management-ui'] = managementUI
   staticModules['mygo/dsh-unified-plugin-ui'] = unifiedUI
+  // A local client-half override: retain the pinned plugin's apply/controller
+  // and registration, extending only contributed-tab page navigation.
+  staticModules['@deepseek-ai/dsh-client-ui-plugin-manager'] = pluginManagerClient
+  staticModules['@deepseek-ai/dsh-client-ui-plugin-manager/client'] = pluginManagerClient
   const { Context } = staticModules['@deepseek-ai/cordis']
   const React = staticModules.react
   const ctx = new Context()
