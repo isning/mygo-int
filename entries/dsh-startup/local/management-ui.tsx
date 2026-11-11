@@ -7,7 +7,7 @@ export { registerInstanceNavigation } from './instance-navigation'
 import { useClientText, clientError } from './i18n'
 import React, { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { Button, ConnectionIndicator, IconPlusOutlineRegular, Modal, StateDot, Tag, closeTopModal, SettingsForm, SettingsValueField } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, ConnectionIndicator, IconPlusOutlineRegular, IconTrashOutlineRegular, Modal, StateDot, Tag, closeTopModal, SettingsForm, SettingsValueField } from '@deepseek-ai/dsh-client-ui-primitives'
 import { SlotCore } from '@deepseek-ai/dsh-client-ui-slots'
 import { RowsSection } from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-plugin-manager/src/client/PluginManagerPage.tsx?mygo-rows'
 import { SettingsPanel } from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-settings-general/src/client/SettingsRoot.tsx?mygo-panel'
@@ -167,6 +167,8 @@ export function Instances({ ctx, run }) {
   const isConnected = service.isConnectedProfile
   const [editing, setEditing] = useState(null)
   const [selecting, setSelecting] = useState(false)
+  const [removing, setRemoving] = useState(false)
+  const [confirmRemove, setConfirmRemove] = useState(null)
   const status = row => !isConnected(row) ? t('Not connected')
     : snapshot.connectionStatus === 'checking' ? t('Checking…')
     : snapshot.connectionStatus === 'authenticated' ? t('Available') : t('Unavailable')
@@ -190,6 +192,8 @@ export function Instances({ ctx, run }) {
               })}>{t('Connect')}</button>}
             <button type="button" className={modelsCSS.secondaryButton} aria-label={t('Edit {name}', { name: row.name })}
               onClick={() => setEditing(editing?.id === row.id ? null : { id: row.id, draft: { ...row } })}>{t('Edit')}</button>
+            {!isConnected(row) && <button type="button" className={modelsCSS.secondaryButton} aria-label={t('Remove {name}', { name: row.name })}
+              disabled={removing} onClick={() => setConfirmRemove(row)}><IconTrashOutlineRegular size={13} />{t('Remove')}</button>}
           </span>
         </div>
         <span className={`${modelsCSS.editorRoute} ${deviceCSS.address}`}>{row.address}</span>
@@ -209,6 +213,20 @@ export function Instances({ ctx, run }) {
               id: 'instance-' + Array.from(crypto.getRandomValues(new Uint8Array(12)), value => value.toString(16).padStart(2, '0')).join(''), name: '', address: '', authenticationViewId: snapshot.connectedProfile.authenticationViewId,
             } })}><IconPlusOutlineRegular size={14} />{t('Add instance')}</button></div>}
     </div>
+    <Modal open={!!confirmRemove} title={t('Remove instance?')} closeLabel={t('Close')}
+      description={t('Its saved connection and credentials will be deleted.')}
+      onClose={() => { if (!removing) setConfirmRemove(null) }} footer={<>
+        <Button variant="outline" disabled={removing} onClick={() => setConfirmRemove(null)}>{t('Cancel')}</Button>
+        <Button variant="primary" disabled={removing} onClick={() => {
+          const target = confirmRemove
+          if (!target) return
+          void run(async () => {
+            setRemoving(true)
+            try { await service.remove(target.id); setEditing(null); setConfirmRemove(null) }
+            finally { setRemoving(false) }
+          })
+        }}>{t('Remove')}</Button>
+      </>} />
   </div>
 }
 

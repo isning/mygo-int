@@ -1,4 +1,4 @@
-// Reject Host claims on local seed modules before original reconciliation starts.
+// Reject Host claims on locally owned modules before original reconciliation starts.
 // ClientEntries retains its managed roster, release gate, queue and disposal.
 export function protectLocalEntryModules(modules, localModuleNames) {
   const localNames = new Set(localModuleNames)

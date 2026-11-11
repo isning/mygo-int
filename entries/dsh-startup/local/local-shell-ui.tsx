@@ -25,6 +25,7 @@ function LocalLanguage({ ctx }) {
 
 export function mountLocalShell(ctx) {
   const container = ctx.clientHost.container
+  const hasInstanceRoute = /^\/mygo-instance\/[a-f0-9]{64}(?:\/|$)/.test(location.pathname)
   installThemeStyles(ctx)
   let root, error = '', authenticationRequired = false, version = 0
   const listeners = new Set<() => void>()
@@ -66,7 +67,7 @@ export function mountLocalShell(ctx) {
           <StateDot state={error ? 'error' : 'ongoing'} size={8} />
           <span className={css.intro}>{authenticationRequired ? t('Sign in required') : error ? t('The instance is unavailable.') : t('Loading the instance client.')}</span>
         </div>
-        {error && (!authenticationRequired || restoreChecked) && <><p role="alert" className={`${authenticationRequired ? css.intro : css.error} ${shellCSS.error}`}>{authenticationRequired ? t('Open the private launch link provided by your instance to sign in.') : error}</p><div><Button variant="outline" onClick={() => location.reload()}>{t('Retry connection')}</Button></div></>}
+        {hasInstanceRoute && error && (!authenticationRequired || restoreChecked) && <><p role="alert" className={`${authenticationRequired ? css.intro : css.error} ${shellCSS.error}`}>{authenticationRequired ? t('Open the private launch link provided by your instance to sign in.') : error}</p><div><Button variant="outline" onClick={() => location.reload()}>{t('Retry connection')}</Button></div></>}
         {authenticationRequired && restoreChecked && <form className={css.editor} onSubmit={event => {
           event.preventDefault()
           void run(async () => {
@@ -77,8 +78,7 @@ export function mountLocalShell(ctx) {
                 const link = new URL(value)
                 const configuration = ctx.clientHost.configuration
                 const prefix = path => /^\/mygo-instance\/[a-f0-9]{64}/.exec(path)?.[0] ?? ''
-                const sameRoute = link.origin === location.origin && (prefix(link.pathname) === prefix(location.pathname)
-                  || (!prefix(link.pathname) && configuration.selectedInstance.address === configuration.deviceInstance?.address))
+                const sameRoute = link.origin === location.origin && prefix(link.pathname) === prefix(location.pathname)
                 if (link.origin !== configuration.selectedInstance.address && !sameRoute) throw Error(t('Invalid login link'))
                 value = link.searchParams.get('token') ?? ''
               }

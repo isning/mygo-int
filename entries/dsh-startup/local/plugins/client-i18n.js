@@ -4,9 +4,8 @@ import { namespace, dictionaries } from '../locales/index.js'
 export const inject = ['clientHost']
 export function apply(ctx) { installClientI18n(ctx, ctx.clientHost.configuration) }
 export function installClientI18n(ctx, configuration) {
-  const selected = configuration.deviceInstance ?? configuration.selectedInstance
   const storage = localStorage
-  const key = `mygo.locale.v1:${location.origin}:${selected.id}:${selected.authenticationViewId}`
+  const key = `mygo.locale.v2:${location.origin}`
   let preference = null
   try { const saved = storage.getItem(key); if (saved && Object.hasOwn(dictionaries, saved)) preference = saved } catch {}
   const offline = new LocaleRuntime(ctx, undefined, { languages: navigator.languages, preference })

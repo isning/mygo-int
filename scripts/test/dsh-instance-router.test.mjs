@@ -29,7 +29,7 @@ test('instance routing isolates credentials, tabs and original authority while r
   })
   const a = host('A'), b = host('B')
   const originA = await listen(a), originB = await listen(b)
-  const router = createInstanceRouter({ profile: { id: 'a', name: 'A', address: originA, authenticationViewId: 'owner' } })
+  let router
   const server = createServer(async (req, res) => {
     const route = router.resolve(req)
     if (!route) { res.writeHead(410).end(); return }
@@ -37,6 +37,7 @@ test('instance routing isolates credentials, tabs and original authority while r
     else route.carrier.handle(req, res)
   })
   const origin = await listen(server)
+  router = createInstanceRouter({ connectedProfile: { id: 'a', name: 'A', address: originA, authenticationViewId: 'owner' }, publicOrigins: [origin] })
   let upstreamClosed
   const closed = new Promise(resolve => { upstreamClosed = resolve })
   a.on('upgrade', (req, socket) => {
@@ -53,7 +54,8 @@ test('instance routing isolates credentials, tabs and original authority while r
     assert.equal(loginA.status, 204)
     assert.equal(loginA.headers['set-cookie'], undefined, 'DSH credentials stay in the mygo proxy')
     assert.equal((await post('/mygo-local/login', { token: 'unsupported-cookie-test' })).status, 502, 'a redirect without the native credential is not a successful login')
-    const proofA = await call(origin + '/api/proof')
+    assert.equal((await call(origin + '/api/proof')).status, 410, 'unscoped remote paths never fall back to an implicit instance')
+    const proofA = await call(origin + router.connected.prefix + '/api/proof')
     assert.equal(proofA.text, 'A', JSON.stringify({ status: proofA.status, upstream: seen.at(-1) }))
     const next = await post('/mygo-local/connection', { id: 'b', name: 'B', address: originB, authenticationViewId: 'owner' })
     assert.equal(next.status, 200)
@@ -66,15 +68,22 @@ test('instance routing isolates credentials, tabs and original authority while r
     assert.equal((await call(origin + path + 'api/proof', { headers: { origin } })).text, 'B')
     assert.equal(seen.at(-1).headers.host, new URL(originB).host)
     assert.equal(seen.at(-1).headers.origin, originB)
-    assert.equal((await call(origin + '/api/proof')).text, 'A', 'other tab remains on A')
+    assert.equal((await call(origin + router.connected.prefix + '/api/proof')).text, 'A', 'other tab remains on A')
+    const removalBody = JSON.stringify({ id: 'b', name: 'B', address: originB, authenticationViewId: 'owner' })
+    const removed = await call(origin + '/mygo-local/connection', { method: 'DELETE', headers: { origin, 'content-type': 'application/json', 'content-length': Buffer.byteLength(removalBody) }, body: removalBody })
+    assert.equal(removed.status, 204, removed.text)
+    assert.equal((await call(origin + path + 'api/proof')).status, 410, 'removed routes cannot retain access to the instance')
     assert.equal((await call(origin + '/mygo-local/connection', { method: 'POST', headers: { origin: 'https://evil.invalid' }, body: '{}' })).status, 403)
     assert.equal((await call(origin + '/mygo-local/connection', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })).status, 403)
     assert.equal((await post('/mygo-local/connection', { id: 'b', name: 'B', address: originB + '/?token=not-allowed', authenticationViewId: 'owner' })).status, 400)
+    const self = await post('/mygo-local/connection', { id: 'self', name: 'Self', address: origin, authenticationViewId: 'owner' })
+    assert.equal(self.status, 200, 'instance registration does not special-case addresses')
+    assert.equal((await call(origin + JSON.parse(self.text).url + 'api/proof')).status, 410, 'a mygo target cannot escape into another instance route')
     assert.equal((await call(origin + '/mygo-instance/' + '0'.repeat(64) + '/api/proof')).status, 410)
     const wire = createConnection({ host: '127.0.0.1', port: new URL(origin).port })
     await new Promise((resolve, reject) => { wire.once('connect', resolve); wire.once('error', reject) })
     const handshake = new Promise(resolve => wire.once('data', data => resolve(data.toString())))
-    wire.write(`GET /api/remote.mux HTTP/1.1\r\nHost: ${new URL(origin).host}\r\nOrigin: ${origin}\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n\r\n`)
+    wire.write(`GET ${router.connected.prefix}/api/remote.mux HTTP/1.1\r\nHost: ${new URL(origin).host}\r\nOrigin: ${origin}\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n\r\n`)
     assert.match(await handshake, /^HTTP\/1.1 101/)
     wire.destroy()
     let timer
@@ -98,7 +107,7 @@ test('mygo stores a launch token per instance and restores the reverse proxy aft
   const profile = { id: 'saved', name: 'Saved', address: upstream, authenticationViewId: 'owner' }
   let savedCredentials = { version: 1, entries: {} }
   const start = async () => {
-    const router = createInstanceRouter({ profile, credentials: savedCredentials, onCredentials(value) { savedCredentials = structuredClone(value) } })
+    const router = createInstanceRouter({ connectedProfile: profile, credentials: savedCredentials, onCredentials(value) { savedCredentials = structuredClone(value) } })
     const server = createServer(async (req, res) => {
       const route = router.resolve(req)
       if (!route) { res.writeHead(410).end(); return }
@@ -120,7 +129,7 @@ test('mygo stores a launch token per instance and restores the reverse proxy aft
     await new Promise(resolve => running.server.close(resolve))
 
     running = await start()
-    assert.equal((await call(running.origin + '/proof')).text, 'authenticated')
+    assert.equal((await call(running.origin + running.router.connected.prefix + '/proof')).text, 'authenticated')
     const restored = await post(running.origin, {})
     assert.equal(restored.status, 204, 'the stored launch token can refresh the native upstream credential')
   } finally {
@@ -142,7 +151,7 @@ test('a stale route for the same instance identity follows the current connectio
   const current = { ...stale, address: currentOrigin }
   const staleId = createHash('sha256').update(JSON.stringify(stale)).digest('hex')
   const credentialId = createHash('sha256').update(JSON.stringify([stale.id, stale.authenticationViewId])).digest('hex')
-  const router = createInstanceRouter({ profile: current, profiles: [stale], credentials: { version: 2, entries: {
+  const router = createInstanceRouter({ connectedProfile: current, profiles: [stale], credentials: { version: 2, entries: {
     [credentialId]: { address: stale.address, token: 'stable-token', cookie: 'dsh-auth-old=stale' },
   } } })
   const req = { url: `/mygo-instance/${staleId}/proof` }

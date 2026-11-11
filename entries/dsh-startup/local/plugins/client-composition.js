@@ -1,35 +1,39 @@
 // Local authority adapter over the one original Loader. Never calls Host Remote.
-import { matchesLegacyDeviceOverlay, matchesPreviousDeviceOverlay } from './legacy-device-overlay.js'
-
 export const inject = ['loader', 'mygoStartup']
 const clone = value => JSON.parse(JSON.stringify(value))
 const phases = ['pending', 'loading', 'active', 'failed', 'disposed', 'unloading']
 const protectedNames = new Set(['./plugins/client-composition.js', './plugins/instance-manager.js', './plugins/ui-client-manager.js', './plugins/unified-plugin-manager.js'])
 
-export function apply(ctx) {
+export async function apply(ctx) {
   const boot = ctx.mygoStartup
-  const storage = localStorage
-  const device = boot.configuration.deviceInstance ?? boot.configuration.selectedInstance
-  const key = `mygo.local.v1:${location.origin}:${device.id}:${device.authenticationViewId}`
   const base = JSON.stringify(boot.configuration.entries)
   let revision = 0, overrides = {}, diagnostic = '', busy = false
   const listeners = new Set()
   const notify = () => { for (const listener of listeners) listener() }
   try {
-    const saved = JSON.parse(storage.getItem(key) || 'null')
-    if (saved) {
-      const legacy = matchesLegacyDeviceOverlay(saved.base, boot)
-      const previous = matchesPreviousDeviceOverlay(saved.base, boot)
-      if (saved.version !== 1 || (saved.base !== base && !legacy && !previous) || !Number.isSafeInteger(saved.revision) || saved.revision < 0 || !saved.overrides || typeof saved.overrides !== 'object' || Array.isArray(saved.overrides)) throw Error('Invalid overlay or operator composition changed; reset this device overlay')
-      for (const [id, value] of Object.entries(saved.overrides)) {
-        const original = boot.configuration.entries.find(entry => entry.id === id)
-        if (!original || (previous && !JSON.parse(saved.base).some(entry => entry.id === id)) || (legacy && id !== 'local-note') || protectedNames.has(original.name) || !value || Object.keys(value).some(k => !['config', 'disabled'].includes(k)) || typeof value.disabled !== 'boolean' || !value.config || typeof value.config !== 'object' || Array.isArray(value.config)) throw Error(`Saved override ${id} no longer matches curated startup`)
-      }
-      overrides = saved.overrides
-      revision = saved.revision
-      if (legacy) diagnostic = 'Legacy device overlay restored to retained local entries. The next accepted edit saves the shared-root composition.'
+    const response = await fetch('/mygo-local/client-config', { cache: 'no-store' })
+    if (!response.ok) throw Error(`mygo client configuration HTTP ${response.status}`)
+    const saved = await response.json()
+    if (saved.version !== 1 || !Number.isSafeInteger(saved.revision) || saved.revision < 0
+      || saved.base !== null && typeof saved.base !== 'string' || !saved.overrides
+      || typeof saved.overrides !== 'object' || Array.isArray(saved.overrides)) throw Error('Invalid mygo client configuration')
+    if (saved.base !== null && saved.base !== base) throw Error('Operator composition changed; reset the saved mygo plugin configuration')
+    for (const [id, value] of Object.entries(saved.overrides)) {
+      const original = boot.configuration.entries.find(entry => entry.id === id)
+      if (!original || protectedNames.has(original.name) || !value || Object.keys(value).some(k => !['config', 'disabled'].includes(k))
+        || typeof value.disabled !== 'boolean' || !value.config || typeof value.config !== 'object' || Array.isArray(value.config)) throw Error(`Saved override ${id} no longer matches the mygo composition`)
     }
-  } catch (error) { diagnostic = `Saved overlay ignored: ${error.message}. Operator configuration is running; saved data is retained. Reset this device overlay to recover.` }
+    overrides = saved.overrides
+    revision = saved.revision
+  } catch (error) { diagnostic = `Saved mygo plugin configuration ignored: ${error.message}` }
+  async function persist(candidate) {
+    const response = await fetch('/mygo-local/client-config', { method: 'PUT', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ expectedRevision: revision, base, overrides: candidate }) })
+    if (!response.ok) throw Error(response.status === 409 ? 'Mygo plugin configuration changed; reload before saving' : `Mygo plugin configuration HTTP ${response.status}`)
+    const saved = await response.json()
+    if (saved.version !== 1 || saved.revision !== revision + 1) throw Error('Invalid mygo plugin configuration response')
+    revision = saved.revision
+  }
   const desiredEntry = entry => ({ ...clone(entry), ...clone(overrides[entry.id] || {}) })
   const errors = new WeakMap()
   const rows = () => [...ctx.loader.entries()].filter(boot.ownsEntry).map(entry => ({
@@ -51,8 +55,6 @@ export function apply(ctx) {
     if ('config' in patch && (!patch.config || Array.isArray(patch.config) || typeof patch.config !== 'object')) throw Error('Plugin configuration must be a JSON object')
     if ('disabled' in patch && typeof patch.disabled !== 'boolean') throw Error('Invalid enablement')
     if (busy || expectedRevision !== revision) throw Error('Local state changed during admission; refresh and retry')
-    const stored = JSON.parse(storage.getItem(key) || 'null')
-    if ((stored?.revision ?? 0) !== revision) throw Error('Another tab changed this device overlay; reload before saving')
     busy = true; notify()
     const entry = ctx.loader.resolve(id), previous = clone(entry.options)
     if (!boot.ownsEntry(entry)) { busy = false; notify(); throw Error('Entry is outside the local ownership scope') }
@@ -62,11 +64,9 @@ export function apply(ctx) {
       await ctx.loader.await()
       if (!next.disabled) await entry.fiber?.await()
       if (!next.disabled && entry.fiber?.state !== boot.FiberState.ACTIVE) throw Error(`Entry ${id} failed to activate: ${phases[entry.fiber?.state] || 'no fiber'}`)
-      if ((JSON.parse(storage.getItem(key) || 'null')?.revision ?? 0) !== revision) throw Error('Another tab changed saved startup during lifecycle work; reload before saving')
       const candidate = { ...overrides, [id]: next }
-      // A single localStorage replacement is atomic; commit only after lifecycle success.
-      storage.setItem(key, JSON.stringify({ version: 1, base, revision: revision + 1, overrides: candidate }))
-      overrides = candidate; revision++; diagnostic = ''
+      await persist(candidate)
+      overrides = candidate; diagnostic = ''
     } catch (error) {
       diagnostic = `Change rejected: ${error.message}`
       try {
@@ -74,15 +74,15 @@ export function apply(ctx) {
         await ctx.loader.await()
         if (!previous.disabled && entry.fiber?.state !== boot.FiberState.ACTIVE) throw Error('previous entry is not ACTIVE')
         diagnostic += '; previous configuration restored'
-      } catch (rollback) { diagnostic += `; rollback failed: ${rollback.message}. Reload or reset this device overlay.` }
+      } catch (rollback) { diagnostic += `; rollback failed: ${rollback.message}. Reload or reset the mygo plugin configuration.` }
       throw Error(diagnostic)
     } finally { busy = false; notify() }
   }
   const service = {
     desiredEntry, rows, change, subscribe: listener => { listeners.add(listener); return () => listeners.delete(listener) },
     status: () => ({ revision, diagnostic, busy }),
-    reportRecovery(id) { diagnostic = `Saved startup for ${id} failed; operator configuration is running instead. Edit the desired config or reset this device overlay.`; notify() },
-    async reset() { storage.removeItem(key); location.reload() },
+    reportRecovery(id) { diagnostic = `Saved startup for ${id} failed; operator configuration is running instead. Edit the desired config or reset the mygo plugin configuration.`; notify() },
+    async reset() { await persist({}); location.reload() },
     async reload() { location.reload() },
   }
   ctx.provide('clientComposition', service)
@@ -105,9 +105,5 @@ export function apply(ctx) {
     } else { errors.delete(fiber) }
     notify()
   })
-  ctx.effect(() => {
-    const onStorage = event => { if (event.key === key) { diagnostic = 'Another tab changed saved startup; reload to restore it'; notify() } }
-    addEventListener('storage', onStorage)
-    return () => removeEventListener('storage', onStorage)
-  })
+
 }

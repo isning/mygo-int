@@ -57,19 +57,25 @@ if (command === 'serve') {
   if (bindHost !== '127.0.0.1' && publicOrigins.length === 0) throw Error('Non-loopback bind requires DSH_CLIENT_PUBLIC_ORIGIN')
   const trusted = createCarrierTrust({ publicOrigins })
   const types = { '.json': 'application/json', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf', '.txt': 'text/plain', '.svg': 'image/svg+xml', '.map': 'application/json' }
-  const seed = bootEnabled ? { name: 'Local test DSH', ...bindLocalStartup(localStartup, process.env.DSH_ORIGIN).selectedInstance } : undefined
+  const provisionedProfile = bootEnabled ? { name: 'Local test DSH', ...bindLocalStartup(localStartup, process.env.DSH_ORIGIN).selectedInstance } : undefined
   const routeFile = resolve(output, 'instance-routes.json')
   const credentialFile = resolve(output, 'instance-credentials.json')
+  const clientConfigFile = resolve(output, 'client-config.json')
   let profiles = []
   try { profiles = JSON.parse(await readFile(routeFile, 'utf8')) } catch (error) { if (error.code !== 'ENOENT') throw error }
   let credentials = { version: 2, entries: {} }
   try { credentials = JSON.parse(await readFile(credentialFile, 'utf8')) } catch (error) { if (error.code !== 'ENOENT') throw error }
+  let clientConfig = { version: 1, revision: 0, base: null, overrides: {} }
+  try { clientConfig = JSON.parse(await readFile(clientConfigFile, 'utf8')) } catch (error) { if (error.code !== 'ENOENT') throw error }
+  if (clientConfig?.version !== 1 || !Number.isSafeInteger(clientConfig.revision) || clientConfig.revision < 0
+    || clientConfig.base !== null && typeof clientConfig.base !== 'string' || !clientConfig.overrides
+    || typeof clientConfig.overrides !== 'object' || Array.isArray(clientConfig.overrides)) throw Error('Invalid mygo client configuration')
   let routeWrite = Promise.resolve()
   const writePrivateJSON = async (file, value) => {
     await writeFile(file + '.next', JSON.stringify(value), { mode: 0o600 })
     await rename(file + '.next', file)
   }
-  const router = bootEnabled ? createInstanceRouter({ profile: seed, publicOrigins, profiles, credentials, onRegister(values) {
+  const router = bootEnabled ? createInstanceRouter({ connectedProfile: provisionedProfile, publicOrigins, profiles, credentials, onRegister(values) {
     routeWrite = routeWrite.then(() => writePrivateJSON(routeFile, values))
     return routeWrite
   }, onCredentials(value) {
@@ -91,6 +97,33 @@ if (command === 'serve') {
       }
       if (router && ['/mygo-local/connection', '/mygo-local/login'].includes(requestPath)) {
         await router.control(request, response, route)
+        return
+      }
+      if (router && requestPath === '/mygo-local/client-config') {
+        if (request.method === 'GET') {
+          response.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' }).end(JSON.stringify(clientConfig))
+          return
+        }
+        if (request.method !== 'PUT' || !request.headers.origin || !request.headers['content-type']?.startsWith('application/json')) {
+          response.writeHead(request.method === 'PUT' ? 403 : 405, { allow: 'GET, PUT', 'cache-control': 'no-store' }).end()
+          return
+        }
+        let body = '', size = 0
+        for await (const chunk of request) {
+          size += chunk.length
+          if (size > 1024 * 1024) { response.writeHead(413).end(); return }
+          body += chunk
+        }
+        const value = JSON.parse(body)
+        if (!value || Object.keys(value).some(key => !['expectedRevision', 'base', 'overrides'].includes(key))
+          || value.expectedRevision !== clientConfig.revision || typeof value.base !== 'string' || value.base.length > 256 * 1024
+          || !value.overrides || typeof value.overrides !== 'object' || Array.isArray(value.overrides)) {
+          response.writeHead(value?.expectedRevision !== clientConfig.revision ? 409 : 400, { 'cache-control': 'no-store' }).end()
+          return
+        }
+        clientConfig = { version: 1, revision: clientConfig.revision + 1, base: value.base, overrides: value.overrides }
+        await writePrivateJSON(clientConfigFile, clientConfig)
+        response.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' }).end(JSON.stringify(clientConfig))
         return
       }
       if (carrier && requestPath === '/mygo-local/admission') {
@@ -115,7 +148,7 @@ if (command === 'serve') {
         data = html
         extension = '.html'
       } else if (bootEnabled && path === '/mygo-local/startup.json') {
-        data = JSON.stringify({ ...localStartup, deviceInstance: seed, selectedInstance: route.profile })
+        data = JSON.stringify({ ...localStartup, selectedInstance: route.profile })
         extension = '.json'
       } else if (bootEnabled && /^\/mygo-local\/plugins\/[a-zA-Z0-9_-]+\.js$/.test(path)) {
         const localRoot = await realpath(resolve(workspace, 'entries/dsh-startup/local/plugins'))

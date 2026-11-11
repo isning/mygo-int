@@ -12,11 +12,11 @@ function fixture(t) {
     Object.defineProperty(globalThis, key, { value, configurable: true })
     t.after(() => previous ? Object.defineProperty(globalThis, key, previous) : delete globalThis[key])
   }
-  const key = 'mygo.instances.v1:http://mygo.test:4224:seed:owner'
+  const key = 'mygo.instances.v2:http://mygo.test:4224'
   const start = (address = 'http://127.0.0.1:4001') => {
     let service
     apply({
-      mygoStartup: { configuration: { selectedInstance: { id: 'seed', address, authenticationViewId: 'owner' } }, admit: async () => {} },
+      mygoStartup: { configuration: { selectedInstance: { id: 'first', address, authenticationViewId: 'owner' } }, admit: async () => {} },
       provide(name, value) { assert.equal(name, 'instanceManager'); service = value },
     })
     return service
@@ -24,38 +24,31 @@ function fixture(t) {
   return { values, key, start }
 }
 
-test('seed and added profiles are equally editable; changed profiles do not masquerade as the running connection', async t => {
+test('connected and added profiles are equally editable; changed profiles do not masquerade as the running connection', async t => {
   const { start, values, key } = fixture(t)
   let service = start()
-  const seed = service.snapshot().catalog[0]
-  assert.equal(service.isConnectedProfile(seed), true)
-  const edited = { ...seed, name: 'Personal DSH', address: 'https://personal.example' }
-  await service.save(edited, seed.id)
+  const connected = service.snapshot().catalog[0]
+  assert.equal(service.isConnectedProfile(connected), true)
+  const edited = { ...connected, name: 'Personal DSH', address: 'https://personal.example' }
+  await service.save(edited, connected.id)
   assert.equal(service.isConnectedProfile(service.snapshot().catalog[0]), false)
-  assert.equal(service.snapshot().connectedProfile.address, seed.address)
+  assert.equal(service.snapshot().connectedProfile.address, connected.address)
   await service.save({ ...edited, id: 'other', name: 'Other DSH' })
   assert.equal(JSON.parse(values.get(key)).version, 2)
-  service = start('http://127.0.0.1:4002')
-  assert.equal(service.snapshot().catalog.find(row => row.id === seed.id).address, edited.address)
+  service = start(location.origin)
+  assert.equal(service.snapshot().catalog.find(row => row.id === connected.id).address, edited.address)
   assert.equal(service.snapshot().catalog.find(row => row.id === 'other').address, edited.address)
-  assert.equal(service.snapshot().catalog.find(row => row.id === seed.id).name, edited.name)
+  assert.equal(service.snapshot().catalog.find(row => row.id === connected.id).name, edited.name)
 })
 
-test('legacy addresses migrate, but subsequent explicit edits survive reload and deployment changes', async t => {
-  const { start, values, key } = fixture(t)
-  values.set(key, JSON.stringify({ version: 1, revision: 7, selectedId: 'seed', catalog: [
-    { id: 'seed', name: 'Renamed', address: location.origin, authenticationViewId: 'owner' },
-  ] }))
+test('explicit profile edits survive reload', async t => {
+  const { start } = fixture(t)
   let service = start()
-  assert.equal(service.snapshot().catalog[0].address, 'http://127.0.0.1:4001')
-  await service.save(service.snapshot().catalog[0], 'seed')
-  service = start('http://127.0.0.1:4002')
-  assert.equal(service.snapshot().catalog[0].address, 'http://127.0.0.1:4002')
-  await service.save({ ...service.snapshot().catalog[0], address: location.origin }, 'seed')
-  service = start('http://127.0.0.1:4003')
-  assert.equal(service.snapshot().catalog[0].address, location.origin)
-  assert.equal(service.snapshot().catalog[0].name, 'Renamed')
-  assert.equal(service.isConnectedProfile(service.snapshot().catalog[0]), false)
+  await service.save({ ...service.snapshot().catalog[0], name: 'Renamed', address: location.origin }, 'first')
+  service = start(location.origin)
+  assert.equal(service.snapshot().catalog.find(row => row.id === 'first').address, location.origin)
+  assert.equal(service.snapshot().catalog.find(row => row.id === 'first').name, 'Renamed')
+  assert.equal(service.snapshot().catalog.some(row => service.isConnectedProfile(row)), true)
 })
 
 test('select registers an explicit route before navigation; refusal leaves current connection unchanged', async t => {
@@ -73,8 +66,25 @@ test('select registers an explicit route before navigation; refusal leaves curre
   })
   await service.select('other')
   assert.deepEqual(navigations, [path])
-  assert.equal(service.snapshot().connectedProfile.id, 'seed')
+  assert.equal(service.snapshot().connectedProfile.id, 'first')
   t.mock.method(globalThis, 'fetch', async () => ({ ok: false, status: 403 }))
   await assert.rejects(service.select('other'), /HTTP 403/)
   assert.deepEqual(navigations, [path])
+})
+
+test('removing a saved instance deletes its route and keeps the connected instance', async t => {
+  const { start } = fixture(t)
+  const service = start()
+  const connected = service.snapshot().connectedProfile
+  const other = { ...connected, id: 'other', name: 'Other', address: 'https://other.example' }
+  await service.save(other)
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    assert.equal(url, '/mygo-local/connection')
+    assert.equal(options.method, 'DELETE')
+    assert.deepEqual(JSON.parse(options.body), other)
+    return { ok: true, status: 204 }
+  })
+  await service.remove('other')
+  assert.deepEqual(service.snapshot().catalog, [connected])
+  await assert.rejects(service.remove(connected.id), /connected instance/)
 })
