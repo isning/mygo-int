@@ -16,7 +16,7 @@ export type LocalCompositionService = {
   change(id: string, patch: { config?: Record<string, unknown>; disabled?: boolean }, revision?: number): Promise<void>
 }
 type Props = { ctx: Context & { clientComposition: LocalCompositionService }; row: InspectRow; onChanged: () => void }
-const labels = { unavailable: 'Local entry unavailable', readOnly: 'Protected startup service', saveFailed: 'Local configuration was rejected', save: 'Save and apply locally', saving: 'Applying…' }
+const labels = { unavailable: 'Local entry unavailable', readOnly: 'Required by this client', saveFailed: 'Local configuration was rejected', save: 'Save and apply locally', saving: 'Applying…' }
 
 export function LocalPluginActions({ ctx, row, onChanged }: Props) {
   const service = ctx.clientComposition
@@ -43,12 +43,11 @@ export function LocalPluginActions({ ctx, row, onChanged }: Props) {
     }
   }
   return <div data-local-plugin-actions="">
-    <p>Changes apply to this device only.</p>
     {status.diagnostic && <p role="alert">{status.diagnostic}</p>}
     {current?.diagnostic && <p role="alert">{current.diagnostic}</p>}
     {error && error !== status.diagnostic && <p role="alert">{error}</p>}
     {!current?.entryId ? <p>Local entry unavailable. Refresh inventory.</p> : current.readOnlyReason ?
-      <p>This built-in component is required for local management. Its switch is locked to keep settings and recovery available. To replace it, edit the startup composition.</p> : <>
+      <p>Required by this client. This component cannot be turned off here.</p> : <>
         <Button disabled={status.busy} aria-label={current.enabled ? 'Disable local plugin' : 'Enable local plugin'} onClick={() => void run({ disabled: current.enabled })}>{current.enabled ? 'Disable locally' : 'Enable locally'}</Button>{' '}
         <Button aria-label="Configure local plugin" onClick={() => setOpen(value => !value)}>{open ? 'Close local configuration' : 'Configure locally'}</Button>
         {open && <LocalConfig key={current.entryId + ':' + status.revision} row={current} status={status} run={run} />}
