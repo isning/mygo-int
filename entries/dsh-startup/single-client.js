@@ -11,7 +11,6 @@ import { BootPage } from '../../.scratch/upstream/deepseek-harness/packages/clie
 import { installWindowDragRecall } from '../../.scratch/upstream/deepseek-harness/packages/client/web/src/window-drag/recall.ts'
 import '../../.scratch/upstream/deepseek-harness/packages/client/web/src/base.css'
 import '@deepseek-ai/dsh-client-ui-theme/brand-font.css'
-import './touch.css'
 
 export async function startSingleClient() {
   const container = document.getElementById('root')

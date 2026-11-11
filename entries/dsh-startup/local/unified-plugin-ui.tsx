@@ -30,6 +30,7 @@ const localPluginInfo: Record<string, { title: string; description: string; grou
   './plugins/unified-plugin-manager.js': { title: 'Plugin manager', description: 'Adds this Local tab and plugin runtime details.', group: 'basic' },
   './plugins/local-navigation.js': { title: 'Instance switcher', description: 'Shows the instance selector in the sidebar.', group: 'basic' },
   './plugins/ui-client-manager.js': { title: 'Settings integration', description: 'Adds device preferences and instance profiles to Settings.', group: 'basic' },
+  './plugins/touch-feedback.js': { title: 'Touch feedback', description: 'Removes the browser’s tap highlight while preserving keyboard focus indicators.', group: 'extensions' },
   './plugins/marker.js': { title: 'Example note', description: 'Displays a sample note in the sidebar.', group: 'extensions' },
 }
 

@@ -1,5 +1,5 @@
 // Local authority adapter over the one original Loader. Never calls Host Remote.
-import { matchesLegacyDeviceOverlay } from './legacy-device-overlay.js'
+import { matchesLegacyDeviceOverlay, matchesPreviousDeviceOverlay } from './legacy-device-overlay.js'
 
 export const inject = ['loader', 'mygoStartup']
 const clone = value => JSON.parse(JSON.stringify(value))
@@ -17,10 +17,11 @@ export function apply(ctx) {
     const saved = JSON.parse(localStorage.getItem(key) || 'null')
     if (saved) {
       const legacy = matchesLegacyDeviceOverlay(saved.base, boot)
-      if (saved.version !== 1 || (saved.base !== base && !legacy) || !Number.isSafeInteger(saved.revision) || saved.revision < 0 || !saved.overrides || typeof saved.overrides !== 'object' || Array.isArray(saved.overrides)) throw Error('Invalid overlay or operator composition changed; reset this device overlay')
+      const previous = matchesPreviousDeviceOverlay(saved.base, boot)
+      if (saved.version !== 1 || (saved.base !== base && !legacy && !previous) || !Number.isSafeInteger(saved.revision) || saved.revision < 0 || !saved.overrides || typeof saved.overrides !== 'object' || Array.isArray(saved.overrides)) throw Error('Invalid overlay or operator composition changed; reset this device overlay')
       for (const [id, value] of Object.entries(saved.overrides)) {
         const original = boot.configuration.entries.find(entry => entry.id === id)
-        if (!original || (legacy && id !== 'local-note') || protectedNames.has(original.name) || !value || Object.keys(value).some(k => !['config', 'disabled'].includes(k)) || typeof value.disabled !== 'boolean' || !value.config || typeof value.config !== 'object' || Array.isArray(value.config)) throw Error(`Saved override ${id} no longer matches curated startup`)
+        if (!original || (previous && !JSON.parse(saved.base).some(entry => entry.id === id)) || (legacy && id !== 'local-note') || protectedNames.has(original.name) || !value || Object.keys(value).some(k => !['config', 'disabled'].includes(k)) || typeof value.disabled !== 'boolean' || !value.config || typeof value.config !== 'object' || Array.isArray(value.config)) throw Error(`Saved override ${id} no longer matches curated startup`)
       }
       overrides = saved.overrides
       revision = saved.revision

@@ -232,14 +232,20 @@ stylesheet or upstream source edits are introduced.
 
 ## Touch feedback
 
-The default single-root entry imports `touch.css`, which only sets
+The default single-root composition loads the optional local `Touch feedback`
+plugin (`./plugins/touch-feedback.js`), which only sets
 `-webkit-tap-highlight-color: transparent` on interactive controls. Original
 hover/active styles, input behavior, focus-visible rules and keyboard modality
-remain unchanged. No upstream stylesheets are edited.
+remain unchanged. No upstream stylesheets are edited. The original Local
+plugin switch enables or disables it; a Cordis effect owns the stylesheet and
+removes it on disposal. Exact migration from the previous shipped startup
+composition preserves existing device overrides when adding this entry.
 
 `node scripts/dsh-unified-plugins-browser.mjs --touch-only` verifies trusted CDP
 touch events at a 390px viewport activate Local, publish pointer modality and
-produce a transparent tap-highlight color. Tab then restores keyboard modality
+produce a transparent tap-highlight color. Disabling the plugin removes its
+stylesheet and restores the browser highlight; enabling it installs exactly one
+stylesheet. Tab then restores keyboard modality
 and the original SegmentedTabs underline focus indicator. Evidence is saved to
 `.scratch/test-dsh/touch-feedback-validation.json`. This is Chromium touch
 emulation, not a physical Android device check; it does not claim the broader

@@ -18,8 +18,18 @@ const sharedEntries = [
   {"id": "local-note", "name": "./plugins/marker.js", "inject": ["modules"], "config": {"label": "Local note · editable"}}
 ]
 
+const touchEntries = [...sharedEntries, { id: 'touch-feedback', name: './plugins/touch-feedback.js' }]
+const currentStartup = boot => boot.sharedClient === true
+  && [sharedEntries, touchEntries].some(entries => JSON.stringify(boot.configuration.entries) === JSON.stringify(entries))
+
 export function matchesLegacyDeviceOverlay(savedBase, boot) {
+  return currentStartup(boot) && savedBase === JSON.stringify(legacyEntries)
+}
+
+// Exact previous shipped composition: preserve existing local preferences when
+// adding this optional plugin, without remapping paths, ids or override keys.
+export function matchesPreviousDeviceOverlay(savedBase, boot) {
   return boot.sharedClient === true
-    && savedBase === JSON.stringify(legacyEntries)
-    && JSON.stringify(boot.configuration.entries) === JSON.stringify(sharedEntries)
+    && savedBase === JSON.stringify(sharedEntries)
+    && JSON.stringify(boot.configuration.entries) === JSON.stringify(touchEntries)
 }

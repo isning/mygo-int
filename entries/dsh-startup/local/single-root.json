@@ -7,6 +7,7 @@
     { "id": "unified-plugin-manager", "name": "./plugins/unified-plugin-manager.js" },
     { "id": "local-navigation", "name": "./plugins/local-navigation.js" },
     { "id": "ui-client-manager", "name": "./plugins/ui-client-manager.js" },
-    { "id": "local-note", "name": "./plugins/marker.js", "inject": ["modules"], "config": { "label": "Local note · editable" } }
+    { "id": "local-note", "name": "./plugins/marker.js", "inject": ["modules"], "config": { "label": "Local note · editable" } },
+    { "id": "touch-feedback", "name": "./plugins/touch-feedback.js" }
   ]
 }
