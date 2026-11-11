@@ -9,6 +9,7 @@ import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import { RowsSection } from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-plugin-manager/src/client/PluginManagerPage.tsx?mygo-rows'
 import { en } from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-plugin-manager/src/client/locales.ts'
 import css from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-plugin-manager/src/client/PluginManagerPage.module.css'
+import { HostPluginActions } from './unified-host-actions'
 import { InstanceClientActions } from './unified-instance-actions'
 import { LocalPluginActions, type LocalCompositionService } from './unified-local-actions'
 import type { PackageRow } from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-plugin-manager/src/client/manager-store.ts'
@@ -103,6 +104,7 @@ function PluginInventory({ ctx }: { ctx: SurfaceContext }) {
     {shown.map(({ source, owner, key, row }) => <article key={key} data-plugin-source={source} data-plugin-key={key} data-module-name={row.moduleName} data-runtime-owner={owner}>
       <p><strong>{source}</strong> · {owner} · Entry <code>{row.entryId ?? row.rowId}</code></p>
       <RowsSection rows={[row]} t={translate} resolveText={resolveText} />
+      {source === 'HOST' && <HostPluginActions ctx={ctx} row={row} onChanged={() => setRefresh(value => value + 1)} />}
       {source === 'INSTANCE CLIENT' && <InstanceClientActions ctx={ctx} row={row} onChanged={() => { update(value => value + 1); setRefresh(value => value + 1) }} />}
       {source === 'LOCAL' && <LocalPluginActions ctx={ctx} row={row} onChanged={() => setRefresh(value => value + 1)} />}
     </article>)}
