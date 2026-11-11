@@ -108,5 +108,7 @@ export default {
   "Another local change is running": "Outra alteração local está em andamento",
   "Stale local revision; refresh before saving": "Versão desatualizada; atualize antes de salvar",
   "Another tab changed this device overlay; reload before saving": "Outra aba alterou as configurações; recarregue antes de salvar",
-  "Catalog changed during this edit; reload before saving": "A lista mudou; recarregue antes de salvar"
+  "Catalog changed during this edit; reload before saving": "A lista mudou; recarregue antes de salvar",
+  "Sign in required": "É necessário iniciar sessão",
+  "Open the private launch link provided by your instance to sign in.": "Abra o link privado de início fornecido pela sua instância para iniciar sessão."
 }

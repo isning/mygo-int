@@ -108,5 +108,7 @@ export default {
   "Another local change is running": "Другое локальное изменение выполняется",
   "Stale local revision; refresh before saving": "Устаревшая версия; обновите перед сохранением",
   "Another tab changed this device overlay; reload before saving": "Другая вкладка изменила настройки; перезагрузите страницу",
-  "Catalog changed during this edit; reload before saving": "Список изменился; перезагрузите перед сохранением"
+  "Catalog changed during this edit; reload before saving": "Список изменился; перезагрузите перед сохранением",
+  "Sign in required": "Требуется вход",
+  "Open the private launch link provided by your instance to sign in.": "Для входа откройте приватную ссылку запуска вашего экземпляра."
 }

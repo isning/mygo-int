@@ -108,5 +108,7 @@ export default {
   "Another local change is running": "他の変更を処理中です",
   "Stale local revision; refresh before saving": "設定が古いため更新してから保存してください",
   "Another tab changed this device overlay; reload before saving": "他のタブで設定が変更されました。再読み込みしてください",
-  "Catalog changed during this edit; reload before saving": "一覧が変更されました。再読み込みして保存してください"
+  "Catalog changed during this edit; reload before saving": "一覧が変更されました。再読み込みして保存してください",
+  "Sign in required": "ログインが必要です",
+  "Open the private launch link provided by your instance to sign in.": "インスタンスから提供されたプライベート起動リンクを開いてログインしてください。"
 }

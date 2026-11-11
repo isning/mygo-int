@@ -12,6 +12,10 @@ page designs.
   original language preference remains authoritative.
 - Offline layout lives in a CSS module. It wraps on narrow screens and uses
   upstream typography, controls, theme tokens and SettingsPanel.
+- Bootstrap retains the original HTTP status on failures. An unauthenticated
+  401 shows translated sign-in guidance instead of an internal boot exception;
+  local settings remain accessible. Authentication itself is unchanged. The
+  private launch link is required after a Host restart invalidates a login.
 - Instances keeps the original Models cards and editor. Small layout overrides
   allow long names and origins to wrap without pushing actions off screen.
 - Local settings and configuration errors use original error classes. The

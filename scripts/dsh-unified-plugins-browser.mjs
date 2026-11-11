@@ -68,6 +68,8 @@ try {
     stage = 'offline local shell'
     await until(() => evaluate("!!document.querySelector('[data-mygo-local-shell]') && document.body.innerText.includes('Not connected')"))
     assert.equal(await evaluate("fetch('/mygo/status').then(r=>r.status)"),401,'remote still denies anonymous access')
+    assert.equal(await evaluate("document.body.innerText.includes('Sign in required')"),true,'401 explains the original sign-in requirement')
+    assert.equal(await evaluate("document.body.innerText.includes('index injections HTTP 401')"),false,'401 is not shown as an internal boot fault')
     if (i18nOnly) {
       for (const [language, heading] of Object.entries({en:'Not connected',zh:'未连接',ja:'未接続',es:'Sin conexión',fr:'Non connecté',de:'Nicht verbunden',ru:'Нет подключения',pt:'Sem conexão'})) {
         await selectOfflineLanguage(language)

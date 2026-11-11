@@ -108,5 +108,7 @@ export default {
   "Another local change is running": "Another local change is running",
   "Stale local revision; refresh before saving": "Stale local revision; refresh before saving",
   "Another tab changed this device overlay; reload before saving": "Another tab changed this device overlay; reload before saving",
-  "Catalog changed during this edit; reload before saving": "Catalog changed during this edit; reload before saving"
+  "Catalog changed during this edit; reload before saving": "Catalog changed during this edit; reload before saving",
+  "Sign in required": "Sign in required",
+  "Open the private launch link provided by your instance to sign in.": "Open the private launch link provided by your instance to sign in."
 }

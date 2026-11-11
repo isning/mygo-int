@@ -108,5 +108,7 @@ export default {
   "Another local change is running": "另一项本地更改正在进行",
   "Stale local revision; refresh before saving": "配置版本已过期，请刷新后保存",
   "Another tab changed this device overlay; reload before saving": "其他标签页已修改本地配置，请重新加载后保存",
-  "Catalog changed during this edit; reload before saving": "实例列表已更改，请重新加载后保存"
+  "Catalog changed during this edit; reload before saving": "实例列表已更改，请重新加载后保存",
+  "Sign in required": "需要登录",
+  "Open the private launch link provided by your instance to sign in.": "请打开实例提供的私有启动链接以登录。"
 }

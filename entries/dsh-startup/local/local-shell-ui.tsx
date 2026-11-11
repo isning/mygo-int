@@ -26,7 +26,7 @@ function LocalLanguage({ ctx }) {
 export function mountLocalShell(ctx) {
   const container = ctx.clientHost.container
   installThemeStyles(ctx)
-  let root, error = '', version = 0
+  let root, error = '', authenticationRequired = false, version = 0
   const listeners = new Set<() => void>()
   const notify = () => { version++; for (const listener of listeners) listener() }
   const subscribe = listener => { listeners.add(listener); return () => listeners.delete(listener) }
@@ -50,9 +50,9 @@ export function mountLocalShell(ctx) {
         <p className={css.intro}>{t('Your instance profiles and device settings are available here.')}</p>
         <div className={shellCSS.status} role="status">
           <StateDot state={error ? 'error' : 'ongoing'} size={8} />
-          <span className={css.intro}>{error ? t('The instance is unavailable.') : t('Loading the instance client.')}</span>
+          <span className={css.intro}>{authenticationRequired ? t('Sign in required') : error ? t('The instance is unavailable.') : t('Loading the instance client.')}</span>
         </div>
-        {error && <><p role="alert" className={`${css.error} ${shellCSS.error}`}>{error}</p><div><Button variant="outline" onClick={() => location.reload()}>{t('Retry connection')}</Button></div></>}
+        {error && <><p role="alert" className={`${authenticationRequired ? css.intro : css.error} ${shellCSS.error}`}>{authenticationRequired ? t('Open the private launch link provided by your instance to sign in.') : error}</p><div><Button variant="outline" onClick={() => location.reload()}>{t('Retry connection')}</Button></div></>}
       </main>
       {settings && <SettingsPanel rows={[{ id: 'instances', label: t('Instances') }, { id: 'client', label: t('Client') }]} activeId={active} onSelect={setActive}
         onClose={() => setSettings(false)} renderSlot={(key) => key === 'settings.header' ? t('Settings')
@@ -65,7 +65,7 @@ export function mountLocalShell(ctx) {
   show()
   ctx.provide('localShell', {
     handoff,
-    showError(reason) { error = reason instanceof Error ? reason.message : String(reason); show(); notify() },
+    showError(reason) { authenticationRequired = reason?.status === 401; error = reason instanceof Error ? reason.message : String(reason); show(); notify() },
   })
   ctx.effect(() => () => { handoff(); listeners.clear() })
 }
