@@ -27,7 +27,7 @@ await build({
       if (importer === resolve(root, 'entries/dsh-startup/single-client.js') && source.startsWith('@deepseek-ai/')) {
         return require.resolve(source)
       }
-      if (importer?.startsWith(resolve(root, 'entries/dsh-startup/local/management-ui.tsx')) && !source.startsWith('.')) {
+      if (['management-ui.tsx', 'unified-plugin-ui.tsx'].some(name => importer?.startsWith(resolve(root, 'entries/dsh-startup/local', name))) && !source.startsWith('.')) {
         return require.resolve(source)
       }
     },

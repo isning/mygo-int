@@ -1,5 +1,6 @@
 // Explicit migration entry for the pinned single-instance Web composition.
 import * as managementUI from './local/management-ui.tsx'
+import * as unifiedUI from './local/unified-plugin-ui.tsx'
 import { FIBER_STATE as FiberState } from '../../.scratch/upstream/deepseek-harness/packages/client/web/src/loader-status.ts'
 import { getStaticModules } from '@deepseek-ai/dsh-client-web'
 import { protectLocalEntryModules } from './local-entry-boundary.js'
@@ -16,6 +17,7 @@ export async function startSingleClient() {
   const page = new BootPage(container)
   const staticModules = getStaticModules()
   staticModules['mygo/dsh-management-ui'] = managementUI
+  staticModules['mygo/dsh-unified-plugin-ui'] = unifiedUI
   const { Context } = staticModules['@deepseek-ai/cordis']
   const React = staticModules.react
   const ctx = new Context()
