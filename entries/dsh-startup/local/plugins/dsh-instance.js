@@ -11,7 +11,8 @@ import '@deepseek-ai/dsh-client-ui-theme/brand-font.css'
 export const inject = ['clientHost', 'loader']
 export function apply(scope) {
   const { root: ctx, container, configuration, modules: staticModules, localEntries } = scope.clientHost
-  const page = new BootPage(container)
+  const bootContainer = document.createElement('div')
+  const page = new BootPage(bootContainer)
   const { Context } = staticModules['@deepseek-ai/cordis']
   const React = staticModules.react
   const diagnosticName = '@mygo/single-client-contribution'
@@ -63,9 +64,18 @@ export function apply(scope) {
       await ctx.loader.create({ id: 'mygo-single-client', name: diagnosticName })
       await ctx.loader.await()
       await assertEntriesActive(ctx, modules)
+      ctx.localShell?.handoff()
       await mountClient(ctx, container)
     },
-    fail(reason) { page.fail(reason instanceof Error ? reason.message : String(reason)) },
+    recover(reason) {
+      if (!ctx.localShell) return false
+      ctx.localShell.showError(reason)
+      return true
+    },
+    fail(reason) {
+      page.fail(reason instanceof Error ? reason.message : String(reason))
+      container.replaceChildren(bootContainer)
+    },
     dispose() { page.dispose() },
   })
 }

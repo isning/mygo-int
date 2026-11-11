@@ -45,6 +45,10 @@ export function createAuthenticatedCarrier({ origin, publicOrigins = [], maxBody
     },
     handle(req, res, indexHTML) {
       if (!valid(req)) { res.writeHead(403).end(); return }
+      if (indexHTML !== undefined && ['GET', 'HEAD'].includes(req.method) && !new URL(req.url, 'http://localhost').search) {
+        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' }).end(req.method === 'HEAD' ? undefined : indexHTML)
+        return
+      }
       let size = 0
       const upstream = httpRequest(target, { path: req.url, method: req.method, headers: headers(req), agent: false }, reply => {
         if (indexHTML !== undefined && reply.statusCode === 200) {

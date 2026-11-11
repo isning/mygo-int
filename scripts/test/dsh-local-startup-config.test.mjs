@@ -38,3 +38,13 @@ test('bootstrap plugins use original Entry options and cannot collide with featu
   assert.throws(() => validateLocalStartup({ schemaVersion: 1, bootstrap: [{ id: 'instance', name: 'https://remote.invalid/plugin.js' }], entries: [] }))
   assert.throws(() => validateLocalStartup({ schemaVersion: 1, bootstrap: {}, entries: [] }))
 })
+
+
+test('override application has an explicit package target and is limited to bootstrap descriptors', () => {
+  const entry = { id: 'override', name: './plugins/replacement.js', mode: 'override', target: '@remote/feature' }
+  assert.deepEqual(validateLocalStartup({ schemaVersion: 1, bootstrap: [entry], entries: [] }).bootstrap, [entry])
+  for (const patch of [{ mode: 'unknown' }, { target: 'https://remote.invalid' }, { target: undefined }, { disabled: true }]) {
+    assert.throws(() => validateLocalStartup({ schemaVersion: 1, bootstrap: [{ ...entry, ...patch }], entries: [] }))
+  }
+  assert.throws(() => validateLocalStartup({ schemaVersion: 1, entries: [entry] }))
+})

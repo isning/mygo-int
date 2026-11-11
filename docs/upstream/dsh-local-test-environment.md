@@ -1,5 +1,12 @@
 # Persistent local test DSH (model mock by default)
 
+**Current local-shell behavior:** the clean mygo document is available without
+remote admission; remote status, API, bootstrap and WebSockets still require
+original DSH authentication. Local device profile/preferences writes no longer
+require remote admission. Earlier root-401 records below describe the historical
+checkpoint. See [ADR 0006](../adr/0006-local-shell-and-override-application.md).
+
+
 **Active authentication update:** the anonymous scoped carrier described below is
 retired from the active path. See [browser authentication and retained 4190 entry](dsh-browser-auth-validation.md)
 for current startup, private login, permission checks and browser port requirements.

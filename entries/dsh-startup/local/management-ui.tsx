@@ -69,7 +69,7 @@ function LocalPlugins({ ctx, run }) {
   </div>
 }
 
-function ClientSettings({ ctx, run }) {
+export function ClientSettings({ ctx, run }) {
   const service = ctx.clientComposition
   useRefresh(service)
   const [confirmReset, setConfirmReset] = useState(false)
@@ -147,7 +147,7 @@ function InstanceEditor({ service, target, onClose }) {
   </form>
 }
 
-function Instances({ ctx, run }) {
+export function Instances({ ctx, run }) {
   const service = ctx.instanceManager
   useRefresh(service)
   const snapshot = service.snapshot()
@@ -166,7 +166,7 @@ function Instances({ ctx, run }) {
         <div className={modelsCSS.rowHead}>
           <span className={modelsCSS.rowIdentity}>
             <span className={modelsCSS.rowName}>{row.name}</span>
-            {row.id === snapshot.connectedId && <span className={modelsCSS.rowTag}>Current</span>}
+            {row.id === snapshot.connectedId && <span className={modelsCSS.rowTag}>{snapshot.connectionStatus === 'authenticated' ? 'Current' : 'Configured'}</span>}
             {row.id === snapshot.selectedId && row.id !== snapshot.connectedId && <span className={modelsCSS.rowTag}>Selected</span>}
           </span>
           <span className={modelsCSS.rowActions}>

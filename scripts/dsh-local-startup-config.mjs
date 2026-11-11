@@ -15,10 +15,13 @@ export function validateLocalStartup(value) {
   for (const entry of [...(value.bootstrap ?? []), ...value.entries]) {
     if (!entry || typeof entry.id !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(entry.id) || ids.has(entry.id)
       || typeof entry.name !== 'string' || !/^\.\/plugins\/[a-zA-Z0-9_-]+\.js$/.test(entry.name)
-      || Object.keys(entry).some(key => !['id', 'name', 'config', 'disabled', 'inject'].includes(key))
+      || Object.keys(entry).some(key => !['id', 'name', 'config', 'disabled', 'inject', 'mode', 'target'].includes(key))
       || (entry.disabled !== undefined && typeof entry.disabled !== 'boolean')) {
       throw Error('Invalid or duplicate local startup entry')
     }
+    if (entry.mode !== undefined && (entry.mode !== 'override' || !value.bootstrap?.includes(entry) || entry.disabled
+      || typeof entry.target !== 'string' || !/^(?:@[a-z0-9._-]+\/)?[a-z0-9._-]+$/.test(entry.target))) throw Error('Invalid override application')
+    if (entry.target !== undefined && entry.mode !== 'override') throw Error('Override target requires override mode')
     ids.add(entry.id)
   }
   return value

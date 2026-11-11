@@ -25,7 +25,6 @@ export function apply(ctx) {
   } catch (error) { diagnostic = `Saved catalog ignored: ${error.message}` }
   async function persist(rows, selection) {
     const expectedRevision = revision
-    await boot.admit()
     const saved = JSON.parse(localStorage.getItem(key) || 'null')
     if (expectedRevision !== revision || (saved?.revision ?? 0) !== revision) throw Error('Catalog changed during this edit; reload before saving')
     localStorage.setItem(key, JSON.stringify({ version: 1, revision: revision + 1, catalog: rows, selectedId: selection }))

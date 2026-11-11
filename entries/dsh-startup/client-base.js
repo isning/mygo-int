@@ -22,16 +22,27 @@ export async function startClient({ Context, Loader, modules, container, readCon
       },
     }
     ctx.provide('clientHost', Object.freeze({ root: ctx, container, configuration, modules, localEntries }))
-    for (const options of configuration.bootstrap ?? []) await ctx.loader.create(options)
+    for (const options of configuration.bootstrap ?? []) {
+      const { mode, target, ...entry } = options
+      if (mode === 'override') {
+        const replacement = modules[entry.name]
+        if (Object.hasOwn(modules, target) || Object.hasOwn(modules, target + '/client')) throw Error(`Duplicate override target: ${target}`)
+        modules[target] = replacement
+        modules[target + '/client'] = replacement
+      } else await ctx.loader.create(entry)
+    }
     await ctx.loader.await()
     for (const options of configuration.bootstrap ?? []) {
+      if (options.mode === 'override') continue
       const entry = ctx.loader.resolve(options.id)
       if (entry.disabled || entry.fiber?.state !== 2) throw Error(`Bootstrap plugin did not activate: ${options.id}`)
     }
     runtime = ctx.clientRuntime
     await runtime?.prepare?.()
     for (const options of configuration.entries) {
-      if ([...ctx.loader.entries()].some(entry => entry.options.id === options.id)) throw Error(`Local startup Entry id already exists: ${options.id}`)
+      const existing = [...ctx.loader.entries()].find(entry => entry.options.id === options.id)
+      if (existing && localEntries.has(existing)) continue
+      if (existing) throw Error(`Local startup Entry id already exists: ${options.id}`)
       const desired = await ctx.waterfall('mygo/startup-entry', options, () => options)
       await ctx.loader.create(desired)
       localEntries.add(ctx.loader.resolve(options.id))
@@ -55,6 +66,10 @@ export async function startClient({ Context, Loader, modules, container, readCon
     return ctx
   } catch (reason) {
     console.error(reason)
+    if (runtime?.recover) {
+      try { if (await runtime.recover(reason) !== false) return ctx }
+      catch (recoveryError) { console.error(recoveryError) }
+    }
     await ctx.fiber.dispose()
     if (runtime?.fail) runtime.fail(reason)
     else container.textContent = `Client startup failed: ${reason instanceof Error ? reason.message : String(reason)}`

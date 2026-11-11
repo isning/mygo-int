@@ -48,7 +48,6 @@ export function apply(ctx) {
     if (Object.keys(patch).some(k => !['config', 'disabled'].includes(k))) throw Error('Only local config and enablement can be changed')
     if ('config' in patch && (!patch.config || Array.isArray(patch.config) || typeof patch.config !== 'object')) throw Error('Plugin configuration must be a JSON object')
     if ('disabled' in patch && typeof patch.disabled !== 'boolean') throw Error('Invalid enablement')
-    await boot.admit()
     if (busy || expectedRevision !== revision) throw Error('Local state changed during admission; refresh and retry')
     const stored = JSON.parse(localStorage.getItem(key) || 'null')
     if ((stored?.revision ?? 0) !== revision) throw Error('Another tab changed this device overlay; reload before saving')
@@ -81,8 +80,8 @@ export function apply(ctx) {
     desiredEntry, rows, change, subscribe: listener => { listeners.add(listener); return () => listeners.delete(listener) },
     status: () => ({ revision, diagnostic, busy }),
     reportRecovery(id) { diagnostic = `Saved startup for ${id} failed; operator configuration is running instead. Edit the desired config or reset this device overlay.`; notify() },
-    async reset() { await boot.admit(); localStorage.removeItem(key); location.reload() },
-    async reload() { await boot.admit(); location.reload() },
+    async reset() { localStorage.removeItem(key); location.reload() },
+    async reload() { location.reload() },
   }
   ctx.provide('clientComposition', service)
   ctx.on('mygo/startup-entry', async (entry, next) => desiredEntry(await next()))

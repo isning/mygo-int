@@ -43,3 +43,39 @@ test('bootstrap plugin and local features share the base Context/Loader and disp
   await ctx.fiber.dispose()
   assert.deepEqual(events, ['prepare', 'feature', 'mount', 'disposed'])
 })
+
+test('override mode selects a module for a remote entry without activating another local entry', async () => {
+  let applications = 0
+  const modules = {
+    './plugins/instance.js': { inject: ['clientHost'], apply(scope) {
+      scope.provide('clientRuntime', {
+        prepare: () => scope.clientHost.root.loader.create({ id: 'remote-feature', name: '@remote/feature' }),
+      })
+    } },
+    './plugins/replacement.js': { apply() { applications++ } },
+  }
+  const configuration = { bootstrap: [
+    { id: 'instance', name: './plugins/instance.js' },
+    { id: 'replacement', name: './plugins/replacement.js', mode: 'override', target: '@remote/feature' },
+  ], entries: [] }
+  const ctx = await startClient({ Context, Loader, modules, container: {}, readConfiguration: async () => configuration })
+  assert.ok(ctx)
+  assert.equal(applications, 1)
+  assert.deepEqual([...ctx.loader.entries()].map(entry => entry.options.id).sort(), ['instance', 'remote-feature'])
+  assert.equal(modules['@remote/feature'], modules['@remote/feature/client'])
+  await ctx.fiber.dispose()
+})
+
+test('recoverable instance failure retains the local runtime rather than disposing the Context', async () => {
+  let recovered = false, disposed = false
+  const modules = { './plugins/instance.js': { apply(scope) {
+    scope.effect(() => () => { disposed = true })
+    scope.provide('clientRuntime', { prepare() { throw Error('Instance unavailable') }, recover() { recovered = true } })
+  } } }
+  const ctx = await startClient({ Context, Loader, modules, container: {}, readConfiguration: async () => ({ bootstrap: [{ id: 'instance', name: './plugins/instance.js' }], entries: [] }) })
+  assert.ok(ctx)
+  assert.equal(recovered, true)
+  assert.equal(disposed, false)
+  await ctx.fiber.dispose()
+  assert.equal(disposed, true)
+})

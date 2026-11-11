@@ -97,3 +97,38 @@ one MODEL MOCK reply and cleared draft. It accepts the original English/Chinese
 New Session accessible label without changing Host locale. It deliberately does
 not run the older combined Settings/catalog workflow. No full adapter semantic
 TypeScript/checkJs coverage or real-LLM inference is claimed.
+
+## Offline shell and override application
+
+See [ADR 0006](../adr/0006-local-shell-and-override-application.md), which supersedes
+the earlier central `client-overrides` role. The default bootstrap now contains the
+instance plugin, an explicit plugin-manager override descriptor and `local-shell`.
+Only normal descriptors create local Loader entries. Override descriptors register
+an implementation for a matching instance-managed package, without activating an
+extra copy or adding an absent remote feature.
+
+`local-shell` starts local composition and instance catalog entries before network
+bootstrap. The base recognizes and reuses those owned entries later. Recoverable
+instance failures retain the local Context and UI. The local React mount unmounts
+before the remote renderer takes over. Existing local profile management uses the
+same original Instances forms and SettingsPanel while offline.
+
+The clean document now returns HTTP 200 without Host admission. Original DSH
+status/API/bootstrap/WebSocket endpoints remain protected; token exchange is still
+original. Local preferences/catalog updates use device storage and local revision
+checks without a remote admission prerequisite. This intentionally replaces the
+earlier anonymous-root-401 and remote-admission-for-local-writes behavior.
+
+Validation: production Web build; repository tests; real Chromium
+`node scripts/dsh-unified-plugins-browser.mjs --offline-only` covers unavailable
+bootstrap, unauthenticated Remote status 401, local profile save/reload with zero
+Host management writes, followed by original authenticated UI and touch-plugin
+lifecycle. `node scripts/dsh-test-browser.mjs check-instance` covers real New
+Session and MODEL MOCK reply/receipt. A carrier test closes the upstream listener
+and checks that the local shell still returns 200 while Remote forwarding returns
+502 and wrong Origin returns 403. No physical-device or adapter-wide semantic
+TypeScript check is claimed.
+
+The offline Settings panel also reuses the existing Client settings section;
+remote Plugin manager navigation remains disabled until its provider is available.
+The final repository test run passed 34/34.

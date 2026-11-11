@@ -68,7 +68,7 @@ try {
  const log=openSync(scratch+'/carrier.log','a',0o600);
  carrier=spawn(process.execPath,[root+'/scripts/dsh-startup.mjs','serve'],{env:{...process.env,PORT:String(clientPort),DSH_ORIGIN:origin},stdio:['ignore',log,log]});
  carrier.on('exit',()=>{if(!stopping)void stop();});
- let ready=false;for(let i=0;i<120;i++){try{ready=(await httpStatus(clientUrl))===401;if(ready)break;}catch{}await new Promise(r=>setTimeout(r,250));}
+ let ready=false;for(let i=0;i<120;i++){try{ready=(await httpStatus(clientUrl))===200;if(ready)break;}catch{}await new Promise(r=>setTimeout(r,250));}
  if(!ready)throw Error('Carrier did not become ready');
  const credential=await ctx.credentials.describe('DEEPSEEK_API_KEY');
  const status={pid:process.pid,origin,clientUrl,localClientUrl,clientBind:process.env.DSH_CLIENT_BIND??'127.0.0.1',model:{mode:model.mode,origin:model.origin,stats:model.stats},providers:ctx.llm.listProviders().map(x=>x.id),selection:ctx.agentDefaultModel.currentSelection(),credential:{reference:'DEEPSEEK_API_KEY',configured:credential.configured,source:credential.source},sessionId:fixtureId};

@@ -22,7 +22,7 @@ test('original browser credential, Host/Origin and arbitrary Remote envelopes re
   carrier=createAuthenticatedCarrier({origin,maxBodyBytes:256})
   const cookieName='dsh-auth-'+createHash('sha256').update(new URL(publicOrigin).host).digest('base64url')
   try {
-    assert.equal((await get(publicOrigin)).status,401)
+    assert.equal((await get(publicOrigin)).status,200,'device shell does not depend on remote login')
     const login=await get(publicOrigin+'/?token=private-test-token');assert.equal(login.status,303);assert.equal(login.headers.location,'./');assert.ok(login.headers['set-cookie'])
     const cookie=cookieName+'=browser-owned'
     assert.equal((await get(publicOrigin+'/mygo-local/admission')).status,401,'local changes need original browser admission')
@@ -42,4 +42,21 @@ test('original browser credential, Host/Origin and arbitrary Remote envelopes re
     assert.equal((await get(publicOrigin,{cookie,host:'evil.invalid'})).status,403)
     assert.throws(()=>createAuthenticatedCarrier({origin:'http://example.com'}))
   } finally {carrier.close();await Promise.all([new Promise(r=>server.close(r)),new Promise(r=>upstream.close(r))])}
+})
+
+test('device shell survives an unavailable upstream while Remote forwarding still fails', async () => {
+  const upstream = createServer()
+  const origin = await listen(upstream)
+  await new Promise(resolve => upstream.close(resolve))
+  let carrier
+  const server = createServer((req, res) => carrier.handle(req, res, req.url === '/' ? 'device shell' : undefined))
+  const publicOrigin = await listen(server)
+  carrier = createAuthenticatedCarrier({ origin })
+  try {
+    const shell = await get(publicOrigin)
+    assert.equal(shell.status, 200)
+    assert.equal(shell.body, 'device shell')
+    assert.equal((await get(publicOrigin + '/api/session/list')).status, 502)
+    assert.equal((await get(publicOrigin, {origin:'http://cross-site.invalid'})).status, 403)
+  } finally { carrier.close(); await new Promise(resolve => server.close(resolve)) }
 })

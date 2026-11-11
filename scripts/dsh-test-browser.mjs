@@ -93,9 +93,9 @@ try{
  const cleanOrigin=new URL(url).origin;
  await send('Page.navigate',{url:cleanOrigin+'/'});
  await until(async()=>{const state=await send('Runtime.evaluate',{expression:'location.origin === '+JSON.stringify(cleanOrigin)+' && document.readyState === "complete"',returnByValue:true});return state.result.value;});
- const anonymous=await send('Runtime.evaluate',{expression:"fetch('/').then(r=>r.status)",returnByValue:true,awaitPromise:true});
+ const anonymous=await send('Runtime.evaluate',{expression:"fetch('/mygo/status').then(r=>r.status)",returnByValue:true,awaitPromise:true});
  if(!checkManagementRestore&&!checkManagementRecovery&&process.argv[2]!=='open-management'){
-  assert.equal(anonymous.result.value,401,'fresh browser clean URL requires original authentication');
+  assert.equal(anonymous.result.value,401,'remote status still requires original authentication');
   await writeFile(scratch+'/browser-admission.json',JSON.stringify({origin:cleanOrigin,anonymousHTTP:401,specialPortOverride:false}),{mode:0o600});
  }
  await send('Page.navigate',{url});

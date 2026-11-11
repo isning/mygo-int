@@ -55,7 +55,26 @@ try {
   const url = (await readFile(scratch + '/client-launch-url', 'utf8')).trim()
   await send('Page.navigate', { url: new URL(url).origin })
   await until(() => evaluate('document.readyState === "complete"'))
-  assert.equal(await evaluate("fetch('/').then(r => r.status)"), 401)
+  assert.equal(await evaluate("fetch('/').then(r => r.status)"), 200)
+  if (process.argv.includes('--offline-only')) {
+    stage = 'offline local shell'
+    await until(() => evaluate("!!document.querySelector('[data-mygo-local-shell]') && document.body.innerText.includes('Not connected')"))
+    assert.equal(await evaluate("fetch('/mygo/status').then(r=>r.status)"),401,'remote still denies anonymous access')
+    await evaluate("document.querySelector('[data-mygo-local-shell] nav button').click()")
+    await until(() => evaluate("!!document.querySelector('[data-mygo-instances]')"))
+    await evaluate("[...document.querySelectorAll('[data-mygo-instances] button')].find(x=>x.innerText==='Add instance').click()")
+    await until(() => evaluate("!!document.querySelector('[data-instance-editor]')"))
+    await evaluate(`(() => { for (const [label,value] of [['Name','Offline saved profile'],['Address','https://offline.example']]) { const input=document.querySelector('[data-instance-editor] input[aria-label="'+label+'"]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,value); input.dispatchEvent(new Event('input',{bubbles:true})); } })()`)
+    await evaluate("document.querySelector('[data-instance-editor] button[type=submit]').click()")
+    await until(() => evaluate("!document.querySelector('[data-instance-editor]') && document.body.innerText.includes('Offline saved profile')"))
+    await send('Page.reload', {ignoreCache:true})
+    await until(() => evaluate("!!document.querySelector('[data-mygo-local-shell] nav button')"))
+    await evaluate("document.querySelector('[data-mygo-local-shell] nav button').click()")
+    await until(() => evaluate("!!document.querySelector('[data-mygo-instances]') && document.body.innerText.includes('Offline saved profile')"))
+    assert.deepEqual(mutations,[],'device profile editing issues no Host management writes')
+    await writeFile(scratch+'/offline-shell.png',Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'))
+    await writeFile(scratch+'/offline-shell-validation.json',JSON.stringify({ok:true,anonymousRemoteStatus:401,profileSavedWithoutRemote:true,profileSurvivedReload:true,hostManagementWrites:mutations}),{mode:0o600})
+  }
   await send('Page.navigate', { url })
   await until(() => evaluate("!!document.querySelector('[data-mygo-local-plugin=marker]')"))
   await evaluate("[...document.querySelectorAll('button')].find(x => x.innerText === 'Continue')?.click()")
@@ -66,7 +85,7 @@ try {
   await evaluate("[...document.querySelectorAll('button,[role=button]')].find(x => ['Plugins','插件'].includes(x.innerText)).click()")
   await pause(700)
   await until(() => evaluate("!!document.querySelector('[data-plugin-panel] [data-plugin-package]')"))
-  if (process.argv.includes('--touch-only')) {
+  if (process.argv.includes('--touch-only') || process.argv.includes('--offline-only')) {
     await until(() => evaluate("!!document.querySelector('[data-mygo-shared-client]')"))
     assert.equal(await evaluate("document.querySelector('[data-mygo-shared-client]').dataset.platformSingletons"),'true','diagnostic plugin sees original shared runtime')
     stage = 'mobile touch feedback'

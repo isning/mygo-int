@@ -3,7 +3,8 @@
   "selectedInstance": { "id": "local-test-dsh", "authenticationViewId": "owner" },
   "bootstrap": [
     { "id": "dsh-instance", "name": "./plugins/dsh-instance.js" },
-    { "id": "client-overrides", "name": "./plugins/client-overrides.js" }
+    { "id": "plugin-manager-override", "name": "./plugins/plugin-manager-override.js", "mode": "override", "target": "@deepseek-ai/dsh-client-ui-plugin-manager" },
+    { "id": "local-shell", "name": "./plugins/local-shell.js" }
   ],
   "entries": [
     { "id": "client-composition", "name": "./plugins/client-composition.js" },

@@ -1,5 +1,12 @@
 # Browser-authenticated DSH transport
 
+**Current local-shell behavior:** the clean mygo document is available without
+remote admission; remote status, API, bootstrap and WebSockets still require
+original DSH authentication. Local device profile/preferences writes no longer
+require remote admission. Earlier root-401 records below describe the historical
+checkpoint. See [ADR 0006](../adr/0006-local-shell-and-override-application.md).
+
+
 This supersedes the anonymous scoped demo capabilities in the earlier startup,
 RPC, session, terminal, upload, download and tailnet validation handoffs. Those
 carriers and their tests remain historical fixtures; `dsh-startup.mjs` no longer
