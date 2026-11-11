@@ -22,6 +22,6 @@ try {
   }))
   gate.resolve()
 } catch (reason) {
-  // AppWebEntry owns failure presentation, including rejected readiness.
+  // The selected entry owns failure presentation, including rejected readiness.
   gate.reject(reason)
 }

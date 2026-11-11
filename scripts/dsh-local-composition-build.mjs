@@ -3,6 +3,7 @@ import { createRequire } from 'node:module'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 const root = process.cwd()
+const singleRoot = process.env.MYGO_CLIENT_COMPOSITION === 'single-root'
 const upstream = resolve('.scratch/upstream/deepseek-harness')
 const web = resolve(upstream, 'apps/web')
 const require = createRequire(web + '/package.json')
@@ -23,6 +24,9 @@ await build({
       this.emitFile({ type: 'asset', fileName: 'assets/DSH-LICENSE.txt', source: await readFile(upstream + '/LICENSE', 'utf8') })
     },
     resolveId(source, importer) {
+      if (importer === resolve(root, 'entries/dsh-startup/single-client.js') && source.startsWith('@deepseek-ai/')) {
+        return require.resolve(source)
+      }
       if (importer?.startsWith(resolve(root, 'entries/dsh-startup/local/management-ui.tsx')) && !source.startsWith('.')) {
         return require.resolve(source)
       }
@@ -31,6 +35,7 @@ await build({
       if (id.endsWith('?mygo-rows')) return (await readFile(id.slice(0, -'?mygo-rows'.length), 'utf8')) + '\nexport { RowsSection };'
       if (id.endsWith('?mygo-panel')) return (await readFile(id.slice(0, -'?mygo-panel'.length), 'utf8')) + '\nexport { SettingsPanel };'
       if (id !== web + '/src/main.ts') return
+      if (singleRoot) return `import { startSingleClient } from ${JSON.stringify(resolve(root, 'entries/dsh-startup/single-client.js'))};\nvoid startSingleClient();`
       const original = await readFile(id, 'utf8')
       return `import { getStaticModules } from '@deepseek-ai/dsh-client-web';
 import Loader from ${JSON.stringify(loader)};
@@ -52,5 +57,5 @@ if (globalThis.__ModuleLoader__) {
 ${original}`
     },
   }],
-  build: { ...loaded.config.build, outDir: resolve('.scratch/dsh-local-composition/dist'), emptyOutDir: false },
+  build: { ...loaded.config.build, outDir: resolve(singleRoot ? '.scratch/dsh-single-client/dist' : '.scratch/dsh-local-composition/dist'), emptyOutDir: false },
 })

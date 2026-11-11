@@ -5,11 +5,12 @@ import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import {openSync} from 'node:fs';
 import {resolve} from 'node:path';
 const checkRemoval=process.argv[2]==='check-remove';
+const checkSingleRoot=process.argv[2]==='check-single-root';
 const checkManagement=process.argv[2]==='check-management';
 const checkManagementRestore=process.argv[2]==='check-management-restore';
 const checkManagementRecovery=process.argv[2]==='check-management-recovery';
 const createSession=process.argv[2]==='check-create';
-const submit=process.argv[2]==='check-submit'||checkRemoval||createSession;
+const submit=process.argv[2]==='check-submit'||checkRemoval||createSession||checkSingleRoot;
 const checkLocal=process.argv[2]==='check-local'||checkRemoval;
 const scratch=resolve('.scratch/test-dsh'),interactive=['open','open-management'].includes(process.argv[2]),authenticated=process.argv[2]==='check-auth';
 const profileName=checkManagementRestore||checkManagementRecovery||process.argv[2]==='open-management' ? (await readFile(scratch+'/management-profile','utf8')).trim() : 'browser-'+Date.now();
@@ -84,6 +85,15 @@ try{
  await evaluate("[...document.querySelectorAll('button')].find(x=>x.getAttribute('aria-label')==='Open sidebar')?.click()");
  if(!submit)await evaluate("[...document.querySelectorAll('button')].find(x=>x.innerText.includes('Choose workspace'))?.click()");
  const ready=await until(async()=>await evaluate("globalThis.__ModuleLoader__?.mode==='live' && document.body.innerText.includes('Local test DSH') && !document.body.innerText.includes('Failed to load plugins')"));
+ if(checkSingleRoot){
+  stage='shared client composition';
+  const contribution=await evaluate(`(() => {
+   const node=document.querySelector('#root [data-mygo-shared-client]');
+   return node && {text:node.textContent,local:node.dataset.localActive,session:node.dataset.sessionActive,singletons:node.dataset.platformSingletons};
+  })()`);
+  assert.deepEqual(contribution,{text:'MYGO supplied Context service',local:'true',session:'true',singletons:'true'},'local Loader contribution consumes the supplied Context service inside the original UI, sharing active session entries and platform modules');
+  await writeFile(scratch+'/single-root-browser.json',JSON.stringify(contribution),{mode:0o600});
+ }
  await evaluate("[...document.querySelectorAll('button')].find(x=>x.innerText==='Continue')?.click()");
  await pause(300);
  await writeFile(scratch+'/browser-result.json',JSON.stringify({officialUIReady:ready,authenticatedOriginalUI:authenticated,carrierUI:!authenticated}),{mode:0o600});

@@ -1,5 +1,10 @@
 # Independent official DSH startup
 
+Explicit supplied-root migration: select `MYGO_CLIENT_COMPOSITION=single-root`.
+See [single-client boot and validation](../../docs/upstream/dsh-single-client.md).
+This entry reuses the pinned lower-level boot and renderer with one MYGO Context;
+the default composition below remains available during migration.
+
 Current local management: the default composition includes replaceable
 composition, instance-catalog and UI plugins. `Local client settings` reuses the
 original DSH manager rows and Settings panel for the actual local Loader, with

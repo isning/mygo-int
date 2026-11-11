@@ -11,10 +11,13 @@ import { readLocalStartup } from './dsh-local-startup-config.mjs'
 const workspace = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const upstream = resolve(workspace, '.scratch/upstream/deepseek-harness')
 const bootEnabled = Boolean(process.env.DSH_ORIGIN)
+const composition = process.env.MYGO_CLIENT_COMPOSITION ?? 'legacy'
+if (!['legacy', 'single-root'].includes(composition)) throw Error('MYGO_CLIENT_COMPOSITION must be legacy or single-root')
+if (composition === 'single-root' && !bootEnabled) throw Error('single-root composition requires DSH_ORIGIN')
 if (process.env.DSH_COOKIE_FILE) throw new Error('Server-side DSH_COOKIE_FILE is retired; use original browser login')
 const localStartup = bootEnabled ? await readLocalStartup(workspace,
   process.env.MYGO_STARTUP_CONFIG ?? 'entries/dsh-startup/local/startup.json') : undefined
-const dist = bootEnabled ? resolve(workspace, '.scratch/dsh-local-composition/dist') : resolve(upstream, 'apps/web/dist')
+const dist = bootEnabled ? resolve(workspace, composition === 'single-root' ? '.scratch/dsh-single-client/dist' : '.scratch/dsh-local-composition/dist') : resolve(upstream, 'apps/web/dist')
 const output = resolve(workspace, '.scratch/dsh-startup')
 const command = process.argv[2]
 if (!['build', 'serve'].includes(command) || process.argv.length !== 3) {
