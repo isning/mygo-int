@@ -50,6 +50,11 @@ shared realm, not hostile JavaScript isolation or concurrent instance support.
 
 ## Discovered gap and parent wiring
 
+The parent has now installed the boundary in the supplied-root startup, before
+official boot. Its module list includes disabled configured local entries and
+the local diagnostic contribution. The isolated harness below supplies the
+initial acceptance evidence; combined startup verification follows integration.
+
 The first removal/restoration behavior passed with the original managed Map;
 no disposal or reconciliation fix is needed. The first harness run incorrectly
 expected the restored Terminal guide even when its panel had reopened directly.

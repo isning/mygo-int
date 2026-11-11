@@ -1,5 +1,6 @@
 // Explicit migration entry for the pinned single-instance Web composition.
 import { getStaticModules } from '@deepseek-ai/dsh-client-web'
+import { protectLocalEntryModules } from './local-entry-boundary.js'
 import { bootClient, assertEntriesActive } from '../../.scratch/upstream/deepseek-harness/packages/client/web/src/boot-client.ts'
 import { mountClient } from '../../.scratch/upstream/deepseek-harness/packages/client/web/src/mount.ts'
 import { BootPage } from '../../.scratch/upstream/deepseek-harness/packages/client/web/src/boot-page.ts'
@@ -76,6 +77,10 @@ export async function startSingleClient() {
       ...(transport?.resolveAsset ? { resolveAsset: transport.resolveAsset } : {}),
     })
     const manifest = modules.manifest
+    const releaseBoundary = protectLocalEntryModules(modules, [
+      ...configuration.entries.map(entry => entry.name), diagnosticName,
+    ])
+    ctx.effect(() => releaseBoundary, 'mygo: local module ownership boundary')
     for (const { id, name } of configuration.entries) {
       if (manifest.modules.some(row => row.id === name) || id === 'mygo-single-client') {
         throw Error(`Local startup identity conflicts with client entry: ${id} (${name})`)
