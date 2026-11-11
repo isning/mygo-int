@@ -1,4 +1,4 @@
-// Read-only override of the pinned original Plugins surface, in the shared root.
+// Source-scoped override of the pinned original Plugins surface, in the shared root.
 import React, { useEffect, useState } from 'react'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
@@ -9,13 +9,13 @@ import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import { RowsSection } from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-plugin-manager/src/client/PluginManagerPage.tsx?mygo-rows'
 import { en } from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-plugin-manager/src/client/locales.ts'
 import css from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-plugin-manager/src/client/PluginManagerPage.module.css'
+import { LocalPluginActions, type LocalCompositionService } from './unified-local-actions'
 import type { PackageRow } from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-plugin-manager/src/client/manager-store.ts'
 
 type InspectRow = Omit<PackageRow, 'entryId'> & { readonly entryId?: string }
-type LocalRow = Pick<InspectRow, 'entryId' | 'rowId' | 'moduleName' | 'enabled' | 'phase' | 'diagnostic'>
 type Instance = { id: string; name: string; authenticationViewId: string }
 type Services = {
-  clientComposition: { rows(): LocalRow[]; subscribe(fn: () => void): () => void }
+  clientComposition: LocalCompositionService
   instanceManager: {
     snapshot(): { catalog: Instance[]; connectedId: string; selectedId: string }
     availability(instance: Instance): string
@@ -84,7 +84,7 @@ function PluginInventory({ ctx }: { ctx: SurfaceContext }) {
   const shown = rows.filter(row => (source === 'all' || row.source === source) && (instance === 'all' || row.instance === instance))
   return <section className={css.page} data-mygo-unified-plugins="" style={{ overflow: 'auto', fontFamily: 'var(--dsw-font-family, system-ui)' }}>
     <h1 className={css.pageTitle}>Plugins</h1>
-    <p>Inspect actual LOCAL, INSTANCE CLIENT and HOST entries. Lifecycle actions are not available on this page yet.</p>
+    <p>Inspect actual LOCAL, INSTANCE CLIENT and HOST entries. Actions apply to the labelled runtime only.</p>
     <p>Connected instance: {catalog.connectedId} · authentication view: {bound.authenticationViewId}</p>
     <label>Source <select aria-label="Plugin source" value={source} onChange={event => setSource(event.target.value)}>
       <option value="all">All sources</option>{(['LOCAL', 'INSTANCE CLIENT', 'HOST'] as const).map(value => <option key={value}>{value}</option>)}
@@ -101,7 +101,8 @@ function PluginInventory({ ctx }: { ctx: SurfaceContext }) {
     {shown.length === 0 && <p>No entries match these filters.</p>}
     {shown.map(({ source, owner, key, row }) => <article key={key} data-plugin-source={source} data-plugin-key={key} data-module-name={row.moduleName} data-runtime-owner={owner}>
       <p><strong>{source}</strong> · {owner} · Entry <code>{row.entryId ?? row.rowId}</code></p>
-      <RowsSection rows={[{ ...row, entryId: key }]} t={translate} resolveText={resolveText} />
+      <RowsSection rows={[row]} t={translate} resolveText={resolveText} />
+      {source === 'LOCAL' && <LocalPluginActions ctx={ctx} row={row} onChanged={() => setRefresh(value => value + 1)} />}
     </article>)}
   </section>
 }
