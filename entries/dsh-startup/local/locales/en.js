@@ -11,6 +11,7 @@ export default {
   "Disconnected": "Disconnected",
   "Your instance profiles and device settings are available here.": "Your instance profiles and device settings are available here.",
   "The instance is unavailable.": "The instance is unavailable.",
+  "Choose an instance to connect.": "Choose an instance to connect.",
   "Loading the instance client.": "Loading the instance client.",
   "Retry connection": "Retry connection",
   "Language": "Language",

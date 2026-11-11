@@ -11,6 +11,7 @@ export default {
   "Disconnected": "切断済み",
   "Your instance profiles and device settings are available here.": "ここでインスタンスとデバイスの設定を管理できます。",
   "The instance is unavailable.": "インスタンスを利用できません。",
+  "Choose an instance to connect.": "接続するインスタンスを選択してください。",
   "Loading the instance client.": "インスタンスのクライアントを読み込み中です。",
   "Retry connection": "接続を再試行",
   "Language": "言語",

@@ -11,6 +11,7 @@ export default {
   "Disconnected": "Desconectado",
   "Your instance profiles and device settings are available here.": "Administra aquí tus perfiles de instancia y ajustes del dispositivo.",
   "The instance is unavailable.": "La instancia no está disponible.",
+  "Choose an instance to connect.": "Elige una instancia para conectarte.",
   "Loading the instance client.": "Cargando el cliente de la instancia.",
   "Retry connection": "Reintentar conexión",
   "Language": "Idioma",

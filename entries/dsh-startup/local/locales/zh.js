@@ -11,6 +11,7 @@ export default {
   "Disconnected": "连接已断开",
   "Your instance profiles and device settings are available here.": "可在此管理实例配置和设备设置。",
   "The instance is unavailable.": "实例暂时不可用。",
+  "Choose an instance to connect.": "选择一个实例以连接。",
   "Loading the instance client.": "正在加载实例客户端。",
   "Retry connection": "重试连接",
   "Language": "语言",

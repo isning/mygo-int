@@ -65,7 +65,7 @@ export function mountLocalShell(ctx) {
         <p className={css.intro}>{t('Your instance profiles and device settings are available here.')}</p>
         <div className={shellCSS.status} role="status">
           <StateDot state={error ? 'error' : 'ongoing'} size={8} />
-          <span className={css.intro}>{authenticationRequired ? t('Sign in required') : error ? t('The instance is unavailable.') : t('Loading the instance client.')}</span>
+          <span className={css.intro}>{!hasInstanceRoute ? t('Choose an instance to connect.') : authenticationRequired ? t('Sign in required') : error ? t('The instance is unavailable.') : t('Loading the instance client.')}</span>
         </div>
         {hasInstanceRoute && error && (!authenticationRequired || restoreChecked) && <><p role="alert" className={`${authenticationRequired ? css.intro : css.error} ${shellCSS.error}`}>{authenticationRequired ? t('Open the private launch link provided by your instance to sign in.') : error}</p><div><Button variant="outline" onClick={() => location.reload()}>{t('Retry connection')}</Button></div></>}
         {authenticationRequired && restoreChecked && <form className={css.editor} onSubmit={event => {

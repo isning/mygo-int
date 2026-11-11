@@ -11,6 +11,7 @@ export default {
   "Disconnected": "Отключено",
   "Your instance profiles and device settings are available here.": "Здесь доступны профили экземпляров и настройки устройства.",
   "The instance is unavailable.": "Экземпляр недоступен.",
+  "Choose an instance to connect.": "Выберите экземпляр для подключения.",
   "Loading the instance client.": "Загрузка клиента экземпляра.",
   "Retry connection": "Повторить подключение",
   "Language": "Язык",
