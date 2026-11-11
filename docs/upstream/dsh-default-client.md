@@ -18,8 +18,8 @@ operations, including launcher-internal dlx, require the local environment first
 
 ```bash
 source scripts/dsh-test-env.sh
-DSH_CLIENT_PORT=4223 DSH_CLIENT_BIND=0.0.0.0 \
-DSH_CLIENT_PUBLIC_ORIGIN=http://100.97.207.47:4223 \
+DSH_CLIENT_PORT=4224 DSH_CLIENT_BIND=0.0.0.0 \
+DSH_CLIENT_PUBLIC_ORIGIN=http://100.97.207.47:4224 \
 node scripts/dsh-test-host.mjs start
 node scripts/dsh-test-browser.mjs check-default
 node scripts/dsh-test-host.mjs check-submit
@@ -38,8 +38,8 @@ Run it as:
 
 ```bash
 source scripts/dsh-test-env.sh
-DSH_CLIENT_PORT=4223 DSH_CLIENT_BIND=0.0.0.0 \
-DSH_CLIENT_PUBLIC_ORIGIN=http://100.97.207.47:4223 \
+DSH_CLIENT_PORT=4224 DSH_CLIENT_BIND=0.0.0.0 \
+DSH_CLIENT_PUBLIC_ORIGIN=http://100.97.207.47:4224 \
 node scripts/dsh-overlay-browser.mjs
 ```
 
@@ -59,8 +59,8 @@ node scripts/dsh-test-host.mjs stop
 node scripts/dsh-default-acceptance-prepare.mjs
 source scripts/dsh-test-env.sh
 MYGO_STARTUP_CONFIG=.scratch/host-actions/startup.json \
-DSH_CLIENT_PORT=4223 DSH_CLIENT_BIND=0.0.0.0 \
-DSH_CLIENT_PUBLIC_ORIGIN=http://100.97.207.47:4223 \
+DSH_CLIENT_PORT=4224 DSH_CLIENT_BIND=0.0.0.0 \
+DSH_CLIENT_PUBLIC_ORIGIN=http://100.97.207.47:4224 \
 node .scratch/host-actions/host.mjs start
 MYGO_EXPECT_UNIFIED_MANAGEMENT=1 node scripts/dsh-slot-override-browser.mjs
 node scripts/dsh-host-actions-browser.mjs
@@ -70,7 +70,7 @@ node .scratch/host-actions/host.mjs stop
 ```
 
 Restart the standard launcher afterward to retain the shipped default demo.
-Open `http://100.97.207.47:4223/`; initial access requires the original private
+Open `http://100.97.207.47:4224/`; initial access requires the original private
 launch entry. `node scripts/dsh-test-host.mjs open` opens an authenticated browser
 using a private profile; never print/copy the launch file into public logs.
 The ignored launch file and profiles stay workspace-owned and private.
