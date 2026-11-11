@@ -43,7 +43,7 @@ export function RuntimeDetails({ ctx, facts, modules, local = false }: {
   return <section className={css.detailSection} data-mygo-runtime-details="">
     <h4 className={css.sectionTitle}>Runtime details</h4>
     <dl className={css.facts}>
-      {factsRow('Instance', local ? 'This device' : ctx.mygoStartup.configuration.selectedInstance.id)}
+      {factsRow(local ? 'Location' : 'Instance', local ? 'This device' : ctx.mygoStartup.configuration.selectedInstance.id)}
       {!local && factsRow('Authentication view', ctx.mygoStartup.configuration.selectedInstance.authenticationViewId)}
       {factsRow('Module', modules.map(name => <code key={name}>{name}</code>))}
     </dl>
