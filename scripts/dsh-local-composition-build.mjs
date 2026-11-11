@@ -29,12 +29,12 @@ await build({
       if (importer === resolve(root, 'entries/dsh-startup/single-client.js') && source.startsWith('@deepseek-ai/')) {
         return require.resolve(source)
       }
-      if (['management-ui.tsx', 'unified-plugin-ui.tsx', 'unified-local-actions.tsx', 'unified-instance-actions.tsx', 'unified-host-actions.tsx'].some(name => importer?.startsWith(resolve(root, 'entries/dsh-startup/local', name))) && !source.startsWith('.')) {
+      if (['management-ui.tsx', 'unified-plugin-ui.tsx', 'unified-local-actions.tsx', 'unified-instance-actions.tsx', 'unified-host-actions.tsx', 'plugin-runtime-details.tsx'].some(name => importer?.startsWith(resolve(root, 'entries/dsh-startup/local', name))) && !source.startsWith('.')) {
         return require.resolve(source)
       }
     },
     async load(id) {
-      if (id.endsWith('?mygo-rows')) return (await readFile(id.slice(0, -'?mygo-rows'.length), 'utf8')) + '\nexport { RowsSection, RowDetail };'
+      if (id.endsWith('?mygo-rows')) return (await readFile(id.slice(0, -'?mygo-rows'.length), 'utf8')) + '\nexport { RowsSection, RowDetail, PackageCard };'
       if (id.endsWith('?mygo-panel')) return (await readFile(id.slice(0, -'?mygo-panel'.length), 'utf8')) + '\nexport { SettingsPanel };'
       if (id !== web + '/src/main.ts') return
       if (singleRoot) return `import { startSingleClient } from ${JSON.stringify(resolve(root, 'entries/dsh-startup/single-client.js'))};\nvoid startSingleClient();`

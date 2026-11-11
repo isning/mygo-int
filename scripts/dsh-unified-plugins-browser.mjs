@@ -57,7 +57,7 @@ try {
   await until(() => evaluate('document.readyState === "complete"'))
   assert.equal(await evaluate("fetch('/').then(r => r.status)"), 401)
   await send('Page.navigate', { url })
-  await until(() => evaluate("!!document.querySelector('[data-mygo-shared-client]')"))
+  await until(() => evaluate("!!document.querySelector('[data-mygo-local-plugin=marker]')"))
   await evaluate("[...document.querySelectorAll('button')].find(x => x.innerText === 'Continue')?.click()")
   await evaluate("[...document.querySelectorAll('button')].find(x => x.getAttribute('aria-label') === 'Open sidebar')?.click()")
   await until(() => evaluate("[...document.querySelectorAll('button,[role=button]')].some(x => x.innerText === 'Plugins')"))
@@ -68,6 +68,14 @@ try {
   await until(() => evaluate("!!document.querySelector('[data-plugin-panel] [data-plugin-package]')"))
   assert.equal(await evaluate("!!document.querySelector('[data-mygo-unified-plugins]')"), false, 'the custom replacement page is removed')
   assert.equal(await evaluate("!!document.querySelector('[data-plugin-toolbar]')"), true, 'original header and toolbar remain')
+  await until(() => evaluate("document.querySelectorAll('[data-plugin-item] [data-plugin-side=Client][data-active=true]').length === 4"))
+  assert.equal(await evaluate("[...document.querySelectorAll('[data-plugin-item]')].every(x=>x.querySelector('[data-plugin-side=Remote][data-active=true]') && x.querySelector('[data-plugin-side=Client][data-active=true]'))"),true,'all four builtin cards show actual active Remote and Client sides')
+  await evaluate("document.querySelector('[data-plugin-item=subagent] button').click()")
+  await until(() => evaluate("!!document.querySelector('[data-plugin-item-detail=subagent] [data-mygo-runtime-details]')"))
+  assert.equal(await evaluate("document.querySelector('[data-plugin-item-detail=subagent] [data-mygo-runtime-details]').innerText.includes('@deepseek-ai/dsh-client-ui-settings-subagent')"),true,'builtin details identify the actual module')
+  assert.ok(await evaluate("document.querySelectorAll('[data-plugin-item-detail=subagent] input').length") > 0,'original builtin configuration form is retained')
+  await writeFile(scratch+'/plugins-builtin-details.png',Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'))
+  await evaluate("document.querySelector('[data-plugin-item-detail=subagent] button').click()")
   const tab = async label => {
     await evaluate(`[...document.querySelectorAll('[role=tab]')].find(x => x.innerText === ${JSON.stringify(label)}).click()`)
     await pause(200)
@@ -78,11 +86,13 @@ try {
   const beforeInventory = await rpc('pluginInventory/list')
   mutations.length = 0
   await tab('Local')
-  await until(() => evaluate("!!document.querySelector('[data-mygo-plugin-source=LOCAL] [data-plugin-row=local-note]')"))
-  const localCount = await evaluate("document.querySelectorAll('[data-mygo-plugin-source=LOCAL] [data-plugin-row]').length")
-  const note = '[data-plugin-row="local-note"]'
+  await until(() => evaluate("!!document.querySelector('[data-mygo-plugin-source=LOCAL] [data-plugin-package=\"./plugins/marker.js\"]')"))
+  const localCount = await evaluate("document.querySelectorAll('[data-mygo-plugin-source=LOCAL] [data-plugin-package]').length")
+  const note = '[data-plugin-package="./plugins/marker.js"]'
+  assert.equal(await evaluate("document.querySelectorAll('[data-local-plugin-group=basic] [data-plugin-package]').length"),5,'builtin Local plugins use the original group/card layout')
+  assert.equal(await evaluate("document.querySelectorAll('[data-local-plugin-group=extensions] [data-plugin-package]').length"),1,'experimental Local contribution has its own group')
   const originalLabel = await evaluate("document.querySelector('[data-mygo-local-plugin=marker]').textContent")
-  assert.equal(await evaluate("document.querySelector('[data-plugin-row=client-composition] [role=switch]').disabled"), true, 'protected original row switches are disabled')
+  assert.equal(await evaluate("document.querySelector('[data-plugin-package=\"./plugins/client-composition.js\"] [role=switch]').disabled"), true, 'protected original row switches are disabled')
   await evaluate(`document.querySelector('${note} [role=switch]').click()`)
   await until(() => evaluate("!document.querySelector('[data-mygo-local-plugin=marker]')"))
   await evaluate(`document.querySelector('${note} [role=switch]').click()`)
@@ -110,21 +120,35 @@ try {
   await pause(300)
   const fixture = '[data-plugin-package="@deepseek-ai/dsh-experimental-plugin-market-bundle"] [role=switch]'
   const initiallyEnabled = await evaluate(`document.querySelector('${fixture}').getAttribute('aria-checked') === 'true'`)
-  if (!initiallyEnabled) {
-    restoreBadgeFixture = () => evaluate(`(() => { const el=document.querySelector('${fixture}'); if(el?.getAttribute('aria-checked')==='true') el.click() })()`)
-    await evaluate(`document.querySelector('${fixture}').click()`)
+  {
+    restoreBadgeFixture = async () => {
+      const result = await evaluate("fetch('/api/pluginManager/setBundleEnabled',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({type:'client-request',rpcId:'restore-fixture-'+Date.now(),method:'pluginManager/setBundleEnabled',payload:{args:{name:'@deepseek-ai/dsh-experimental-plugin-market-bundle',enabled:false}}})}).then(r=>r.json()).then(r=>r.result)")
+      assert.equal(result.ok,true,'original Remote restores the fixture even from its detail page')
+      assert.equal(result.value.application,'applied')
+    }
+    if (!initiallyEnabled) await evaluate(`document.querySelector('${fixture}').click()`)
   }
   await until(() => evaluate("!!document.querySelector('[data-plugin-side=Client][data-active=true]')"))
   const markers = await evaluate("[...document.querySelectorAll('[data-plugin-package]')].map(x=>({name:x.dataset.pluginPackage,sides:[...x.querySelectorAll('[data-plugin-side]')].map(y=>({side:y.dataset.pluginSide,active:y.dataset.active}))}))")
   assert.equal(new Set(markers.map(x=>x.name)).size,markers.length,'client matching never adds duplicate cards')
   assert.ok(markers.some(x=>x.sides.some(y=>y.side==='Client'&&y.active==='true')),'matching actual active client entries gives a green Client marker')
+  await evaluate("document.querySelector('[data-plugin-package=\"@deepseek-ai/dsh-experimental-plugin-market-bundle\"] button:not([role=switch])').click()")
+  await until(() => evaluate("!!document.querySelector('[data-plugin-detail] [data-plugin-rows]')"))
+  await evaluate("[...document.querySelectorAll('[data-plugin-detail] [data-plugin-row]')].find(x=>x.innerText.includes('@deepseek-ai/dsh-client-ui-plugin-market')).querySelector('button:not([role=switch])').click()")
+  await until(() => evaluate("!!document.querySelector('[data-plugin-row-detail] [data-mygo-runtime-details]')"))
+  const componentDetails = await evaluate("document.querySelector('[data-plugin-row-detail] [data-mygo-runtime-details]').innerText")
+  assert.ok(componentDetails.includes('@deepseek-ai/dsh-client-ui-plugin-market') && componentDetails.includes('Remote') && componentDetails.includes('Client') && componentDetails.includes('active'),'Components open real module, Entry and runtime state information')
+  await writeFile(scratch+'/plugins-component-details.png',Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'))
+  await evaluate("document.querySelector('[data-plugin-row-detail] button').click()")
+  await until(() => evaluate("!!document.querySelector('[data-plugin-detail]')"))
+  await evaluate("document.querySelector('[data-plugin-detail] button').click()")
   await writeFile(scratch+'/plugins-original-desktop.png',Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'))
   await send('Emulation.setDeviceMetricsOverride', {width:390,height:844,deviceScaleFactor:1,mobile:true})
   await pause(400)
   assert.equal(await evaluate('document.documentElement.scrollWidth <= window.innerWidth'),true,'original page fits a narrow viewport')
   await writeFile(scratch+'/plugins-original-mobile.png',Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'))
   if (restoreBadgeFixture) { await restoreBadgeFixture(); await until(() => evaluate(`document.querySelector('${fixture}').getAttribute('aria-checked') === 'false'`)); restoreBadgeFixture=undefined }
-  await writeFile(scratch+'/original-plugins-validation.json',JSON.stringify({ok:true,localCount,markers,originalMain:true,originalRowDetail:true,localToggle:true,localConfig:true,hostMutations:mutations,narrowViewport:true}),{mode:0o600})
+  await writeFile(scratch+'/original-plugins-validation.json',JSON.stringify({ok:true,localCount,markers,builtinDetails:true,componentDetails:true,localGroups:true,originalMain:true,originalRowDetail:true,localToggle:true,localConfig:true,hostMutations:mutations,narrowViewport:true}),{mode:0o600})
   console.log('Original Plugins page, native Local tab and Remote/Client badges, local lifecycle/configuration and narrow viewport passed')
   await Promise.race([send('Browser.close'), pause(5000)])
 } catch (error) {

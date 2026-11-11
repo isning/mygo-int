@@ -1,11 +1,26 @@
 // Small decoration for the pinned original card DOM: no replacement page/list.
 // This pin has a detail badge Slot, but no card badge Slot. Keep the adapter
-// scoped to its existing data-plugin-package anchor and dispose every addition.
+// scoped to its existing card anchors and dispose every addition.
 import type { Context } from '@deepseek-ai/cordis'
 import type { BundleInfo, PluginInfo } from '@deepseek-ai/dsh-api-remotes/client'
 
+// Explicit identities from the four pinned plugins.item providers; these cards
+// are settings contributions, not bundles, so they have no bundle row table.
+export const builtinModules: Record<string, readonly string[]> = {
+  subagent: ['@deepseek-ai/dsh-client-ui-settings-subagent'],
+  'web-search': ['@deepseek-ai/dsh-client-ui-settings-web-search'],
+  'agent-loop': ['@deepseek-ai/dsh-client-ui-settings-agent-loop'],
+  shell: ['@deepseek-ai/dsh-client-ui-settings-shell'],
+}
+export type PluginRuntimeFacts = {
+  getSnapshot(): { bundles: readonly BundleInfo[]; plugins: readonly PluginInfo[] }
+  subscribe(listener: () => void): () => void
+}
+
 export function installPluginSideBadges(ctx: Context, ownsLocalEntry: (entry: unknown) => boolean) {
   let bundles: BundleInfo[] = [], plugins: PluginInfo[] = []
+  let snapshot = { bundles, plugins }
+  const listeners = new Set<() => void>()
   let live = true, revision = 0, scheduled = false
   const mounts = new Map<Element, HTMLElement>()
   const normalize = (name: string) => name.replace(/\/client$/, '')
@@ -27,14 +42,15 @@ export function installPluginSideBadges(ctx: Context, ownsLocalEntry: (entry: un
     if (!live) return
     for (const [card, mount] of mounts) if (!card.isConnected) { mount.remove(); mounts.delete(card) }
     const clientEntries = [...ctx.loader.entries()].filter(entry => !ownsLocalEntry(entry))
-    for (const card of document.querySelectorAll('[data-plugin-panel] [data-plugin-package]')) {
+    for (const card of document.querySelectorAll('[data-plugin-panel] [data-plugin-package], [data-plugin-panel] [data-plugin-item]')) {
       const bundle = bundles.find(item => item.name === card.getAttribute('data-plugin-package'))
       const title = card.querySelector('button')?.parentElement
-      if (!bundle || !title) continue
-      const modules = new Set(bundle.rows.map(row => normalize(row.moduleName)))
+      const builtin = builtinModules[card.getAttribute('data-plugin-item') ?? '']
+      if ((!bundle && !builtin) || !title || !plugins.length) continue
+      const modules = new Set(builtin ?? bundle!.rows.map(row => normalize(row.moduleName)))
       const remote = plugins.filter(entry => modules.has(normalize(entry.moduleName)))
       const client = clientEntries.filter(entry => modules.has(normalize(entry.options.name)))
-      const remoteActive = ctx.connection.state.getSnapshot() === 'connected' && bundle.enabled && remote.length > 0 && remote.every(entry => entry.enabled && entry.fiberPhase === 'active')
+      const remoteActive = ctx.connection.state.getSnapshot() === 'connected' && (bundle?.enabled ?? true) && remote.length > 0 && remote.every(entry => entry.enabled && entry.fiberPhase === 'active')
       const clientActive = client.length > 0 && client.every(entry => !entry.disabled && entry.fiber?.state === 2)
       const clientState = clientActive ? '已加载' : client.some(entry => entry.fiber?.state === 3) ? '加载失败' : '未就绪'
       const signature = JSON.stringify([remoteActive, client.length > 0, clientActive, clientState])
@@ -63,6 +79,8 @@ export function installPluginSideBadges(ctx: Context, ownsLocalEntry: (entry: un
       plugins = bundleReply.ok && pluginReply.ok ? pluginReply.value : []
     } catch { if (current === revision) { bundles = []; plugins = [] } }
     if (!live || current !== revision) return
+    snapshot = { bundles, plugins }
+    for (const listener of listeners) listener()
     // Never leave a stale green state after a denied or failed read.
     if (!bundles.length) { for (const mount of mounts.values()) mount.remove(); mounts.clear() }
     schedule()
@@ -76,6 +94,7 @@ export function installPluginSideBadges(ctx: Context, ownsLocalEntry: (entry: un
     const changed = ctx.remote.$on('plugin-manager/changed', () => { void refresh() })
     const reset = ctx.on('connection/reset', () => { void refresh() })
     void refresh()
-    return () => { live = false; revision++; observer.disconnect(); status(); connection(); manifest(); changed(); reset(); for (const mount of mounts.values()) mount.remove(); mounts.clear() }
+    return () => { live = false; revision++; observer.disconnect(); status(); connection(); manifest(); changed(); reset(); for (const mount of mounts.values()) mount.remove(); mounts.clear(); listeners.clear() }
   })
+  return { getSnapshot: () => snapshot, subscribe: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener) } } } satisfies PluginRuntimeFacts
 }

@@ -43,10 +43,11 @@ export async function startSingleClient() {
         configuration.entries.some(options => options.id === entry.options.id))
       const localModulesShared = (await Promise.all(localEntries.filter(entry => !entry.disabled).map(async entry =>
         await scope.modules.import(entry.options.name) === entry.moduleNamespace))).every(Boolean)
-      scope.slots.inject('shell.bottom', () => scope.slots.register({ name: 'shell.bottom' }, () => {
+      scope.slots.inject('shell.overlay', () => scope.slots.register({ name: 'shell.overlay', id: 'mygo-shared-runtime-diagnostic' }, () => {
         const [label] = React.useState(scope.mygoMigration.label)
         const entries = [...scope.loader.entries()]
         return React.createElement('aside', {
+          hidden: true,
           'data-mygo-shared-client': '',
           'data-local-active': String(localEntries.length > 0 && localEntries.every(entry => entry.disabled || entry.fiber?.state === 2)),
           'data-local-entry': localEntries.map(entry => entry.options.name).join(','),
