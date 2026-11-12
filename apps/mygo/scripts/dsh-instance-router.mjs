@@ -5,11 +5,12 @@ import { MAX_INSTANCE_PROFILES, instanceAccessKey, instanceRouteKey, normalizeCo
 
 const digest = value => createHash('sha256').update(value).digest('hex')
 
-export function createInstanceRouter({ publicOrigins = [], profiles = [], onRegister, credentials = { version: 2, entries: {} }, onCredentials }) {
+export function createInstanceRouter({ publicOrigins = [], profiles = [], onRegister, credentials = { entries: {} }, onCredentials }) {
   const trusted = createCarrierTrust({ publicOrigins })
   const routes = new Map()
   const current = new Map()
-  if (credentials?.version !== 2 || !credentials.entries || typeof credentials.entries !== 'object' || Array.isArray(credentials.entries)) throw Error('Invalid instance credentials')
+  if (!credentials?.entries || Object.keys(credentials).some(key => key !== 'entries')
+    || typeof credentials.entries !== 'object' || Array.isArray(credentials.entries)) throw Error('Invalid instance credentials')
   for (const [credentialId, value] of Object.entries(credentials.entries)) {
     if (!/^[a-f0-9]{64}$/.test(credentialId) || !value || typeof value !== 'object' || Array.isArray(value)
       || typeof value.token !== 'string' || !value.token || value.token.length > 4096
@@ -48,7 +49,7 @@ export function createInstanceRouter({ publicOrigins = [], profiles = [], onRegi
       async onAccepted(cookie) {
         const entries = structuredClone(savedCredentials.entries)
         entries[route.credentialId] = { address: route.profile.address, token, cookie }
-        savedCredentials = { version: 2, entries }
+        savedCredentials = { entries }
         route.credential = entries[route.credentialId]
         await onCredentials?.(savedCredentials)
       },
@@ -88,7 +89,7 @@ export function createInstanceRouter({ publicOrigins = [], profiles = [], onRegi
         }
         const entries = structuredClone(savedCredentials.entries)
         delete entries[digest(key)]
-        savedCredentials = { version: 2, entries }
+        savedCredentials = { entries }
         await onCredentials?.(savedCredentials)
         await onRegister?.([...routes.values()].map(route => route.profile))
         res.writeHead(204, { 'cache-control': 'no-store' }).end()

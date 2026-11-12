@@ -133,7 +133,7 @@ test('mygo stores a launch token per instance and restores the reverse proxy aft
   })
   const upstream = await listen(host)
   const profile = { id: 'saved', name: 'Saved', address: upstream, authenticationViewId: 'owner' }
-  let savedCredentials = { version: 2, entries: {} }
+  let savedCredentials = { entries: {} }
   const start = async () => {
     const router = createInstanceRouter({ profiles: [profile], credentials: savedCredentials, onCredentials(value) { savedCredentials = structuredClone(value) } })
     const server = createServer(async (req, res) => {

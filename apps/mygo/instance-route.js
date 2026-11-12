@@ -39,7 +39,7 @@ export function installInstanceRoute() {
 }
 
 export function partitionRemoteStorage(storage, identity) {
-  const prefix = 'mygo.remote.v1:' + JSON.stringify(identity) + ':'
+  const prefix = 'mygo.remote:' + JSON.stringify(identity) + ':'
   const keys = () => Array.from({ length: storage.length }, (_, index) => storage.key(index)).filter(key => key?.startsWith(prefix))
   const methods = {
     get length() { return keys().length },

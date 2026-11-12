@@ -1,5 +1,4 @@
 {
-  "schemaVersion": 1,
   "bootstrap": [
     { "id": "dsh-instance", "name": "./plugins/dsh-instance.js" },
     { "id": "client-i18n", "name": "./plugins/client-i18n.js" },

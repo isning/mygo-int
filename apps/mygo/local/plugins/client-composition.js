@@ -15,7 +15,7 @@ export async function apply(ctx) {
     const response = await fetch('/mygo-local/client-config', { cache: 'no-store' })
     if (!response.ok) throw Error((await response.text()).trim() || 'Unable to load the MyGO!!!! plugin configuration')
     const saved = await response.json()
-    if (saved.version !== 1 || !Number.isSafeInteger(saved.revision) || saved.revision < 0
+    if (!Number.isSafeInteger(saved.revision) || saved.revision < 0
       || saved.base !== null && typeof saved.base !== 'string' || !saved.overrides
       || typeof saved.overrides !== 'object' || Array.isArray(saved.overrides)) throw Error('Invalid MyGO!!!! client configuration')
     if (saved.base !== null && saved.base !== base) throw Error('Operator composition changed; reset the saved MyGO!!!! plugin configuration')
@@ -33,7 +33,7 @@ export async function apply(ctx) {
     if (!response.ok) throw Error(response.status === 409 ? 'Mygo plugin configuration changed; reload before saving'
       : (await response.text()).trim() || 'Unable to save the MyGO!!!! plugin configuration')
     const saved = await response.json()
-    if (saved.version !== 1 || saved.revision !== revision + 1) throw Error('Invalid MyGO!!!! plugin configuration response')
+    if (saved.revision !== revision + 1) throw Error('Invalid MyGO!!!! plugin configuration response')
     revision = saved.revision
   }
   const desiredEntry = entry => ({ ...clone(entry), ...clone(overrides[entry.id] || {}) })

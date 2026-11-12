@@ -2,8 +2,9 @@ import { readFile, realpath } from 'node:fs/promises'
 import { resolve, sep } from 'node:path'
 
 export function validateLocalStartup(value) {
-  if (value?.schemaVersion !== 1 || !Array.isArray(value.entries) || value.entries.length > 64) {
-    throw Error('Expected local startup schemaVersion 1 and at most 64 entries')
+  if (!value || Object.keys(value).some(key => !['bootstrap', 'entries', 'selectedInstance'].includes(key))
+    || !Array.isArray(value.entries) || value.entries.length > 64) {
+    throw Error('Expected at most 64 local startup entries')
   }
   const selected = value.selectedInstance
   if (selected !== undefined && !['id', 'authenticationViewId'].every(key =>

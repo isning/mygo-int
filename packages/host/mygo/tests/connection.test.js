@@ -77,7 +77,7 @@ test('complete table keeps all row kinds, duplicates, order and admitted Peer', 
   assert.equal(response.headers.get('cache-control'), 'no-store')
   assert.equal(response.headers.get('content-type'), 'application/json; charset=utf-8')
   assert.equal(response.headers.get('access-control-allow-origin'), null)
-  assert.deepEqual(await response.json(), { schemaVersion: 1, injections: rows })
+  assert.deepEqual(await response.json(), { injections: rows })
   assert.equal(f.collectedPeers.length, 1)
 })
 

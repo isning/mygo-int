@@ -33,7 +33,7 @@ export function installConnection(ctx: Context): void {
       try {
         const injections = ctx.webServer.collectIndexInjections(admission.peer)
         assertJsonData(injections)
-        body = JSON.stringify({ schemaVersion: 1, injections })
+        body = JSON.stringify({ injections })
       } catch {
         res.statusCode = 500
         res.end()

@@ -54,11 +54,12 @@ export async function runMygo(command, options = {}) {
     const clientConfigFile = resolve(state, 'client-config.json')
     let profiles = []
     try { profiles = JSON.parse(await readFile(routeFile, 'utf8')) } catch (error) { if (error.code !== 'ENOENT') throw error }
-    let credentials = { version: 2, entries: {} }
+    let credentials = { entries: {} }
     try { credentials = JSON.parse(await readFile(credentialFile, 'utf8')) } catch (error) { if (error.code !== 'ENOENT') throw error }
-    let clientConfig = { version: 1, revision: 0, base: null, overrides: {} }
+    let clientConfig = { revision: 0, base: null, overrides: {} }
     try { clientConfig = JSON.parse(await readFile(clientConfigFile, 'utf8')) } catch (error) { if (error.code !== 'ENOENT') throw error }
-    if (clientConfig?.version !== 1 || !Number.isSafeInteger(clientConfig.revision) || clientConfig.revision < 0
+    if (!clientConfig || Object.keys(clientConfig).some(key => !['revision', 'base', 'overrides'].includes(key))
+      || !Number.isSafeInteger(clientConfig.revision) || clientConfig.revision < 0
       || clientConfig.base !== null && typeof clientConfig.base !== 'string' || !clientConfig.overrides
       || typeof clientConfig.overrides !== 'object' || Array.isArray(clientConfig.overrides)) throw Error('Invalid MyGO!!!! client configuration')
     let routeWrite = Promise.resolve()
@@ -121,7 +122,7 @@ export async function runMygo(command, options = {}) {
             response.writeHead(value?.expectedRevision !== clientConfig.revision ? 409 : 400, { 'cache-control': 'no-store' }).end()
             return
           }
-          clientConfig = { version: 1, revision: clientConfig.revision + 1, base: value.base, overrides: value.overrides }
+          clientConfig = { revision: clientConfig.revision + 1, base: value.base, overrides: value.overrides }
           await writePrivateJSON(clientConfigFile, clientConfig)
           response.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' }).end(JSON.stringify(clientConfig))
           return

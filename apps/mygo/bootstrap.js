@@ -13,7 +13,7 @@ try {
     throw Object.assign(new Error(detail || fallback), { status: response.status })
   }
   const payload = await response.json()
-  if (payload.schemaVersion !== 1 || !Array.isArray(payload.injections)) {
+  if (!Array.isArray(payload.injections)) {
     throw new Error('MyGO!!!! boot: unsupported index injections response')
   }
   const graphs = payload.injections.filter(row => row.kind === 'global' && row.name === '__DSH_BOOT__')

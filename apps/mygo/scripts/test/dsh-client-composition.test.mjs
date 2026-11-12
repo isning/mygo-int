@@ -8,12 +8,12 @@ function fixture(t) {
     id: 'configurable', disabled: false, options: structuredClone(original),
     fiber: { state: 2, inject: {}, await: async () => {} }, parent: { ctx: { fiber: {} } },
   }
-  let saved = { version: 1, revision: 0, base: null, overrides: {} }, service
+  let saved = { revision: 0, base: null, overrides: {} }, service
   t.mock.method(globalThis, 'fetch', async (_url, options = {}) => {
     if (!options.method) return { ok: true, json: async () => structuredClone(saved) }
     const request = JSON.parse(options.body)
     assert.equal(request.expectedRevision, saved.revision)
-    saved = { version: 1, revision: saved.revision + 1, base: JSON.stringify([original]), overrides: request.overrides }
+    saved = { revision: saved.revision + 1, base: JSON.stringify([original]), overrides: request.overrides }
     return { ok: true, json: async () => structuredClone(saved) }
   })
   const listeners = new Map()
