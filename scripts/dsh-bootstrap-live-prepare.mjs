@@ -4,7 +4,7 @@ import { resolve, join } from 'node:path'
 
 const root = process.cwd()
 const upstream = resolve('.scratch/upstream/deepseek-harness')
-const anchor = resolve('.scratch/status-live/anchor')
+const anchor = resolve('.scratch/bootstrap-live/anchor')
 mkdirSync(anchor, { recursive: true })
 cpSync(join(upstream, 'apps/cli/lib'), join(anchor, 'lib'), { recursive: true })
 cpSync(join(upstream, 'apps/cli/package.json'), join(anchor, 'package.json'))
@@ -21,21 +21,17 @@ function linkPackages(source, target) {
 }
 
 linkPackages(join(upstream, 'apps/cli/node_modules'), join(anchor, 'node_modules'))
-for (const [name, path] of [
-  ['dsh-client-connection', 'packages/client/connection'],
-  ['dsh-client-modules', 'packages/client/modules'],
-]) {
+for (const [name, path] of [['dsh-client-connection', 'packages/client/connection']]) {
   const target = join(anchor, 'node_modules/@deepseek-ai', name)
   if (!existsSync(target)) symlinkSync(join(upstream, path), target)
 }
 mkdirSync(join(anchor, 'node_modules/@mygo'), { recursive: true })
-cpSync(join(root, 'packages/dsh-host-status'), join(anchor, 'node_modules/@mygo/dsh-host-status'), { recursive: true })
+cpSync(join(root, 'packages/dsh-host-bootstrap'), join(anchor, 'node_modules/@mygo/dsh-host-bootstrap'), { recursive: true })
 
 const manifestPath = join(anchor, 'package.json')
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
 Object.assign(manifest.dependencies, {
-  '@mygo/dsh-host-status': '0.1.0',
+  '@mygo/dsh-host-bootstrap': '0.1.0',
   '@deepseek-ai/dsh-client-connection': '0.2.2-rc.1',
-  '@deepseek-ai/dsh-client-modules': '0.2.2-rc.1',
 })
 writeFileSync(manifestPath, JSON.stringify(manifest, null, 2))

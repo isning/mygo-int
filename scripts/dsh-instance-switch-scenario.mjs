@@ -72,7 +72,7 @@ export async function verifyInstanceSwitch({ send, evaluate, until, scratch, lau
   const privateLinkB = new URL(await evaluate('location.href'))
   privateLinkB.searchParams.set('token', tokenB)
   await writeFile(scratch + '/second/client-launch-url', privateLinkB.href, { mode: 0o600 })
-  assert.equal(await evaluate("fetch('/mygo/status').then(r=>r.status)"), 401, 'A cookie grants no access to B')
+  assert.equal(await evaluate("fetch('/mygo/index-injections').then(r=>r.status)"), 401, 'A cookie grants no access to B')
   const signIn = async token => {
     await evaluate(`(() => { const input=document.querySelector('input[type=password]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,${JSON.stringify(token)}); input.dispatchEvent(new Event('input',{bubbles:true})); })()`)
     await evaluate("document.querySelector('[data-mygo-local-shell] form button[type=submit]').click()")
@@ -86,7 +86,7 @@ export async function verifyInstanceSwitch({ send, evaluate, until, scratch, lau
   await send('Page.navigate', { url: await evaluate('location.href') })
   await ready()
   assert.equal(await evaluate("!!document.querySelector('[data-mygo-local-shell] input[type=password]')"), false, 'saved instance credential restores the proxy without another prompt')
-  assert.equal(await evaluate("fetch('/mygo/status').then(r=>r.status)"), 200, 'the restored reverse-proxy credential is admitted upstream')
+  assert.equal(await evaluate("fetch('/mygo/index-injections').then(r=>r.status)"), 200, 'the restored reverse-proxy credential is admitted upstream')
   const config = await evaluate("fetch('/mygo-local/startup.json').then(r=>r.json())")
   assert.equal(config.selectedInstance.address, secondaryHost.origin)
   assert.equal(config.selectedInstance.id, 'second-dsh')
@@ -119,7 +119,7 @@ export async function verifyInstanceSwitch({ send, evaluate, until, scratch, lau
   const sessionsA = JSON.stringify(await list())
   assert.ok(sessionsA.includes(primaryHost.sessionId) && !sessionsA.includes(secondaryHost.sessionId))
   assert.equal(await evaluate("localStorage.getItem('instance-switch-proof')"), 'A', 'A cache survives the return')
-  assert.equal(await evaluate("fetch('/mygo/status').then(r=>r.status)"), 200, 'A login survived B login')
+  assert.equal(await evaluate("fetch('/mygo/index-injections').then(r=>r.status)"), 200, 'A login survived B login')
   assert.equal(await evaluate("!!document.querySelector('style[data-mygo-touch-feedback]')"), false)
 
   await instances()
@@ -130,7 +130,7 @@ export async function verifyInstanceSwitch({ send, evaluate, until, scratch, lau
   await instances()
   await connect('local-test-dsh')
   await ready()
-  assert.equal(await evaluate("fetch('/mygo/status').then(r=>r.status)"), 200, 'local settings recover from an unavailable target')
+  assert.equal(await evaluate("fetch('/mygo/index-injections').then(r=>r.status)"), 200, 'local settings recover from an unavailable target')
   await pause(250)
   await writeFile(scratch + '/instance-switch-validation.json', JSON.stringify({ ok: true, originalHosts: 2, realSessionIsolation: true,
     credentialIsolation: true, retainedLogin: true, proxyCredentialRestore: true, storageIsolation: true, localPreferencesRetained: true, settingsConnect: true,

@@ -19,12 +19,12 @@ module identities are protected before reconciliation; conflicting graphs fail
 with diagnostics while unrelated entries remain intact. Package identity,
 concrete Entry identity and owner identity serve different purposes.
 
-Unified presentation does not unify mutation authority. LOCAL actions use the
-device composition adapter; INSTANCE CLIENT actions expose the original managed
-roster's supported lifecycle; HOST actions explicitly invoke the connected
-Host's original controller and permissions. Local enablement and configuration
-do not implicitly issue Host management writes. Trusted plugin code retains its
-declared RPC behavior; ownership attribution is not a security sandbox.
+Unified presentation does not unify mutation authority. The original remote
+package card remains authoritative for its Host-managed Remote and Client sides;
+small badges expose their runtime presence without duplicating rows. The Local tab
+uses the device composition adapter. Local enablement and configuration do not
+implicitly issue Host management writes. Trusted plugin code retains its declared
+RPC behavior; ownership attribution is not a security sandbox.
 
 The persistence, runtime-first commit and rollback decisions in
 [ADR 0003](0003-local-management-and-device-startup-overlays.md) remain in force.

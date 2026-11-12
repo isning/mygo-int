@@ -80,11 +80,9 @@ export async function apply(ctx) {
     } finally { busy = false; notify() }
   }
   const service = {
-    desiredEntry, rows, change, subscribe: listener => { listeners.add(listener); return () => listeners.delete(listener) },
+    rows, change, subscribe: listener => { listeners.add(listener); return () => listeners.delete(listener) },
     status: () => ({ revision, diagnostic, busy }),
-    reportRecovery(id) { diagnostic = `Saved startup for ${id} failed; operator configuration is running instead. Edit the desired config or reset the mygo plugin configuration.`; notify() },
     async reset() { await persist({}); location.reload() },
-    async reload() { location.reload() },
   }
   ctx.provide('clientComposition', service)
   ctx.on('mygo/startup-entry', async (entry, next) => desiredEntry(await next()))
@@ -94,7 +92,10 @@ export async function apply(ctx) {
     if (!original) return
     await ctx.loader.update(entry.id, { config: original.config ?? {}, disabled: Boolean(original.disabled) })
     await ctx.loader.await()
-    if (original.disabled || entry.fiber?.state === boot.FiberState.ACTIVE) service.reportRecovery(entry.id)
+    if (original.disabled || entry.fiber?.state === boot.FiberState.ACTIVE) {
+      diagnostic = `Saved startup for ${entry.id} failed; operator configuration is running instead. Edit the desired config or reset the mygo plugin configuration.`
+      notify()
+    }
   })
   ctx.on('internal/status', fiber => {
     if (!fiber.entry || !boot.ownsEntry(fiber.entry)) return

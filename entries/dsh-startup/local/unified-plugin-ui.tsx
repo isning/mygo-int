@@ -131,11 +131,7 @@ export function register(ctx: ClientContext) {
   // Contributions use those declarations rather than replacing the page or
   // duplicating its controller, navigation state, header, CSS or dialogs.
   ctx.slots.inject('plugins.tab', function* () {
-    yield ctx.slots.register({ name: 'plugins.tab', id: 'mygo-local', label: () => ctx.mygoLocale.text('Local'), order: -20, locale: 'pluginManager',
-      children: {
-        'plugins.bundle.config': { kind: 'keyed', scope: 'root' },
-        'plugins.row.config': { kind: 'keyed', scope: 'root' },
-      },
-    }, ({ t, renderSlot }) => <LocalPlugins ctx={ctx} t={t} facts={facts} renderConfiguration={renderSlot} />)
+    yield ctx.slots.register({ name: 'plugins.tab', id: 'mygo-local', label: () => ctx.mygoLocale.text('Local'), order: -20, locale: 'pluginManager' },
+      ({ t, renderSlot }) => <LocalPlugins ctx={ctx} t={t} facts={facts} renderConfiguration={renderSlot} />)
   })
 }

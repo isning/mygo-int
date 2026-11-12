@@ -109,7 +109,9 @@ if (command === 'serve') {
           if (size > 1024 * 1024) { response.writeHead(413).end(); return }
           body += chunk
         }
-        const value = JSON.parse(body)
+        let value
+        try { value = JSON.parse(body) }
+        catch { response.writeHead(400, { 'cache-control': 'no-store' }).end(); return }
         if (!value || Object.keys(value).some(key => !['expectedRevision', 'base', 'overrides'].includes(key))
           || value.expectedRevision !== clientConfig.revision || typeof value.base !== 'string' || value.base.length > 256 * 1024
           || !value.overrides || typeof value.overrides !== 'object' || Array.isArray(value.overrides)) {
@@ -170,8 +172,16 @@ if (command === 'serve') {
       }
       response.writeHead(200, { 'Content-Type': types[extension] ?? 'application/octet-stream', 'Cache-Control': 'no-store' })
       response.end(request.method === 'HEAD' ? undefined : data)
-    } catch {
-      response.writeHead(404).end('Not found')
+    } catch (error) {
+      if (response.headersSent) { response.destroy(error); return }
+      if (error?.code === 'ENOENT' || error?.code === 'ENOTDIR') {
+        response.writeHead(404).end('Not found')
+      } else if (error instanceof URIError) {
+        response.writeHead(400).end('Invalid request path')
+      } else {
+        console.error('Client request failed', error)
+        response.writeHead(500).end('Client request failed')
+      }
     }
   })
   if (router) server.on('upgrade', (request, socket, head) => {

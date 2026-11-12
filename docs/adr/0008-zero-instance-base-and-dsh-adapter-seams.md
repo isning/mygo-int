@@ -23,7 +23,7 @@ The DSH integration stays at three explicit seams:
 2. The mygo instance router supplies HTTP, WebSocket and credential carriage for
    an explicit DSH route while the original Host performs admission and Remote
    authorization.
-3. `dsh-host-status` supplies the missing authenticated boot-manifest endpoint as
+3. `dsh-host-bootstrap` supplies the missing authenticated boot-manifest endpoint as
    a thin Host plugin.
 
 The pinned DSH checkout remains byte-pristine. mygo uses the original Web build
@@ -32,6 +32,12 @@ patch the checkout. The original Plugins page owns its tab behaviour unchanged.
 The remaining build adapter only exposes pinned presentation functions that DSH
 does not export. This compatibility debt must stay isolated and pin-checked until
 DSH exports those interfaces; it must not spread into other DSH packages.
+
+The Remote/Client dots are a second pinned presentation adapter. This DSH revision
+has no card-badge Slot, so the local plugin observes the original card DOM and adds
+only those two indicators. Its selectors are compatibility debt, remain isolated in
+`plugin-side-badges.ts`, and must be replaced by a Slot contribution when upstream
+exposes one.
 
 ADR 0009 removes the legacy two-root fixtures, their selectable build path and
 their historical browser scenarios.

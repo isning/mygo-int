@@ -20,7 +20,7 @@ const hostPort=Number(process.env.DSH_TEST_HOST_PORT??40569);
 if(!Number.isInteger(hostPort)||hostPort<1024||hostPort>65535)throw Error('Invalid DSH_TEST_HOST_PORT');
 const localClientUrl='http://127.0.0.1:'+clientPort+'/';
 const clientUrl=process.env.DSH_CLIENT_PUBLIC_ORIGIN ? process.env.DSH_CLIENT_PUBLIC_ORIGIN+'/' : localClientUrl;
-let boot;try{boot=await runProfile({environment,profile:'web',patchFiles:[root+'/packages/dsh-host-status/host.patch.yml',...model.patchFiles],args:['--host','127.0.0.1','--port',String(hostPort),'--no-open',...process.env.DSH_CLIENT_PUBLIC_ORIGIN?['--trusted-host',new URL(process.env.DSH_CLIENT_PUBLIC_ORIGIN).host]:[]]});}catch(e){await model.close();throw e;}
+let boot;try{boot=await runProfile({environment,profile:'web',patchFiles:[root+'/packages/dsh-host-bootstrap/host.patch.yml',...model.patchFiles],args:['--host','127.0.0.1','--port',String(hostPort),'--no-open',...process.env.DSH_CLIENT_PUBLIC_ORIGIN?['--trusted-host',new URL(process.env.DSH_CLIENT_PUBLIC_ORIGIN).host]:[]]});}catch(e){await model.close();throw e;}
 const {ctx,shutdown}=boot;
 let carrier,stopping=false;
 async function stop(code=0){if(stopping)return;stopping=true;if(carrier&&carrier.exitCode===null){carrier.kill('SIGTERM');await new Promise(r=>carrier.once('exit',r));}await shutdown.shutdown(0);await model.close();process.exit(code);}
@@ -80,8 +80,8 @@ try {
  await writeFile(scratch+'/client-launch-url',new URL(route+'?token='+encodeURIComponent(token),clientUrl).href,{mode:0o600});
  const credential=await ctx.credentials.describe('DEEPSEEK_API_KEY');
  const status={pid:process.pid,origin,clientUrl,localClientUrl,clientBind:process.env.DSH_CLIENT_BIND??'127.0.0.1',model:{mode:model.mode,origin:model.origin,stats:model.stats},providers:ctx.llm.listProviders().map(x=>x.id),selection:ctx.agentDefaultModel.currentSelection(),credential:{reference:'DEEPSEEK_API_KEY',configured:credential.configured,source:credential.source},sessionId:fixtureId};
- if((await fetch(origin+'/mygo/status')).status!==401)throw Error('Host authentication fence failed');
- if((await fetch(origin+'/mygo/status',{headers:{cookie}})).status!==200)throw Error('Authenticated readiness failed');
+ if((await fetch(origin+'/mygo/index-injections')).status!==401)throw Error('Host authentication fence failed');
+ if((await fetch(origin+'/mygo/index-injections',{headers:{cookie}})).status!==200)throw Error('Authenticated readiness failed');
  const publish=async()=>{const current=await ctx.credentials.describe('DEEPSEEK_API_KEY');status.credential={reference:'DEEPSEEK_API_KEY',configured:current.configured,source:current.source};await writeFile(scratch+'/status.next.json',JSON.stringify(status,null,2),{mode:0o600});await rename(scratch+'/status.next.json',scratch+'/status.json');};
  await publish();
  let checking=false;

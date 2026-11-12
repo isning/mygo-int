@@ -1,5 +1,11 @@
+export const MAX_INSTANCE_PROFILES = 32
+
 export function instanceAccessKey(profile) {
   return JSON.stringify([profile.id, profile.authenticationViewId])
+}
+
+export function instanceRouteKey(profile) {
+  return JSON.stringify([profile.id, profile.address, profile.authenticationViewId])
 }
 
 export function normalizeConnectionProfile(profile) {

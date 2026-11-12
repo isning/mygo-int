@@ -17,4 +17,6 @@ Override is an application mode on a local bootstrap descriptor. A descriptor
 with `mode: "override"` and a target replaces that target's module namespace and
 `/client` alias before the original module system captures its seed table. It is
 not an extra Entry, does not synthesize an absent remote plugin and cannot replace
-platform singleton seeds. The current plugin-manager override uses this mechanism.
+platform singleton seeds. The default composition currently has no override entry;
+the mechanism remains available for a local plugin that actually replaces a remote
+client half.

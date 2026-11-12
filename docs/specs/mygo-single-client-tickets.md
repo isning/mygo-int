@@ -25,7 +25,7 @@ Tickets are published with `ready-for-agent` and native blocking relationships. 
 7. [将本地设置并入原 Settings](https://github.com/isning/mygo-int/issues/53)
    Blocked by: [把现有本地管理服务迁入共享运行时](https://github.com/isning/mygo-int/issues/49), [通过原 Slot 覆盖并恢复一个默认 UI 贡献](https://github.com/isning/mygo-int/issues/51)
 
-8. [在原插件页面汇总三种来源](https://github.com/isning/mygo-int/issues/54)
+8. [在原插件页面汇总三种来源](https://github.com/isning/mygo-int/issues/54)（后续产品决策收敛为原远端卡片显示 Remote/Client 状态，并使用独立 Local tab）
    Blocked by: [把现有本地管理服务迁入共享运行时](https://github.com/isning/mygo-int/issues/49), [通过原 Slot 覆盖并恢复一个默认 UI 贡献](https://github.com/isning/mygo-int/issues/51)
 
 9. [从统一管理页面启停和配置本地插件](https://github.com/isning/mygo-int/issues/55)

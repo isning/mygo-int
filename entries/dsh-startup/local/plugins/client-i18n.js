@@ -27,7 +27,6 @@ function installClientI18n(ctx) {
     subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener) },
     getSnapshot: () => revision,
     locale: () => current.getSnapshot(),
-    canSelect: () => current === offline,
     text(key, params) {
       if (!Object.hasOwn(dictionaries.en, key)) return key
       return current.bind(namespace)(key, params)

@@ -57,10 +57,10 @@ try{
  const cleanOrigin=new URL(url).origin;
  await send('Page.navigate',{url:cleanOrigin+'/'});
  await until(async()=>{const state=await send('Runtime.evaluate',{expression:'location.origin === '+JSON.stringify(cleanOrigin)+' && document.readyState === "complete"',returnByValue:true});return state.result.value;});
- const anonymous=await send('Runtime.evaluate',{expression:"fetch('/mygo/status').then(r=>r.status)",returnByValue:true,awaitPromise:true});
+ const anonymous=await send('Runtime.evaluate',{expression:"fetch('/mygo/index-injections').then(r=>r.status)",returnByValue:true,awaitPromise:true});
  if(process.argv[2]!=='open-management'){
-  assert.equal(anonymous.result.value,410,'the clean mygo origin has no implicit remote status route');
-  await writeFile(scratch+'/browser-admission.json',JSON.stringify({origin:cleanOrigin,unscopedRemoteHTTP:410,specialPortOverride:false}),{mode:0o600});
+  assert.equal(anonymous.result.value,authenticated?401:410,authenticated?'the clean DSH origin requires admission':'the clean mygo origin has no implicit instance route');
+  await writeFile(scratch+'/browser-admission.json',JSON.stringify({origin:cleanOrigin,bootstrapHTTP:anonymous.result.value,specialPortOverride:false}),{mode:0o600});
  }
  await send('Page.navigate',{url});
  try {

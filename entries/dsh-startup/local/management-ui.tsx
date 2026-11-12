@@ -10,6 +10,7 @@ import generalCSS from '../../../.scratch/upstream/deepseek-harness/packages/cli
 import rowCSS from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-settings-general/src/client/DesktopChannelRow.module.css'
 import modelsCSS from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-settings-models/src/client/ModelsSection.module.css'
 import deviceCSS from './device-ui.module.css'
+import { MAX_INSTANCE_PROFILES } from './profile-identity'
 
 class LocalUIBoundary extends React.Component {
   state = { error: '' }
@@ -118,7 +119,6 @@ export function Instances({ ctx, run }) {
   return <div className={modelsCSS.section} data-mygo-instances="">
     <h2 className={modelsCSS.title}>{t('Instances')}</h2>
     <p className={modelsCSS.intro}>{t('Manage your instance connections.')}</p>
-    {snapshot.diagnostic && <p className={modelsCSS.error} role="alert">{snapshot.diagnostic}</p>}
     <ul className={modelsCSS.rows}>
       {snapshot.catalog.map(row => { const identity = `${row.id}:${row.authenticationViewId}`; return <li key={identity} className={`${modelsCSS.rowCard} ${deviceCSS.instanceCard}`} data-instance-id={row.id} data-authentication-view={row.authenticationViewId}>
         <div className={`${modelsCSS.rowHead} ${deviceCSS.instanceHead}`}>
@@ -152,7 +152,7 @@ export function Instances({ ctx, run }) {
     <div className={modelsCSS.addBlock}>
       {editing?.key === null ? <InstanceEditor ctx={ctx} key="new-instance" service={service} target={editing} onClose={() => setEditing(null)} />
         : <div className={modelsCSS.addActions}><button type="button" className={modelsCSS.addButton}
-            disabled={snapshot.catalog.length >= 32} onClick={() => setEditing({ key: null, original: null, draft: {
+            disabled={snapshot.catalog.length >= MAX_INSTANCE_PROFILES} onClick={() => setEditing({ key: null, original: null, draft: {
               id: 'instance-' + Array.from(crypto.getRandomValues(new Uint8Array(12)), value => value.toString(16).padStart(2, '0')).join(''), name: '', address: '', authenticationViewId: snapshot.currentProfile?.authenticationViewId ?? 'owner',
             } })}><IconPlusOutlineRegular size={14} />{t('Add instance')}</button></div>}
     </div>

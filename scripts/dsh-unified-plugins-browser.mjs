@@ -74,7 +74,7 @@ try {
     await removeUiAuditProfiles()
     await send('Page.reload', {ignoreCache:true})
     await until(() => evaluate("!!document.querySelector('[data-mygo-local-shell]') && document.body.innerText.includes('Connect to an instance')"))
-    assert.equal(await evaluate("fetch('/mygo/status').then(r=>r.status)"),410,'an unscoped remote request has no implicit instance')
+    assert.equal(await evaluate("fetch('/mygo/index-injections').then(r=>r.status)"),410,'an unscoped remote request has no implicit instance')
     assert.equal(await evaluate("document.body.innerText.includes('Sign in required')"),false,'the local shell does not invent a remote authentication state')
     if (i18nOnly) {
       for (const [language, heading] of Object.entries({en:'Connect to an instance',zh:'连接到实例',ja:'インスタンスに接続',es:'Conectar a una instancia',fr:'Se connecter à une instance',de:'Mit einer Instanz verbinden',ru:'Подключиться к экземпляру',pt:'Conectar a uma instância'})) {
@@ -128,7 +128,7 @@ try {
       }
     }
     await writeFile(scratch+'/offline-shell.png' ,Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'))
-    await writeFile(scratch+'/offline-shell-validation.json',JSON.stringify({ok:true,anonymousRemoteStatus:401,profileSavedWithoutRemote:true,profileSurvivedReload:true,hostManagementWrites:mutations}),{mode:0o600})
+    await writeFile(scratch+'/offline-shell-validation.json',JSON.stringify({ok:true,unscopedBootstrapHTTP:410,profileSavedWithoutRemote:true,profileSurvivedReload:true,hostManagementWrites:mutations}),{mode:0o600})
     assert.ok(await removeUiAuditProfiles() >= 1, 'UI audit profile is removed after validation')
   }
   await send('Page.navigate', { url })

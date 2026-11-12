@@ -1,4 +1,4 @@
 # Apply only to a Host composition already providing the injected services.
 - insert:
-    - id: mygo-dsh-host-status
-      name: '@mygo/dsh-host-status'
+    - id: mygo-dsh-host-bootstrap
+      name: '@mygo/dsh-host-bootstrap'

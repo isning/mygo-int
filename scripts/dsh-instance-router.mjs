@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { createAuthenticatedCarrier } from './dsh-authenticated-carrier.mjs'
 import { createCarrierTrust } from './dsh-carrier-trust.mjs'
-import { instanceAccessKey, normalizeConnectionProfile } from '../entries/dsh-startup/local/profile-identity.js'
+import { MAX_INSTANCE_PROFILES, instanceAccessKey, instanceRouteKey, normalizeConnectionProfile } from '../entries/dsh-startup/local/profile-identity.js'
 
 const digest = value => createHash('sha256').update(value).digest('hex')
 
@@ -20,7 +20,7 @@ export function createInstanceRouter({ publicOrigins = [], profiles = [], onRegi
   let savedCredentials = structuredClone(credentials)
   function register(value) {
     const profile = normalizeConnectionProfile(value)
-    const id = createHash('sha256').update(JSON.stringify([profile.id, profile.address, profile.authenticationViewId])).digest('hex')
+    const id = digest(instanceRouteKey(profile))
     const profileKey = instanceAccessKey(profile)
     const credentialId = digest(profileKey)
     if (routes.has(id)) {
@@ -28,11 +28,11 @@ export function createInstanceRouter({ publicOrigins = [], profiles = [], onRegi
       route.profile = profile
       return route
     }
-    if (routes.size >= 256) throw Error('Instance route limit reached')
-    const namespace = JSON.stringify([profile.id, profile.address, profile.authenticationViewId])
+    const previous = current.get(profileKey)
+    if (!previous && routes.size >= MAX_INSTANCE_PROFILES) throw Error('Instance route limit reached')
+    const namespace = instanceRouteKey(profile)
     const route = { id, profile, credentialId, credential: savedCredentials.entries[credentialId], prefix: '/mygo-instance/' + id }
     route.carrier = createAuthenticatedCarrier({ origin: profile.address, publicOrigins, credentialNamespace: namespace, pathPrefix: route.prefix, getCredential: () => route.credential?.address === profile.address ? route.credential.cookie : undefined })
-    const previous = current.get(profileKey)
     if (previous) {
       routes.delete(previous.id)
       previous.carrier.close()

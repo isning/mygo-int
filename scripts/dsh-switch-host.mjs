@@ -8,7 +8,7 @@ import { pathToFileURL } from 'node:url'
 
 process.umask(0o077)
 const root = process.cwd(), scratch = resolve('.scratch/test-dsh/second')
-const anchor = resolve('.scratch/status-live/anchor')
+const anchor = resolve('.scratch/bootstrap-live/anchor')
 const require = createRequire(anchor + '/package.json')
 const { loadLayeredEnv } = await import(pathToFileURL(require.resolve('@deepseek-ai/dsh-app-boot')).href)
 const { runProfile } = await import(pathToFileURL(anchor + '/lib/profile-boot.js'))
@@ -23,7 +23,7 @@ try {
   console.log = () => {}
   try {
     boot = await runProfile({ environment: loadLayeredEnv('dsh', scratch), profile: 'web',
-      patchFiles: [root + '/packages/dsh-host-status/host.patch.yml', ...model.patchFiles],
+      patchFiles: [root + '/packages/dsh-host-bootstrap/host.patch.yml', ...model.patchFiles],
       args: ['--host', '127.0.0.1', '--port', '0', '--no-open'] })
   } finally { console.log = log }
   const { ctx, shutdown } = boot

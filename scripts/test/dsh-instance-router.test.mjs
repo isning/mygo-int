@@ -5,10 +5,11 @@ import { createHash } from 'node:crypto'
 import { createConnection } from 'node:net'
 import { createInstanceRouter } from '../dsh-instance-router.mjs'
 import { routeURL, partitionRemoteStorage } from '../../entries/dsh-startup/instance-route.js'
+import { instanceRouteKey } from '../../entries/dsh-startup/local/profile-identity.js'
 
 const listen = server => new Promise(resolve => server.listen(0, '127.0.0.1', () => resolve('http://127.0.0.1:' + server.address().port)))
 const routePrefix = profile => '/mygo-instance/' + createHash('sha256')
-  .update(JSON.stringify([profile.id, profile.address, profile.authenticationViewId])).digest('hex')
+  .update(instanceRouteKey(profile)).digest('hex')
 const call = (url, { method = 'GET', headers = {}, body } = {}) => new Promise((resolve, reject) => {
   const req = request(url, { method, headers }, res => {
     let text = ''

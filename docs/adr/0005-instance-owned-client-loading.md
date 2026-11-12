@@ -12,10 +12,10 @@ transport, `ClientEntries` reconciliation, activation audit and renderer mount.
 Local module identities are reserved before remote reconciliation. Original
 React, Cordis and UI modules remain shared platform libraries.
 
-Overrides are descriptor-level application modes defined by ADR 0006. The
-current plugin-manager override replaces one remote client module before the
-module system captures its table; it is not a central override plugin or a second
-Loader entry.
+Overrides are descriptor-level application modes defined by ADR 0006. An override
+replaces its explicit remote client-module target before the module system captures
+its table; it is not a central override plugin or a second Loader entry. The
+default composition currently declares no override.
 
 The base exposes its root, container, startup configuration, platform modules and
 local ownership predicate through `clientHost`. An integration plugin may supply

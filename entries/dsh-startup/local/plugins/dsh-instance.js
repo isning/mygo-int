@@ -17,7 +17,7 @@ export function apply(scope) {
   let modules
   ctx.reflect.provide('mygoPlatform', Object.freeze({ modules: staticModules }))
   ctx.provide('mygoStartup', Object.freeze({
-    configuration, FiberState, sharedClient: true,
+    configuration, FiberState,
     ownsEntry: entry => localEntries.has(entry),
     async admit() {
       const response = await fetch('/mygo-local/admission', { cache: 'no-store', credentials: 'same-origin' })

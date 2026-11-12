@@ -33,7 +33,7 @@ The pinned DSH checkout remains unmodified. Integration is limited to:
   existing Loader;
 - the mygo instance carrier, which owns routing and credentials while preserving
   DSH admission and Remote authorization;
-- the thin `dsh-host-status` Host plugin for authenticated boot metadata;
+- the thin `dsh-host-bootstrap` Host plugin for authenticated boot metadata;
 - one isolated, pin-checked Plugins compatibility adapter that exposes pinned
   presentation functions; the original page, navigation and tab behaviour are
   unchanged.

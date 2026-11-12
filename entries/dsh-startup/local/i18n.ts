@@ -4,7 +4,6 @@ export interface ClientLocaleService {
   subscribe(listener: () => void): () => void
   getSnapshot(): number
   locale(): { active: string; locales: readonly { id: string; label: string }[] }
-  canSelect(): boolean
   text(key: string, params?: Record<string, string | number>): string
   setLocale(id: string): void
 }

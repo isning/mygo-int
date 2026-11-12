@@ -23,7 +23,7 @@ await build({
       this.emitFile({ type: 'asset', fileName: 'assets/DSH-LICENSE.txt', source: await readFile(upstream + '/LICENSE', 'utf8') })
     },
     resolveId(source, importer) {
-      if (['single-client.js', 'web-platform.js', 'local/plugins/dsh-instance.js', 'local/plugins/plugin-manager-override.js', 'local/plugins/local-shell.js', 'local/plugins/client-i18n.js'].some(name => importer === resolve(root, 'entries/dsh-startup', name)) && source.startsWith('@deepseek-ai/')) {
+      if (['single-client.js', 'web-platform.js', 'local/plugins/dsh-instance.js', 'local/plugins/local-shell.js', 'local/plugins/client-i18n.js'].some(name => importer === resolve(root, 'entries/dsh-startup', name)) && source.startsWith('@deepseek-ai/')) {
         return source === '@deepseek-ai/cordis-plugin-loader' ? loader : require.resolve(source)
       }
       if (['i18n.ts', 'local-shell-ui.tsx', 'instance-navigation.tsx', 'management-ui.tsx', 'unified-plugin-ui.tsx', 'plugin-runtime-details.tsx'].some(name => importer?.startsWith(resolve(root, 'entries/dsh-startup/local', name))) && !source.startsWith('.')) {

@@ -1,12 +1,12 @@
 // The mygo reverse proxy owns the instance catalog; the browser only presents it.
-import { instanceAccessKey, normalizeConnectionProfile } from '../profile-identity.js'
+import { MAX_INSTANCE_PROFILES, instanceAccessKey, normalizeConnectionProfile } from '../profile-identity.js'
 
 export const inject = ['mygoStartup']
 export function apply(ctx) {
   const boot = ctx.mygoStartup, bound = boot.configuration.selectedInstance
   const binding = bound && normalizeConnectionProfile({ ...bound, name: bound.name ?? bound.id })
   let catalog = Array.isArray(boot.configuration.instances) ? boot.configuration.instances.map(normalizeConnectionProfile) : []
-  if (catalog.length > 32 || new Set(catalog.map(instanceAccessKey)).size !== catalog.length) throw Error('Invalid instance catalog')
+  if (catalog.length > MAX_INSTANCE_PROFILES || new Set(catalog.map(instanceAccessKey)).size !== catalog.length) throw Error('Invalid instance catalog')
   if (binding && !catalog.some(row => row.id === binding.id && row.authenticationViewId === binding.authenticationViewId)) catalog.push(binding)
   let connectionStatus = binding ? 'checking' : 'idle', connectionDiagnostic = ''
   const listeners = new Set(), notify = () => { for (const fn of listeners) fn() }
@@ -29,9 +29,8 @@ export function apply(ctx) {
   const isCurrentProfile = row => binding !== undefined && row?.id === binding.id && row.address === binding.address
     && row.authenticationViewId === binding.authenticationViewId
   ctx.provide('instanceManager', {
-    snapshot: () => ({ catalog, currentId: binding?.id ?? null, currentProfile: binding ?? null, diagnostic: '', connectionStatus, connectionDiagnostic }),
+    snapshot: () => ({ catalog, currentId: binding?.id ?? null, currentProfile: binding ?? null, connectionStatus, connectionDiagnostic }),
     isCurrentProfile,
-    availability: row => isCurrentProfile(row) ? connectionStatus : 'saved',
     refresh,
     async save(row, editingProfile) {
       const value = normalizeConnectionProfile(row)
@@ -40,7 +39,7 @@ export function apply(ctx) {
       if (editingProfile && editingKey !== valueKey) throw Error('Stable instance identity cannot be changed')
       if (editingProfile && !catalog.some(row => instanceAccessKey(row) === editingKey)) throw Error('Edited instance no longer exists')
       if (!editingProfile && catalog.some(row => instanceAccessKey(row) === valueKey)) throw Error('Instance profile already exists')
-      if (catalog.length >= 32 && !editingProfile) throw Error('Catalog limit reached')
+      if (catalog.length >= MAX_INSTANCE_PROFILES && !editingProfile) throw Error('Catalog limit reached')
       const url = await register(value)
       catalog = [...catalog.filter(row => instanceAccessKey(row) !== valueKey), value]
       notify()

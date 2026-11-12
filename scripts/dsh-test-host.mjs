@@ -10,7 +10,7 @@ import {request as httpRequest} from 'node:http';
 const httpStatus=url=>new Promise((resolve,reject)=>{const req=httpRequest(url,res=>{res.resume();resolve({status:res.statusCode})});req.on('error',reject);req.end()});
 import {fileURLToPath} from 'node:url';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');process.chdir(root);process.umask(0o077);
-const scratch=resolve('.scratch/test-dsh'),anchor=resolve('.scratch/status-live/anchor');
+const scratch=resolve('.scratch/test-dsh'),anchor=resolve('.scratch/bootstrap-live/anchor');
 await mkdir(scratch,{recursive:true,mode:0o700});
 // Same isolation as the shell helper, also for dlx launched below.
 for(const [key,value] of Object.entries({XDG_CACHE_HOME:'.cache',XDG_DATA_HOME:'.data',XDG_STATE_HOME:'.state',PNPM_HOME:'.pnpm',npm_config_cache:'.npm-cache',npm_config_store_dir:'.pnpm-store'}))process.env[key]=resolve('.scratch/upstream',value);
@@ -26,7 +26,7 @@ if(command==='start'){
  if((process.env.DSH_CLIENT_BIND??'127.0.0.1')!=='127.0.0.1'&&!publicOrigin)throw Error('Non-loopback bind requires DSH_CLIENT_PUBLIC_ORIGIN');
  if(publicOrigin&&Number(new URL(publicOrigin).port|| (new URL(publicOrigin).protocol==='https:'?443:80))!==clientPort)throw Error('Public origin port must match DSH_CLIENT_PORT');
  const probe=net.createServer();await new Promise((r,j)=>{probe.once('error',j);probe.listen(clientPort,process.env.DSH_CLIENT_BIND??'127.0.0.1',r);});await new Promise(r=>probe.close(r));
- const p=spawnSync(process.execPath,['scripts/dsh-status-live-prepare.mjs'],{stdio:'inherit'});if(p.status!==0)process.exit(1);
+ const p=spawnSync(process.execPath,['scripts/dsh-bootstrap-live-prepare.mjs'],{stdio:'inherit'});if(p.status!==0)process.exit(1);
  await copyFile('scripts/dsh-test-host-runner.mjs',anchor+'/test-host.mjs');
  // Clear stale readiness by replacing it with a safe starting marker.
  await writeFile(scratch+'/status.json',JSON.stringify({starting:true}));
@@ -43,7 +43,7 @@ if(command==='start'){
 }else if(command==='status'){
  if(!await owned())throw Error('Owned Host is stopped');
  const status=JSON.parse(await readFile(scratch+'/status.json','utf8'));
- const [host,client]=await Promise.all([fetch(status.origin+'/mygo/status'),httpStatus(status.clientUrl)]);
+ const [host,client]=await Promise.all([fetch(status.origin+'/mygo/index-injections'),httpStatus(status.clientUrl)]);
  const mockHealth=status.model?.mode==='mock'?await fetch(status.model.origin+'/health').then(r=>r.json()):undefined;
  console.log(JSON.stringify({...status,unauthenticatedHostStatus:host.status,clientStatus:client.status,mockHealth},null,2));
 }else if(command==='stop'){
