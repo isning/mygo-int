@@ -38,18 +38,14 @@ const localPluginInfo: Record<string, { title: string; description: string; grou
   './plugins/touch-feedback.js': { title: 'Touch feedback', description: 'Removes the browser’s tap highlight while preserving keyboard focus indicators.', group: 'extensions' },
 }
 
-type LocalNavigation = {
-  view?: { entryId?: string; component?: boolean }
-  open(entryId?: string, component?: boolean): void
-}
-
-function LocalPlugins({ ctx, t, facts, navigation, renderConfiguration }: { ctx: ClientContext; t: Translate; facts: PluginRuntimeFacts; navigation: LocalNavigation; renderConfiguration: PluginManagerPageProps['renderSlot'] }) {
+function LocalPlugins({ ctx, t, facts, renderConfiguration }: { ctx: ClientContext; t: Translate; facts: PluginRuntimeFacts; renderConfiguration: PluginManagerPageProps['renderSlot'] }) {
   const clientT = useClientText(ctx)
   const [, refresh] = useState(0)
-  const selected = navigation.view?.entryId
-  const component = navigation.view?.component ?? false
-  const select = (entryId?: string) => navigation.open(entryId)
-  const setComponent = (value: boolean) => navigation.open(selected, value)
+  const [view, setView] = useState<{ entryId?: string; component?: boolean }>({})
+  const selected = view.entryId
+  const component = view.component ?? false
+  const select = (entryId?: string) => setView({ entryId })
+  const setComponent = (value: boolean) => setView({ entryId: selected, component: value })
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const resolveText = (text: Parameters<typeof ctx.locale.resolveText>[0]) => ctx.locale.resolveText(text)
@@ -135,7 +131,11 @@ export function register(ctx: ClientContext) {
   // Contributions use those declarations rather than replacing the page or
   // duplicating its controller, navigation state, header, CSS or dialogs.
   ctx.slots.inject('plugins.tab', function* () {
-    yield ctx.slots.register({ name: 'plugins.tab', id: 'mygo-local', label: () => ctx.mygoLocale.text('Local'), order: -20, locale: 'pluginManager' },
-      ({ t, navigation, renderConfiguration }) => <LocalPlugins ctx={ctx} t={t} facts={facts} navigation={navigation} renderConfiguration={renderConfiguration} />)
+    yield ctx.slots.register({ name: 'plugins.tab', id: 'mygo-local', label: () => ctx.mygoLocale.text('Local'), order: -20, locale: 'pluginManager',
+      children: {
+        'plugins.bundle.config': { kind: 'keyed', scope: 'root' },
+        'plugins.row.config': { kind: 'keyed', scope: 'root' },
+      },
+    }, ({ t, renderSlot }) => <LocalPlugins ctx={ctx} t={t} facts={facts} renderConfiguration={renderSlot} />)
   })
 }

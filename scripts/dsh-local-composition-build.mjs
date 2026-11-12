@@ -2,7 +2,7 @@
 import { createRequire } from 'node:module'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { adaptPluginPage, adaptPluginManagerClient } from './dsh-plugin-page-adapter.mjs'
+import { adaptPluginPage, adaptPluginManagerClient, adaptSettingsRoot } from './dsh-plugin-page-adapter.mjs'
 const root = process.cwd()
 const upstream = resolve('.scratch/upstream/deepseek-harness')
 const web = resolve(upstream, 'apps/web')
@@ -31,9 +31,9 @@ await build({
       }
     },
     async load(id) {
-      if (id.endsWith('?mygo-plugin-manager')) return adaptPluginManagerClient(await readFile(id.slice(0, -'?mygo-plugin-manager'.length), 'utf8')).replace("from './PluginManagerPage.tsx'", "from './PluginManagerPage.tsx?mygo-rows'")
-      if (id.endsWith('?mygo-rows')) return adaptPluginPage(await readFile(id.slice(0, -'?mygo-rows'.length), 'utf8')) + '\nexport { RowsSection, RowDetail, PackageCard, PackageDetail, ItemCard, ItemDetail };'
-      if (id.endsWith('?mygo-panel')) return (await readFile(id.slice(0, -'?mygo-panel'.length), 'utf8')) + '\nexport { SettingsPanel };'
+      if (id.endsWith('?mygo-plugin-manager')) return adaptPluginManagerClient(await readFile(id.slice(0, -'?mygo-plugin-manager'.length), 'utf8'))
+      if (id.endsWith('?mygo-rows')) return adaptPluginPage(await readFile(id.slice(0, -'?mygo-rows'.length), 'utf8'))
+      if (id.endsWith('?mygo-panel')) return adaptSettingsRoot(await readFile(id.slice(0, -'?mygo-panel'.length), 'utf8'))
       if (id !== web + '/src/main.ts') return
       return `import { startSingleClient } from ${JSON.stringify(resolve(root, 'entries/dsh-startup/single-client.js'))};\nvoid startSingleClient();`
     },

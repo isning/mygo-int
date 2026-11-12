@@ -28,10 +28,11 @@ The DSH integration stays at three explicit seams:
 
 The pinned DSH checkout remains byte-pristine. mygo uses the original Web build
 configuration and replaces its browser main with the mygo base entry; it does not
-patch the checkout. The remaining build-time source adaptation of the Plugins
-page is compatibility debt. It must stay isolated and pin-checked until DSH
-exports an equivalent tab-navigation/configuration face; it must not spread into
-other DSH packages.
+patch the checkout. The original Plugins page owns its tab behaviour unchanged.
+The remaining build adapter only exposes pinned presentation functions that DSH
+does not export and adds `openTab` to its navigation face. This compatibility debt
+must stay isolated and pin-checked until DSH exports those interfaces; it must not
+spread into other DSH packages.
 
 ADR 0009 removes the legacy two-root fixtures, their selectable build path and
 their historical browser scenarios.

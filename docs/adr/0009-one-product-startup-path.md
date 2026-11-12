@@ -34,8 +34,9 @@ The pinned DSH checkout remains unmodified. Integration is limited to:
 - the mygo instance carrier, which owns routing and credentials while preserving
   DSH admission and Remote authorization;
 - the thin `dsh-host-status` Host plugin for authenticated boot metadata;
-- one isolated, pin-checked Plugins page compatibility transform until upstream
-  exposes the equivalent navigation and configuration face.
+- one isolated, pin-checked Plugins compatibility adapter that exposes pinned
+  presentation functions and `openTab`; the original page and tab behaviour are
+  unchanged.
 
 Direct imports from pinned DSH source are compatibility dependencies, not edits to
 DSH. New product behavior belongs in mygo plugins. A new source transform requires
