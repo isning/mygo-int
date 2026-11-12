@@ -32,6 +32,7 @@
     "scripts/dsh-carrier-trust.mjs",
     "scripts/dsh-client-auth.mjs",
     "scripts/dsh-instance-router.mjs",
+    "scripts/dsh-local-locale.mjs",
     "scripts/dsh-local-startup-config.mjs",
     "scripts/dsh-startup.mjs",
     "lib/index.js",

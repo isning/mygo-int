@@ -8,6 +8,7 @@ import { execFileSync } from 'node:child_process'
 import { readLocalStartup } from './dsh-local-startup-config.mjs'
 import { createInstanceRouter } from './dsh-instance-router.mjs'
 import { createClientAuth } from './dsh-client-auth.mjs'
+import { createLocalLocaleSettings } from './dsh-local-locale.mjs'
 
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const workspace = resolve(appRoot, '../..')
@@ -52,6 +53,7 @@ export async function runMygo(command, options = {}) {
     const routeFile = resolve(state, 'instance-routes.json')
     const credentialFile = resolve(state, 'instance-credentials.json')
     const clientConfigFile = resolve(state, 'client-config.json')
+    const localeSettings = await createLocalLocaleSettings(resolve(state, 'locale-settings.json'))
     let profiles = []
     try { profiles = JSON.parse(await readFile(routeFile, 'utf8')) } catch (error) { if (error.code !== 'ENOENT') throw error }
     let credentials = { entries: {} }
@@ -96,6 +98,33 @@ export async function runMygo(command, options = {}) {
         }
         if (router && ['/mygo-local/connection', '/mygo-local/login'].includes(requestPath)) {
           await router.control(request, response, route)
+          return
+        }
+        if (requestPath === '/mygo-local/locale') {
+          if (request.method === 'GET') {
+            response.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' }).end(JSON.stringify(localeSettings.snapshot()))
+            return
+          }
+          if (request.method !== 'PUT' || !request.headers.origin || !request.headers['content-type']?.startsWith('application/json')) {
+            response.writeHead(request.method === 'PUT' ? 403 : 405, { allow: 'GET, PUT', 'cache-control': 'no-store' }).end()
+            return
+          }
+          let body = '', size = 0
+          for await (const chunk of request) {
+            size += chunk.length
+            if (size > 4096) { response.writeHead(413).end(); return }
+            body += chunk
+          }
+          let input
+          try { input = JSON.parse(body) }
+          catch { response.writeHead(400, { 'cache-control': 'no-store' }).end(); return }
+          const result = await localeSettings.update(input)
+          if (!result.ok) {
+            response.writeHead(result.reason === 'conflict' ? 409 : 400, { 'content-type': 'application/json', 'cache-control': 'no-store' })
+              .end(JSON.stringify(result.snapshot ?? {}))
+            return
+          }
+          response.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' }).end(JSON.stringify(result.snapshot))
           return
         }
         if (router && requestPath === '/mygo-local/client-config') {
