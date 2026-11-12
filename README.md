@@ -4,12 +4,14 @@
 
 A general-purpose harness client for PC and Android, built on Cordis.
 
-Project definition, architecture and implementation route are confirmed.
-No client implementation is present.
+The current Web client starts one local Cordis composition without requiring a
+harness. Saved DSH instances connect through explicit reverse-proxy routes and
+supply their original client plugins, Remote services and UI. Local plugins own
+the offline shell, instance management and targeted overrides. The pinned DSH
+checkout remains unchanged.
 
-The implementation starting point is an independent extraction of DSH's official
-React/Cordis client with near-total code reuse, followed by client/remote plugin
-contracts and compatibility. Native/headless rendering is not an extraction prerequisite.
+Build and verification commands are documented in
+[the Web client README](entries/dsh-startup/README.md).
 
 - [Architecture overview](docs/design/architecture-overview.md)
 - [Confirmed project definition](docs/design/project-definition.md)
@@ -22,7 +24,7 @@ contracts and compatibility. Native/headless rendering is not an extraction prer
 - [Confirmed implementation dependency plan](docs/design/implementation-dependency-plan.md)
 
 Earlier theoretical alternatives are retained in [architecture notes](docs/design/client-architecture.md);
-confirmed decisions take precedence.
+accepted ADRs and the current implementation take precedence.
 
 - [Wayfinder decision map](https://github.com/isning/mygo-int/issues/1)
 

@@ -33,6 +33,18 @@ node scripts/dsh-test-browser.mjs check-management
 node scripts/dsh-unified-plugins-browser.mjs
 ```
 
+The two-instance browser scenario uses a second real pinned Host. Start it in a
+separate terminal, run the scenario, then stop it with `Ctrl-C`:
+
+```bash
+pnpm --config.auto-install-peers=false dlx --package=node-linux-x64@24.21.0 \
+  node scripts/dsh-switch-host.mjs
+node scripts/dsh-unified-plugins-browser.mjs --switch-instances
+```
+
+The scenario removes its temporary `second-dsh` and `unavailable-dsh` profiles
+and proxy credentials before returning.
+
 Only model inference uses MODEL MOCK. Browser authentication, Cordis lifecycle,
 DSH Remote calls, sessions, receipts, streaming, settings, plugin inventory and
 instance routing use the pinned DSH implementation. Private launch URLs, cookies

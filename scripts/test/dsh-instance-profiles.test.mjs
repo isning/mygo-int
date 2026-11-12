@@ -41,14 +41,14 @@ test('the current route is explicit and its admission result is observable', asy
   assert.equal(service.isCurrentProfile(first), true)
   assert.equal(service.snapshot().connectionStatus, 'authenticated')
 
-  ;({ service } = fixture(t, { selectedInstance: first, instances: [first], admit: async () => { throw Error('index injections HTTP 502') } }))
+  ;({ service } = fixture(t, { selectedInstance: first, instances: [first], admit: async () => { throw Error('The selected instance is unavailable') } }))
   await service.refresh()
   assert.equal(service.snapshot().connectionStatus, 'unavailable')
-  assert.equal(service.snapshot().connectionDiagnostic, 'index injections HTTP 502')
+  assert.equal(service.snapshot().connectionDiagnostic, 'The selected instance is unavailable')
 })
 
 test('saving an instance writes the mygo proxy catalog', async t => {
-  const { service, requests } = fixture(t, { instances: [first] })
+  const { service, requests, navigations } = fixture(t, { instances: [first] })
   await service.save(other)
   assert.deepEqual(service.snapshot().catalog, [first, other])
   assert.equal(requests.length, 1)
@@ -59,6 +59,7 @@ test('saving an instance writes the mygo proxy catalog', async t => {
   const renamed = { ...other, name: 'Renamed' }
   await service.save(renamed, other)
   assert.deepEqual(service.snapshot().catalog, [first, renamed])
+  assert.deepEqual(navigations, [], 'renaming a profile keeps its existing route')
 })
 
 test('selecting an instance registers its current profile and navigates to its route', async t => {
@@ -67,6 +68,12 @@ test('selecting an instance registers its current profile and navigates to its r
   assert.deepEqual(requests[0].body, other)
   assert.deepEqual(navigations, ['/mygo-instance/' + 'a'.repeat(64) + '/'])
   assert.equal(service.snapshot().currentProfile.id, first.id)
+
+  const moved = { ...first, address: 'https://moved.example' }
+  await service.save(moved, first)
+  assert.deepEqual(requests[1].body, moved)
+  assert.deepEqual(navigations, ['/mygo-instance/' + 'a'.repeat(64) + '/', '/mygo-instance/' + 'a'.repeat(64) + '/'],
+    'editing the connected address navigates explicitly to its new route')
 })
 
 test('removing an instance deletes it from the proxy while protecting the current route', async t => {

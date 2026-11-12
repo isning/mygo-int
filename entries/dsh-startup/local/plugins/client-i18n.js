@@ -2,8 +2,8 @@
 import { LocaleRuntime } from '../../../../.scratch/upstream/deepseek-harness/packages/client/locale/src/client/index.ts'
 import { namespace, dictionaries } from '../locales/index.js'
 export const inject = ['clientHost']
-export function apply(ctx) { installClientI18n(ctx, ctx.clientHost.configuration) }
-export function installClientI18n(ctx, configuration) {
+export function apply(ctx) { installClientI18n(ctx) }
+function installClientI18n(ctx) {
   const storage = localStorage
   const key = `mygo.locale.v2:${location.origin}`
   let preference = null

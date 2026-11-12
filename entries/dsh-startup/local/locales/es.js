@@ -105,5 +105,13 @@ export default {
   "Sign in": "Iniciar sesión",
   "Sign in failed": "Error al iniciar sesión",
   "Invalid login link": "Enlace de inicio de sesión no válido",
-  "Connect {name}": "Conectar a {name}"
+  "Connect {name}": "Conectar a {name}",
+  "Sign in to this instance": "Inicia sesión en esta instancia",
+  "This instance refused access": "Esta instancia rechazó el acceso",
+  "The selected instance is unavailable": "La instancia seleccionada no está disponible",
+  "This instance does not support the mygo client adapter": "Esta instancia no admite el adaptador de cliente de mygo",
+  "Unable to save this instance": "No se puede guardar esta instancia",
+  "Unable to remove this instance": "No se puede eliminar esta instancia",
+  "Unable to load the mygo plugin configuration": "No se puede cargar la configuración de plugins de mygo",
+  "Unable to save the mygo plugin configuration": "No se puede guardar la configuración de plugins de mygo"
 }

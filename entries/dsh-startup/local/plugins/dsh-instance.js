@@ -21,7 +21,10 @@ export function apply(scope) {
     ownsEntry: entry => localEntries.has(entry),
     async admit() {
       const response = await fetch('/mygo-local/admission', { cache: 'no-store', credentials: 'same-origin' })
-      if (!response.ok) throw Error(`DSH browser admission required (${response.status}); reopen the private launch entry`)
+      if (!response.ok) {
+        const detail = (await response.text()).trim()
+        throw Error(detail || (response.status === 401 ? 'Sign in to this instance' : response.status === 403 ? 'This instance refused access' : 'The selected instance is unavailable'))
+      }
     },
   }))
   if (!configuration.selectedInstance) return

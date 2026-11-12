@@ -105,5 +105,13 @@ export default {
   "Sign in": "Sign in",
   "Sign in failed": "Sign in failed",
   "Invalid login link": "Invalid login link",
-  "Connect {name}": "Connect {name}"
+  "Connect {name}": "Connect {name}",
+  "Sign in to this instance": "Sign in to this instance",
+  "This instance refused access": "This instance refused access",
+  "The selected instance is unavailable": "The selected instance is unavailable",
+  "This instance does not support the mygo client adapter": "This instance does not support the mygo client adapter",
+  "Unable to save this instance": "Unable to save this instance",
+  "Unable to remove this instance": "Unable to remove this instance",
+  "Unable to load the mygo plugin configuration": "Unable to load the mygo plugin configuration",
+  "Unable to save the mygo plugin configuration": "Unable to save the mygo plugin configuration"
 }

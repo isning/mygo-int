@@ -1,22 +1,13 @@
 import { createHash } from 'node:crypto'
 import { createAuthenticatedCarrier } from './dsh-authenticated-carrier.mjs'
 import { createCarrierTrust } from './dsh-carrier-trust.mjs'
-import { connectionProfileKey } from '../entries/dsh-startup/local/profile-identity.js'
-
-export function validateConnectionProfile(value) {
-  if (!value || !['id', 'authenticationViewId'].every(key => typeof value[key] === 'string' && /^[\w-]{1,128}$/.test(value[key]))
-    || typeof value.name !== 'string' || !value.name.trim() || value.name.length > 128) throw Error('Invalid instance profile')
-  const address = new URL(value.address)
-  if (!['http:', 'https:'].includes(address.protocol) || address.username || address.password || address.pathname !== '/' || address.search || address.hash) throw Error('Invalid instance origin')
-  return { id: value.id, name: value.name.trim(), address: address.origin, authenticationViewId: value.authenticationViewId }
-}
+import { connectionProfileKey, normalizeConnectionProfile } from '../entries/dsh-startup/local/profile-identity.js'
 
 const digest = value => createHash('sha256').update(value).digest('hex')
 
 export function createInstanceRouter({ publicOrigins = [], profiles = [], onRegister, credentials = { version: 2, entries: {} }, onCredentials }) {
   const trusted = createCarrierTrust({ publicOrigins })
   const routes = new Map()
-  const aliases = new Map()
   const current = new Map()
   if (credentials?.version !== 2 || !credentials.entries || typeof credentials.entries !== 'object' || Array.isArray(credentials.entries)) throw Error('Invalid instance credentials')
   for (const [credentialId, value] of Object.entries(credentials.entries)) {
@@ -28,20 +19,22 @@ export function createInstanceRouter({ publicOrigins = [], profiles = [], onRegi
   }
   let savedCredentials = structuredClone(credentials)
   function register(value) {
-    const profile = validateConnectionProfile(value)
-    const id = createHash('sha256').update(JSON.stringify(profile)).digest('hex')
+    const profile = normalizeConnectionProfile(value)
+    const id = createHash('sha256').update(JSON.stringify([profile.id, profile.address, profile.authenticationViewId])).digest('hex')
     const profileKey = connectionProfileKey(profile)
     const credentialId = digest(profileKey)
-    if (routes.has(id)) return routes.get(id)
-    if (routes.size + aliases.size >= 256) throw Error('Instance route limit reached')
+    if (routes.has(id)) {
+      const route = routes.get(id)
+      route.profile = profile
+      return route
+    }
+    if (routes.size >= 256) throw Error('Instance route limit reached')
     const namespace = JSON.stringify([profile.id, profile.address, profile.authenticationViewId])
     const route = { id, profile, credentialId, credential: savedCredentials.entries[credentialId], prefix: '/mygo-instance/' + id }
     route.carrier = createAuthenticatedCarrier({ origin: profile.address, publicOrigins, credentialNamespace: namespace, pathPrefix: route.prefix, getCredential: () => route.credential?.address === profile.address ? route.credential.cookie : undefined })
     const previous = current.get(profileKey)
     if (previous) {
       routes.delete(previous.id)
-      aliases.set(previous.id, route)
-      for (const [alias, target] of aliases) if (target === previous) aliases.set(alias, route)
       previous.carrier.close()
     }
     routes.set(id, route)
@@ -83,7 +76,7 @@ export function createInstanceRouter({ publicOrigins = [], profiles = [], onRegi
         return
       }
       if (req.method === 'DELETE') {
-        const removed = validateConnectionProfile(value)
+        const removed = normalizeConnectionProfile(value)
         const key = connectionProfileKey(removed)
         const activeKey = route && connectionProfileKey(route.profile)
         if (key === activeKey) { res.writeHead(409, { 'cache-control': 'no-store' }).end(); return }
@@ -91,7 +84,6 @@ export function createInstanceRouter({ publicOrigins = [], profiles = [], onRegi
         if (target) {
           routes.delete(target.id)
           current.delete(key)
-          for (const [alias, value] of aliases) if (value === target || alias === target.id) aliases.delete(alias)
           target.carrier.close()
         }
         const entries = structuredClone(savedCredentials.entries)
@@ -115,7 +107,7 @@ export function createInstanceRouter({ publicOrigins = [], profiles = [], onRegi
       const path = new URL(req.url, 'http://localhost').pathname
       if (!path.startsWith('/mygo-instance/')) return undefined
       const match = /^\/mygo-instance\/([a-f0-9]{64})(\/.*)$/.exec(req.url)
-      const route = match && (routes.get(match[1]) ?? aliases.get(match[1]))
+      const route = match && routes.get(match[1])
       if (!route) return undefined
       req.url = match[2]
       return route

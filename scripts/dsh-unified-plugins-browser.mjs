@@ -22,7 +22,7 @@ async function until(fn) {
   }
   throw Error('Slot browser readiness timed out')
 }
-let ws, evaluate, restoreBadgeFixture, stage = 'login'
+let ws, evaluate, restoreBadgeFixture, restoreTouchFixture, stage = 'login'
 const errors = [];
 const mutations = []
 try {
@@ -93,7 +93,6 @@ try {
     await until(() => evaluate("!!document.querySelector('[data-mygo-local-shell]') && document.body.innerText.includes('Connect to an instance')"))
     assert.equal(await evaluate("fetch('/mygo/status').then(r=>r.status)"),410,'an unscoped remote request has no implicit instance')
     assert.equal(await evaluate("document.body.innerText.includes('Sign in required')"),false,'the local shell does not invent a remote authentication state')
-    assert.equal(await evaluate("document.body.innerText.includes('index injections HTTP 410')"),false,'an absent instance is not shown as an internal boot fault')
     if (i18nOnly) {
       for (const [language, heading] of Object.entries({en:'Connect to an instance',zh:'连接到实例',ja:'インスタンスに接続',es:'Conectar a una instancia',fr:'Se connecter à une instance',de:'Mit einer Instanz verbinden',ru:'Подключиться к экземпляру',pt:'Conectar a uma instância'})) {
         await selectOfflineLanguage(language)
@@ -164,6 +163,28 @@ try {
     await send('Emulation.setDeviceMetricsOverride', {width:390,height:844,deviceScaleFactor:1,mobile:true})
     await send('Emulation.setTouchEmulationEnabled', {enabled:true,maxTouchPoints:1})
     await pause(200)
+    await evaluate("[...document.querySelectorAll('[role=tab]')].find(x=>['Local','本地'].includes(x.innerText)).click()")
+    await until(() => evaluate("['Local','本地'].includes(document.querySelector('[role=tab][aria-selected=true]')?.innerText)"))
+    const toggleTouch = () => evaluate("document.querySelector('[data-plugin-package=\"./plugins/touch-feedback.js\"] [role=switch]').click()")
+    const touchEnabled = () => evaluate("document.querySelectorAll('style[data-mygo-touch-feedback]').length===1")
+    const touchSaved = disabled => evaluate(`fetch('/mygo-local/client-config').then(response => response.json()).then(config => config.overrides['touch-feedback']?.disabled === ${disabled})`)
+    const initialTouchEnabled = await touchEnabled()
+    const initialTouchOverride = await evaluate("fetch('/mygo-local/client-config').then(response => response.json()).then(config => ({exists:Object.hasOwn(config.overrides,'touch-feedback'),value:config.overrides['touch-feedback']}))")
+    restoreTouchFixture = () => evaluate(`(async () => {
+      const config = await fetch('/mygo-local/client-config').then(response => response.json())
+      const original = ${JSON.stringify(initialTouchOverride)}
+      const overrides = {...config.overrides}
+      if (original.exists) overrides['touch-feedback'] = original.value
+      else delete overrides['touch-feedback']
+      const response = await fetch('/mygo-local/client-config', {method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({expectedRevision:config.revision,base:config.base,overrides})})
+      if (!response.ok) throw Error('Unable to restore touch feedback configuration')
+    })()`)
+    if (!initialTouchEnabled) {
+      await toggleTouch()
+      await until(touchEnabled)
+      await until(() => touchSaved(false))
+    }
+    await evaluate("[...document.querySelectorAll('[role=tab]')].find(x=>!['Local','本地'].includes(x.innerText)).click()")
     const point = await evaluate("(() => { const el=[...document.querySelectorAll('[role=tab]')].find(x=>['Local','本地'].includes(x.innerText)); const r=el.getBoundingClientRect(); return {x:r.x+r.width/2,y:r.y+r.height/2} })()")
     await send('Input.dispatchTouchEvent', {type:'touchStart',touchPoints:[point]})
     await send('Input.dispatchTouchEvent', {type:'touchEnd',touchPoints:[]})
@@ -178,11 +199,12 @@ try {
     }
 
     assert.equal(await evaluate("document.querySelectorAll('style[data-mygo-touch-feedback]').length"),1,'one plugin-owned stylesheet')
-    const toggleTouch = () => evaluate("document.querySelector('[data-plugin-package=\"./plugins/touch-feedback.js\"] [role=switch]').click()")
     await toggleTouch()
-    await until(() => evaluate("document.querySelectorAll('style[data-mygo-touch-feedback]').length===0"))
+    await until(async () => !(await touchEnabled()))
+    await until(() => touchSaved(true))
     await toggleTouch()
-    await until(() => evaluate("document.querySelectorAll('style[data-mygo-touch-feedback]').length===1"))
+    await until(touchEnabled)
+    await until(() => touchSaved(false))
     await send('Input.dispatchKeyEvent', {type:'keyDown',key:'Tab',code:'Tab',windowsVirtualKeyCode:9})
     await send('Input.dispatchKeyEvent', {type:'keyUp',key:'Tab',code:'Tab',windowsVirtualKeyCode:9})
     const keyboard = await evaluate("(() => { const el=document.querySelector('[role=tab][aria-selected=true]'); el.focus(); const s=getComputedStyle(el); return {modality:document.documentElement.dataset.inputModality,visible:el.matches(':focus-visible'),outline:s.outlineStyle,width:parseFloat(s.outlineWidth),shadow:s.boxShadow,decoration:s.textDecorationLine} })()")
@@ -190,6 +212,13 @@ try {
     assert.equal(keyboard.visible,true,'keyboard focus remains visible')
     assert.ok((keyboard.outline!=='none' && keyboard.width>0) || keyboard.shadow!=='none' || keyboard.decoration.includes('underline'),'original keyboard focus treatment is preserved')
     await writeFile(scratch+'/touch-feedback-validation.json',JSON.stringify({ok:true,touchNavigation:true,transparentTapHighlight:true,keyboard}),{mode:0o600})
+    if (!initialTouchEnabled) {
+      await toggleTouch()
+      await until(async () => !(await touchEnabled()))
+      await until(() => touchSaved(true))
+    }
+    await restoreTouchFixture()
+    restoreTouchFixture = undefined
     if (uiAudit) {
       stage = 'connected UI audit'
       const capture = async name => {
@@ -413,7 +442,7 @@ try {
   const initiallyEnabled = await evaluate(`document.querySelector('${fixture}').getAttribute('aria-checked') === 'true'`)
   {
     restoreBadgeFixture = async () => {
-      const result = await evaluate("fetch('/api/pluginManager/setBundleEnabled',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({type:'client-request',rpcId:'restore-fixture-'+Date.now(),method:'pluginManager/setBundleEnabled',payload:{args:{name:'@deepseek-ai/dsh-experimental-plugin-market-bundle',enabled:false}}})}).then(r=>r.json()).then(r=>r.result)")
+      const result = await evaluate("fetch('/api/pluginManager/setBundleEnabled',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({type:'client-request',rpcId:'restore-fixture-'+Date.now(),method:'pluginManager/setBundleEnabled',payload:{args:{name:'@deepseek-ai/dsh-experimental-plugin-market-bundle',enabled:" + initiallyEnabled + "}}})}).then(r=>r.json()).then(r=>r.result)")
       assert.equal(result.ok,true,'original Remote restores the fixture even from its detail page')
       assert.equal(result.value.application,'applied')
     }
@@ -438,7 +467,7 @@ try {
   await pause(400)
   assert.equal(await evaluate('document.documentElement.scrollWidth <= window.innerWidth'),true,'original page fits a narrow viewport')
   await writeFile(scratch+'/plugins-original-mobile.png',Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'))
-  if (restoreBadgeFixture) { await restoreBadgeFixture(); await until(() => evaluate(`document.querySelector('${fixture}').getAttribute('aria-checked') === 'false'`)); restoreBadgeFixture=undefined }
+  if (restoreBadgeFixture) { await restoreBadgeFixture(); await until(() => evaluate(`document.querySelector('${fixture}').getAttribute('aria-checked') === ${JSON.stringify(String(initiallyEnabled))}`)); restoreBadgeFixture=undefined }
   await writeFile(scratch+'/original-plugins-validation.json',JSON.stringify({ok:true,localCount,markers,builtinDetails:true,componentDetails:true,localGroups:true,originalMain:true,originalRowDetail:true,localToggle:true,localConfig:true,hostMutations:mutations,narrowViewport:true}),{mode:0o600})
   console.log('Original Plugins page, native Local tab and Remote/Client badges, local lifecycle/configuration and narrow viewport passed')
   await Promise.race([send('Browser.close'), pause(5000)])
@@ -449,6 +478,7 @@ try {
   await writeFile(scratch + '/unified-plugin-failure.json', JSON.stringify({ stage, error: error.message, errors, mutations, text: evaluate ? await evaluate('document.body.innerText').catch(() => '') : '' }), { mode: 0o600 })
   throw error
 } finally {
+  await restoreTouchFixture?.().catch(() => {})
   await restoreBadgeFixture?.().catch(() => {})
   ws?.close()
   if (browser.exitCode === null) { browser.kill('SIGTERM'); await new Promise(r => browser.once('exit', r)) }

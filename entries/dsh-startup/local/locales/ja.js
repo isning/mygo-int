@@ -105,5 +105,13 @@ export default {
   "Sign in": "ログイン",
   "Sign in failed": "ログインに失敗しました",
   "Invalid login link": "ログインリンクが無効です",
-  "Connect {name}": "{name} に接続"
+  "Connect {name}": "{name} に接続",
+  "Sign in to this instance": "このインスタンスにサインインしてください",
+  "This instance refused access": "このインスタンスがアクセスを拒否しました",
+  "The selected instance is unavailable": "選択したインスタンスは利用できません",
+  "This instance does not support the mygo client adapter": "このインスタンスは mygo クライアントアダプターに対応していません",
+  "Unable to save this instance": "このインスタンスを保存できません",
+  "Unable to remove this instance": "このインスタンスを削除できません",
+  "Unable to load the mygo plugin configuration": "mygo プラグイン設定を読み込めません",
+  "Unable to save the mygo plugin configuration": "mygo プラグイン設定を保存できません"
 }

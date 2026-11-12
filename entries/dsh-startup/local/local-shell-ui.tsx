@@ -122,7 +122,7 @@ export function mountLocalShell(ctx) {
   show()
   ctx.provide('localShell', {
     handoff,
-    showError(reason) { authenticationRequired = reason?.status === 401; error = reason instanceof Error ? reason.message : String(reason); show(); notify() },
+    showError(reason) { authenticationRequired = reason?.status === 401; error = ctx.mygoLocale.text(reason instanceof Error ? reason.message : String(reason)); show(); notify() },
   })
   ctx.effect(() => () => { handoff(); listeners.clear() })
 }

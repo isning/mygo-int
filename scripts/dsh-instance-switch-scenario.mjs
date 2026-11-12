@@ -43,12 +43,26 @@ export async function verifyInstanceSwitch({ send, evaluate, until, scratch, lau
     await evaluate("[...document.querySelectorAll('[role=tab]')].find(x=>['Local','本地'].includes(x.innerText)).click()")
     await until(() => evaluate("!!document.querySelector('[data-plugin-package=\"./plugins/touch-feedback.js\"] [role=switch]')"))
   }
+  const removeTestProfiles = () => evaluate(`(async () => {
+    const startup = await fetch('/mygo-local/startup.json').then(response => response.json())
+    for (const profile of startup.instances.filter(profile => ['second-dsh', 'unavailable-dsh'].includes(profile.id))) {
+      const response = await fetch('/mygo-local/connection', {
+        method: 'DELETE', headers: {'content-type': 'application/json'}, body: JSON.stringify(profile),
+      })
+      if (!response.ok && response.status !== 404) throw Error('Unable to remove test instance ' + profile.id)
+    }
+  })()`)
+  let initialTouchEnabled, initialTouchOverride
+  try {
   await send('Page.navigate', { url: launchURL })
   await ready()
+  await removeTestProfiles()
   assert.ok(JSON.stringify(await list()).includes(a.sessionId), 'A lists its real fixture')
   await evaluate("localStorage.setItem('instance-switch-proof','A')")
   await plugins()
-  await evaluate("document.querySelector('[data-plugin-package=\"./plugins/touch-feedback.js\"] [role=switch]').click()")
+  initialTouchEnabled = await evaluate("!!document.querySelector('style[data-mygo-touch-feedback]')")
+  initialTouchOverride = await evaluate("fetch('/mygo-local/client-config').then(response => response.json()).then(config => ({exists:Object.hasOwn(config.overrides,'touch-feedback'),value:config.overrides['touch-feedback']}))")
+  if (initialTouchEnabled) await evaluate("document.querySelector('[data-plugin-package=\"./plugins/touch-feedback.js\"] [role=switch]').click()")
   await until(() => evaluate("!document.querySelector('style[data-mygo-touch-feedback]')"))
   await instances()
   await add('second-dsh', 'Second DSH', b.origin)
@@ -111,16 +125,35 @@ export async function verifyInstanceSwitch({ send, evaluate, until, scratch, lau
   await add('unavailable-dsh', 'Unavailable DSH', 'http://127.0.0.1:1')
   const oldPath = await evaluate('location.pathname')
   await connect('unavailable-dsh')
-  await until(() => evaluate(`location.pathname !== ${JSON.stringify(oldPath)} && !!document.querySelector('[data-mygo-local-shell]') && document.body.innerText.includes('502')`))
+  await until(() => evaluate(`location.pathname !== ${JSON.stringify(oldPath)} && !!document.querySelector('[data-mygo-local-shell]') && document.body.innerText.includes('The selected instance is unavailable')`))
   await instances()
   await connect('local-test-dsh')
   await ready()
   assert.equal(await evaluate("fetch('/mygo/status').then(r=>r.status)"), 200, 'local settings recover from an unavailable target')
-  await plugins()
-  await evaluate("document.querySelector('[data-plugin-package=\"./plugins/touch-feedback.js\"] [role=switch]').click()")
-  await until(() => evaluate("!!document.querySelector('style[data-mygo-touch-feedback]')"))
   await pause(250)
   await writeFile(scratch + '/instance-switch-validation.json', JSON.stringify({ ok: true, originalHosts: 2, realSessionIsolation: true,
     credentialIsolation: true, retainedLogin: true, proxyCredentialRestore: true, storageIsolation: true, localPreferencesRetained: true, settingsConnect: true,
     sidebarConnect: true, invalidLoginRefused: true, originalComposerMockReply: true, unavailableTargetRecovery: true }), { mode: 0o600 })
+  } finally {
+    await send('Page.navigate', { url: launchURL })
+    await ready()
+    if (initialTouchEnabled !== undefined) {
+      await plugins()
+      const currentTouchEnabled = await evaluate("!!document.querySelector('style[data-mygo-touch-feedback]')")
+      if (currentTouchEnabled !== initialTouchEnabled) {
+        await evaluate("document.querySelector('[data-plugin-package=\"./plugins/touch-feedback.js\"] [role=switch]').click()")
+        await until(() => evaluate(`!!document.querySelector('style[data-mygo-touch-feedback]') === ${initialTouchEnabled}`))
+      }
+      await evaluate(`(async () => {
+        const config = await fetch('/mygo-local/client-config').then(response => response.json())
+        const original = ${JSON.stringify(initialTouchOverride)}
+        const overrides = {...config.overrides}
+        if (original.exists) overrides['touch-feedback'] = original.value
+        else delete overrides['touch-feedback']
+        const response = await fetch('/mygo-local/client-config', {method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({expectedRevision:config.revision,base:config.base,overrides})})
+        if (!response.ok) throw Error('Unable to restore touch feedback configuration')
+      })()`)
+    }
+    await removeTestProfiles()
+  }
 }

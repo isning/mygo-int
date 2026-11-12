@@ -1,4 +1,3 @@
-export { installClientI18n } from './plugins/client-i18n.js'
 // Original implementation exposed to the navigation plugin; unchanged upstream.
 export { installWindowDragRecall } from '../../../.scratch/upstream/deepseek-harness/packages/client/web/src/window-drag/recall.ts'
 export { registerInstanceNavigation } from './instance-navigation'

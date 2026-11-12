@@ -12,7 +12,7 @@ export async function apply(ctx) {
   const notify = () => { for (const listener of listeners) listener() }
   try {
     const response = await fetch('/mygo-local/client-config', { cache: 'no-store' })
-    if (!response.ok) throw Error(`mygo client configuration HTTP ${response.status}`)
+    if (!response.ok) throw Error((await response.text()).trim() || 'Unable to load the mygo plugin configuration')
     const saved = await response.json()
     if (saved.version !== 1 || !Number.isSafeInteger(saved.revision) || saved.revision < 0
       || saved.base !== null && typeof saved.base !== 'string' || !saved.overrides
@@ -29,7 +29,8 @@ export async function apply(ctx) {
   async function persist(candidate) {
     const response = await fetch('/mygo-local/client-config', { method: 'PUT', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ expectedRevision: revision, base, overrides: candidate }) })
-    if (!response.ok) throw Error(response.status === 409 ? 'Mygo plugin configuration changed; reload before saving' : `Mygo plugin configuration HTTP ${response.status}`)
+    if (!response.ok) throw Error(response.status === 409 ? 'Mygo plugin configuration changed; reload before saving'
+      : (await response.text()).trim() || 'Unable to save the mygo plugin configuration')
     const saved = await response.json()
     if (saved.version !== 1 || saved.revision !== revision + 1) throw Error('Invalid mygo plugin configuration response')
     revision = saved.revision

@@ -105,5 +105,13 @@ export default {
   "Sign in": "登录",
   "Sign in failed": "登录失败",
   "Invalid login link": "登录链接无效",
-  "Connect {name}": "连接 {name}"
+  "Connect {name}": "连接 {name}",
+  "Sign in to this instance": "请登录此实例",
+  "This instance refused access": "此实例拒绝访问",
+  "The selected instance is unavailable": "所选实例不可用",
+  "This instance does not support the mygo client adapter": "此实例不支持 mygo 客户端适配器",
+  "Unable to save this instance": "无法保存此实例",
+  "Unable to remove this instance": "无法删除此实例",
+  "Unable to load the mygo plugin configuration": "无法加载 mygo 插件配置",
+  "Unable to save the mygo plugin configuration": "无法保存 mygo 插件配置"
 }

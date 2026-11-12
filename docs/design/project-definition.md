@@ -73,6 +73,11 @@ plugins need no new SDK; security enforcement is a separate decision.
 
 ## Confirmed instance and plugin authority model
 
+This section defines the long-term product model. The current Web implementation
+uses one explicit instance route per document; switching in a tab reloads that
+document, while separate tabs retain independent routes and storage partitions.
+See ADR 0007 for the implemented boundary.
+
 - An instance is a remote harness instance with its own sessions, workspaces and
   capabilities. It is not a client composition, provider or module realm.
 - Multiple instances can stay connected concurrently. Switching the visible instance
@@ -86,6 +91,11 @@ plugins need no new SDK; security enforcement is a separate decision.
   and do not automatically acquire global application replacement authority.
 
 ## Confirmed execution and React boundaries
+
+These are architectural requirements, not claims that hostile-code isolation or
+native rendering is already implemented. The current browser integration keeps
+trusted local and instance-supplied code in one document realm and relies on DSH
+admission and Remote authorization for server capabilities.
 
 - Remote-supplied executable plugins run under isolation and explicit grants, without
   access to other instances' credentials, unrestricted platform capabilities or the

@@ -62,9 +62,8 @@ export function createAuthenticatedCarrier({ origin, publicOrigins = [], maxBody
   }
   function transportFailure(res, error) {
     if (res.headersSent) { res.destroy(error); return }
-    const code = typeof error?.code === 'string' ? error.code : 'UPSTREAM_UNAVAILABLE'
     res.writeHead(502, { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' })
-      .end(`Unable to connect to the selected instance (${code})`)
+      .end('The selected instance is unavailable')
   }
   function track(socket) { active.add(socket); socket.once('close', () => active.delete(socket)) }
   return {
@@ -73,9 +72,13 @@ export function createAuthenticatedCarrier({ origin, publicOrigins = [], maxBody
     admit(req, res) {
       if (!valid(req) || req.method !== 'GET') { res.writeHead(403).end(); return }
       const upstream = transport(target, { path: '/', method: 'GET', headers: headers(req), agent: false }, reply => {
-        reply.resume()
-        res.writeHead(reply.statusCode === 200 ? 204 : reply.statusCode === 401 ? 401 : 403,
-          { 'cache-control': 'no-store' }).end()
+        if (reply.statusCode === 200) {
+          reply.resume()
+          res.writeHead(204, { 'cache-control': 'no-store' }).end()
+        } else {
+          res.writeHead(reply.statusCode, responseHeaders(req, reply))
+          reply.pipe(res)
+        }
       })
       upstream.on('socket', track)
       upstream.setTimeout(15000, () => upstream.destroy())
@@ -88,17 +91,20 @@ export function createAuthenticatedCarrier({ origin, publicOrigins = [], maxBody
       delete loginHeaders['content-length']
       delete loginHeaders['content-type']
       const upstream = transport(target, { path: '/?token=' + encodeURIComponent(token), method: 'GET', headers: loginHeaders, agent: false }, async reply => {
-        reply.resume()
         const cookies = reply.headers['set-cookie']?.filter(value => value.startsWith(upstreamCookie(req) + '='))
         const credential = cookies?.[0]?.split(';', 1)[0]
-        const status = reply.statusCode === 303 && credential ? 204
-          : reply.statusCode >= 400 && reply.statusCode <= 599 ? reply.statusCode : 502
-        if (status === 204) {
+        if (reply.statusCode === 303 && credential) {
+          reply.resume()
           try { await onAccepted?.(credential) } catch { res.writeHead(500, { 'cache-control': 'no-store' }).end(); return }
+          const browserCookies = !getCredential ? responseHeaders(req, reply)['set-cookie'] : undefined
+          res.writeHead(successStatus, { 'cache-control': 'no-store', ...successHeaders, ...(browserCookies?.length ? { 'set-cookie': browserCookies } : {}) }).end()
+        } else if (reply.statusCode >= 400 && reply.statusCode <= 599) {
+          res.writeHead(reply.statusCode, responseHeaders(req, reply))
+          reply.pipe(res)
+        } else {
+          reply.resume()
+          res.writeHead(502, { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' }).end('The selected instance returned an invalid sign-in response')
         }
-        const browserCookies = !getCredential && status === 204 ? responseHeaders(req, reply)['set-cookie'] : undefined
-        const responseStatus = status === 204 ? successStatus : status
-        res.writeHead(responseStatus, { 'cache-control': 'no-store', ...(status === 204 ? successHeaders : {}), ...(browserCookies?.length ? { 'set-cookie': browserCookies } : {}) }).end()
       })
       upstream.on('socket', track)
       upstream.setTimeout(15000, () => upstream.destroy())

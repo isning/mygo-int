@@ -61,7 +61,7 @@ test('device shell survives an unavailable upstream while Remote forwarding stil
     const failure = await get(publicOrigin + '/api/session/list')
     assert.equal(failure.status, 502)
     assert.equal(failure.headers['content-type'], 'text/plain; charset=utf-8')
-    assert.match(failure.body, /^Unable to connect to the selected instance \((?:ECONNREFUSED|UPSTREAM_UNAVAILABLE)\)$/)
+    assert.equal(failure.body, 'The selected instance is unavailable')
     assert.equal((await get(publicOrigin, {origin:'http://cross-site.invalid'})).status, 403)
   } finally { carrier.close(); await new Promise(resolve => server.close(resolve)) }
 })
