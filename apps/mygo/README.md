@@ -1,5 +1,5 @@
 ---
-description: "A multi-instance DSH client that keeps the original Cordis client and plugin UI."
+description: "A multi-instance DSH client built on the Cordis client and plugin UI."
 kind: "package-reference"
 ---
 

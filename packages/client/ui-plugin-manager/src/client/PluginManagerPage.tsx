@@ -37,7 +37,6 @@ import type { ConfigPageForm } from './slot-contract.ts'
 import { UpdateDialog, VersionSection } from './versions.tsx'
 import { BundleDetailSection } from './BundleDetailSection.tsx'
 import css from './PluginManagerPage.module.css'
-export { css as pluginManagerStyles }
 
 /** Full component props assembled by the main slot renderer. */
 export type PluginManagerPageProps =

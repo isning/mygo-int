@@ -4,7 +4,7 @@ import React, { useEffect, useState, useSyncExternalStore } from 'react'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
-import { pluginManagerStyles as css } from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
+import css from '@deepseek-ai/dsh-client-ui-plugin-manager/src/client/PluginManagerPage.module.css'
 import type { PluginDetailProps } from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
 import { builtinModules, type PluginRuntimeFacts } from './plugin-side-badges'
 

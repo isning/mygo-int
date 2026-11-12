@@ -48,9 +48,6 @@ import { SettingsDocumentStore } from './settings-document-store.ts'
 import { HostReleasePrompt, type HostReleasePromptInjected } from './HostReleasePrompt.tsx'
 import { en, ja, es, fr, de, ru, pt, zh, type SettingsKey } from './locales.ts'
 
-export { SettingsPanel } from './SettingsRoot.tsx'
-export { default as generalSectionStyles } from './GeneralSection.module.css'
-export { default as settingsRowStyles } from './DesktopChannelRow.module.css'
 export type {
   CloseLabelProps, HeaderContentProps, TriggerContentProps,
 } from './chrome.tsx'
