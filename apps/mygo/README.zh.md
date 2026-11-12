@@ -45,7 +45,7 @@ mygo 仅在服务端状态目录保存 DSH 启动令牌和绑定 authority 的 C
 <a id="further-exploration"></a>
 ## 进一步阅读
 
-- [远端启动适配器](../../packages/host/mygo-bootstrap/README.zh.md)
+- [DSH 连接插件](../../packages/host/mygo-connection/README.zh.md)
 - [应用清单](package.json)
 
 <a id="model-experience"></a>
@@ -60,7 +60,7 @@ mygo 不会增加模型输入。已连接实例的原始 agent 与客户端插�
 <a id="known-limitations-and-deferred-work"></a>
 ## 已知限制与延后工作
 
-- 每个 DSH 实例必须提供经过认证的 mygo 启动适配器。
+- 每个 DSH 实例必须提供经过认证的 mygo 连接插件。
 - 当前浏览器代理支持 owner 认证；受限用户接入需要显式的应用凭据和 RemoteAccess 策略。
 - `publicOrigin` 是精确 origin，不是认证机制。请保护私有启动链接。
 

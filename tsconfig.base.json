@@ -29,7 +29,7 @@
     // under its own tsconfig boundary.
     "paths": {
       "@deepseek-ai/dsh-mygo-app": ["./apps/mygo/src/index.ts"],
-      "@deepseek-ai/dsh-host-mygo-bootstrap": ["./packages/host/mygo-bootstrap/src/index.ts"],
+      "@deepseek-ai/dsh-host-mygo-connection": ["./packages/host/mygo-connection/src/index.ts"],
       "@deepseek-ai/dsh-client-ui-file-actions": ["./packages/client/ui-file-actions/src/index.ts"],
       "@deepseek-ai/dsh-client-ui-file-actions/client": ["./packages/client/ui-file-actions/src/client/index.ts"],
       "@deepseek-ai/dsh-client-ui-file-actions/types": ["./packages/client/ui-file-actions/src/types.ts"],

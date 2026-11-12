@@ -275,7 +275,7 @@ function RuntimeError({ error, t }: { readonly error: string | undefined; readon
  * registered a page, and, when the pack is on, a switch. A pack like base
  * carries close to a hundred rows, so a long list gets a filter.
  */
-export function RowsSection({ rows, t, resolveText, toggle, configure }: {
+function RowsSection({ rows, t, resolveText, toggle, configure }: {
   readonly rows: readonly PackageRow[]
   readonly t: Translate
   readonly resolveText: ResolveText

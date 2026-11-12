@@ -60,9 +60,8 @@ declare module '@deepseek-ai/cordis' {
   }
 }
 
-export { ItemCard, ItemDetail, PackageCard, PackageDetail, RowDetail, RowsSection, pluginManagerStyles } from './PluginManagerPage.tsx'
+export { ItemCard, ItemDetail, PackageCard, PackageDetail, RowDetail, pluginManagerStyles } from './PluginManagerPage.tsx'
 export type { PluginManagerPageProps } from './PluginManagerPage.tsx'
-export { rowConfigKey } from './config-ledger.ts'
 export type { ConfigLedger, OfficialItem } from './config-ledger.ts'
 export type { PackageRow, PackageView, PluginManagerFace } from './manager-store.ts'
 export type { PluginManagerLocaleKey } from './locales.ts'

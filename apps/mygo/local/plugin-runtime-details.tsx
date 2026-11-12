@@ -4,7 +4,7 @@ import React, { useEffect, useState, useSyncExternalStore } from 'react'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
-import { rowConfigKey, pluginManagerStyles as css } from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
+import { pluginManagerStyles as css } from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
 import type { PluginDetailProps } from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
 import { builtinModules, type PluginRuntimeFacts } from './plugin-side-badges'
 
@@ -13,6 +13,7 @@ type RuntimeContext = Context & {
 }
 const phases = ['pending', 'loading', 'active', 'failed', 'disposed', 'unloading'] as const
 const normalize = (name: string) => name.replace(/\/client$/, '')
+const rowConfigKey = (bundle: string, rowId: string) => `${bundle}#${rowId}`
 
 export function RuntimeDetails({ ctx, facts, modules, local = false }: {
   ctx: RuntimeContext

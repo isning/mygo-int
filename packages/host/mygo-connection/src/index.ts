@@ -2,7 +2,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-connection'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 
-export const name = 'mygo-dsh-host-bootstrap'
+export const name = 'mygo-connection'
 export const inject = ['webServer', 'connection']
 /** Authenticated route returning the ordered client bootstrap injection table. */
 export const INDEX_INJECTIONS_PATH = '/mygo/index-injections'
@@ -45,7 +45,7 @@ export function apply(ctx: Context): void {
       res.setHeader('Content-Type', 'application/json; charset=utf-8')
       res.end(body)
     },
-  }), `mygo-dsh-host-bootstrap: GET ${INDEX_INJECTIONS_PATH}`)
+  }), `mygo-connection: GET ${INDEX_INJECTIONS_PATH}`)
 }
 
 // The upstream row contract is JSON data, but global.value is typed unknown.

@@ -586,7 +586,7 @@
     { "path": "./packages/boot/plugin-market" },
     { "path": "./packages/llm/plugin-package-inventory-deepseek" },
     { "path": "./packages/host/webserver" },
-    { "path": "./packages/host/mygo-bootstrap" },
+    { "path": "./packages/host/mygo-connection" },
     { "path": "./packages/sdk/client" },
     { "path": "./packages/sdk/protocol" },
     { "path": "./packages/lsp/lsp" },
