@@ -38,7 +38,7 @@ export function createLocaleForm() {
     const ownedOps = structuredClone(ops)
     let accepted = false
     const generation = ++writeGeneration
-    const operation = tail.catch(() => {}).then(async () => {
+    const operation = tail.then(async () => {
       if (snapshot.status !== 'ready') return
       let preference = snapshot.value?.preference
       for (const op of ownedOps) {
@@ -56,7 +56,9 @@ export function createLocaleForm() {
         pendingRevision = result.value.revision
       }
     })
-    tail = operation.catch(() => {})
+    tail = operation.then(() => {}, (_operationFailure) => {
+      // The returned operation reports the failure; later writes still run.
+    })
     return operation.then(() => accepted)
   }
   return {
