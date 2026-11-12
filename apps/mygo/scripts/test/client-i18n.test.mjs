@@ -76,3 +76,26 @@ test('locale form refuses malformed wire snapshots', async t => {
   assert.equal(form.getSnapshot().value, undefined)
   assert.equal(form.getSnapshot().writable, false)
 })
+
+test('locale form owns operations before queued work starts', async t => {
+  const originalFetch = globalThis.fetch
+  t.after(() => { globalThis.fetch = originalFetch })
+  let releaseLoad
+  const load = new Promise(resolve => { releaseLoad = resolve })
+  const writes = []
+  globalThis.fetch = async (_url, init = {}) => {
+    if (init.body === undefined) return await load
+    const body = JSON.parse(init.body)
+    writes.push(body)
+    return { status: 200, async json() { return { revision: 1, preference: body.preference } } }
+  }
+
+  const form = createLocaleForm()
+  const operations = [{ op: 'set', path: ['preference'], value: 'en' }]
+  const pending = form.mutate(operations)
+  operations[0].value = 'zh'
+  releaseLoad({ status: 200, async json() { return { revision: 0, preference: null } } })
+
+  assert.equal(await pending, true)
+  assert.deepEqual(writes, [{ expectedRevision: 0, preference: 'en' }])
+})

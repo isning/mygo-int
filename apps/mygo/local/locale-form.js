@@ -35,12 +35,13 @@ export function createLocaleForm() {
   let writeGeneration = 0
   let pendingRevision
   const mutate = (ops, expectedRevision) => {
+    const ownedOps = structuredClone(ops)
     let accepted = false
     const generation = ++writeGeneration
     const operation = tail.catch(() => {}).then(async () => {
       if (snapshot.status !== 'ready') return
       let preference = snapshot.value?.preference
-      for (const op of ops) {
+      for (const op of ownedOps) {
         if (op.path?.length !== 1 || op.path[0] !== 'preference') return
         if (op.op === 'set') preference = op.value
         else if (op.op === 'unset') preference = null
