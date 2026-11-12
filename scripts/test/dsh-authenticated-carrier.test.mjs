@@ -12,6 +12,7 @@ test('original browser credential, Host/Origin and arbitrary Remote envelopes re
   const seen=[]
   const upstream=createServer((req,res)=>{ seen.push(req.headers); let data='';req.on('data',c=>data+=c);req.on('end',()=>{
     if(req.url==='/?token=private-test-token') {res.writeHead(303,{'set-cookie':'dsh-test=upstream; HttpOnly; SameSite=Strict',location:'./'}).end();return}
+    if(req.url==='/upstream-failure'){res.writeHead(503,{'content-type':'text/plain','x-upstream':'original'}).end('original upstream failure');return}
     if(!req.headers.cookie){res.writeHead(401).end();return}
     res.writeHead(200).end(data || 'original')
   }) })
@@ -37,6 +38,7 @@ test('original browser credential, Host/Origin and arbitrary Remote envelopes re
     assert.equal(seen.at(-1).cookie,cookie);assert.equal(seen.at(-1).host,new URL(publicOrigin).host);assert.equal(seen.at(-1).origin,publicOrigin)
     assert.equal(seen.at(-1).authorization,undefined);assert.equal(seen.at(-1)['x-forwarded-host'],undefined)
     assert.equal((await get(publicOrigin+'/api/settings/catalog')).status,401)
+    const upstreamFailure=await get(publicOrigin+'/upstream-failure');assert.equal(upstreamFailure.status,503);assert.equal(upstreamFailure.headers['x-upstream'],'original');assert.equal(upstreamFailure.body,'original upstream failure')
     assert.equal((await get(publicOrigin+'/api/upload',{cookie},'POST','x'.repeat(257))).status,413)
     assert.equal((await get(publicOrigin,{cookie,origin:'http://evil.invalid'})).status,403)
     assert.equal((await get(publicOrigin,{cookie,host:'evil.invalid'})).status,403)
@@ -56,7 +58,10 @@ test('device shell survives an unavailable upstream while Remote forwarding stil
     const shell = await get(publicOrigin)
     assert.equal(shell.status, 200)
     assert.equal(shell.body, 'device shell')
-    assert.equal((await get(publicOrigin + '/api/session/list')).status, 502)
+    const failure = await get(publicOrigin + '/api/session/list')
+    assert.equal(failure.status, 502)
+    assert.equal(failure.headers['content-type'], 'text/plain; charset=utf-8')
+    assert.match(failure.body, /^Unable to connect to the selected instance \((?:ECONNREFUSED|UPSTREAM_UNAVAILABLE)\)$/)
     assert.equal((await get(publicOrigin, {origin:'http://cross-site.invalid'})).status, 403)
   } finally { carrier.close(); await new Promise(resolve => server.close(resolve)) }
 })

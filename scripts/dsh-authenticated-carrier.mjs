@@ -60,6 +60,12 @@ export function createAuthenticatedCarrier({ origin, publicOrigins = [], maxBody
   function valid(req, socket = false) {
     return trusted(req, socket) && typeof req.url === 'string' && req.url.startsWith('/') && !req.url.startsWith('//') && !/[\\\r\n]/.test(req.url)
   }
+  function transportFailure(res, error) {
+    if (res.headersSent) { res.destroy(error); return }
+    const code = typeof error?.code === 'string' ? error.code : 'UPSTREAM_UNAVAILABLE'
+    res.writeHead(502, { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' })
+      .end(`Unable to connect to the selected instance (${code})`)
+  }
   function track(socket) { active.add(socket); socket.once('close', () => active.delete(socket)) }
   return {
     // Read-only admission probe for device-local management. Original DSH decides
@@ -73,7 +79,7 @@ export function createAuthenticatedCarrier({ origin, publicOrigins = [], maxBody
       })
       upstream.on('socket', track)
       upstream.setTimeout(15000, () => upstream.destroy())
-      upstream.on('error', () => { if (!res.headersSent) res.writeHead(502); res.end() })
+      upstream.on('error', error => transportFailure(res, error))
       upstream.end()
     },
     login(req, res, token, { onAccepted, successStatus = 204, successHeaders = {} } = {}) {
@@ -96,7 +102,7 @@ export function createAuthenticatedCarrier({ origin, publicOrigins = [], maxBody
       })
       upstream.on('socket', track)
       upstream.setTimeout(15000, () => upstream.destroy())
-      upstream.on('error', () => { if (!res.headersSent) res.writeHead(502); res.end() })
+      upstream.on('error', error => transportFailure(res, error))
       upstream.end()
     },
     handle(req, res, indexHTML) {
@@ -118,7 +124,7 @@ export function createAuthenticatedCarrier({ origin, publicOrigins = [], maxBody
       })
       upstream.on('socket', track)
       upstream.setTimeout(120000, () => upstream.destroy())
-      upstream.on('error', () => { if (!res.headersSent) res.writeHead(502); res.end() })
+      upstream.on('error', error => transportFailure(res, error))
       const bound = new Transform({ transform(chunk, encoding, done) {
         size += chunk.length
         if (size > maxBodyBytes) { if (!res.headersSent) res.writeHead(413).end(); upstream.destroy(); done(Error('Transport body limit')); return }

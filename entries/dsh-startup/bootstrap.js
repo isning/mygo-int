@@ -4,7 +4,10 @@ import { routeURL } from '/mygo-boot/instance-route.js'
 const gate = globalThis.__DSH_BOOT_READY__
 try {
   const response = await fetch('/mygo/index-injections', { credentials: 'same-origin', cache: 'no-store' })
-  if (!response.ok) throw Object.assign(new Error(`mygo boot: index injections HTTP ${response.status}`), { status: response.status })
+  if (!response.ok) {
+    const detail = (await response.text()).trim().slice(0, 1000)
+    throw Object.assign(new Error(`mygo boot: index injections HTTP ${response.status}${detail ? `: ${detail}` : ''}`), { status: response.status })
+  }
   const payload = await response.json()
   if (payload.schemaVersion !== 1 || !Array.isArray(payload.injections)) {
     throw new Error('mygo boot: unsupported index injections response')
