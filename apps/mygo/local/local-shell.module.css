@@ -1,16 +1,17 @@
-/* Layout only. Controls, typography, surfaces and settings remain upstream UI. */
+/* The offline shell uses the same tokens and control geometry as the DSH Web client. */
 .shell {
   box-sizing: border-box;
   width: 100%;
-  min-height: 100%;
-  padding: 24px;
+  min-height: 100dvh;
+  padding: 0 32px 48px;
   color: var(--dsw-alias-label-primary);
   background: var(--dsw-alias-bg-base);
+  font-family: var(--dsw-font-family);
 }
 
 .frame {
   width: 100%;
-  max-width: 960px;
+  max-width: 1120px;
   margin: 0 auto;
 }
 
@@ -24,15 +25,64 @@
 .navigation {
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 8px 16px;
-  margin-bottom: 32px;
-  min-height: 36px;
+  gap: 12px 24px;
+  min-height: 72px;
+  border-bottom: 0.5px solid var(--dsw-alias-border-l4);
 }
 
 .actions {
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 8px;
   min-width: 0;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--dsw-alias-label-primary);
+  font-family: var(--dsw-font-family-brand);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 24px;
+}
+
+.language {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.languageLabel {
+  color: var(--dsw-alias-label-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.languageSelector {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--dsw-radius-md);
+  background: var(--dsw-alias-bg-module-platform);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 14px;
+  line-height: 22px;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .languageSelector:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
+}
+
+.languageChevron {
+  flex: none;
 }
 
 .status {
@@ -40,16 +90,39 @@
 }
 
 .content {
-  max-width: 640px;
-  padding-top: clamp(32px, 9vh, 96px);
+  max-width: 680px;
+  padding-top: clamp(64px, 12vh, 128px);
+}
+
+.intro {
+  max-width: 560px;
+}
+
+.heading {
+  margin: 0;
+  color: var(--dsw-alias-label-primary);
+  font-size: clamp(24px, 4vw, 32px);
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+.description {
+  margin: 12px 0 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 14px;
+  line-height: 22px;
 }
 
 .connectionCard {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 16px;
-  margin-top: 24px;
+  gap: 18px;
+  margin-top: 32px;
+  padding: 20px;
+  border-color: var(--dsw-alias-border-l4);
+  background: var(--dsw-alias-bg-layer-1);
 }
 
 .error {
@@ -59,15 +132,28 @@
 
 @media (max-width: 767px) {
   .shell {
-    padding: 16px;
+    padding: 0 16px 32px;
+  }
+
+  .navigation {
+    min-height: 64px;
   }
 
   .content {
-    padding-top: 24px;
+    padding-top: 48px;
   }
 
   .actions {
     width: 100%;
     justify-content: space-between;
+    padding-bottom: 12px;
+  }
+
+  .languageLabel {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
   }
 }

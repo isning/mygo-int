@@ -2,9 +2,13 @@
 import { useClientText, clientError } from './i18n'
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import { Button, StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, FishLogo, IconChevronDownOutlineRegular, Menu, StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
 import { Instances, ClientSettings } from './management-ui'
 import { SettingsPanel } from '@deepseek-ai/dsh-client-ui-settings-general/client'
+import '@deepseek-ai/dsh-client-web/src/base.css'
+import '@deepseek-ai/dsh-client-ui-theme/src/styles/base.css'
+import '@deepseek-ai/dsh-client-ui-theme/src/styles/design-platform.css'
+import '@deepseek-ai/dsh-client-ui-theme/src/styles/focus.css'
 import css from '@deepseek-ai/dsh-client-ui-settings-models/src/client/ModelsSection.module.css'
 import shellCSS from './local-shell.module.css'
 import type { MygoContext } from './types'
@@ -14,11 +18,18 @@ import type { MygoContext } from './types'
 function LocalLanguage({ ctx }: { ctx: MygoContext }) {
   const t = useClientText(ctx)
   useSyncExternalStore(ctx.mygoLocale.subscribe, ctx.mygoLocale.getSnapshot)
+  const [open, setOpen] = useState(false)
   const language = ctx.mygoLocale.locale()
-  return <label data-mygo-language=""><span>{t('Language')}</span>{' '}
-    <select value={language.active} onChange={event => ctx.mygoLocale.setLocale(event.target.value)}>
-      {language.locales.map((option: { id: string; label: string }) => <option key={option.id} value={option.id}>{option.label}</option>)}
-    </select></label>
+  const activeLabel = language.locales.find((option: { id: string }) => option.id === language.active)?.label ?? language.active
+  return <div data-mygo-language="" className={shellCSS.language}>
+    <span className={shellCSS.languageLabel}>{t('Language')}</span>
+    <Menu open={open} onClose={() => setOpen(false)} portal align="end"
+      items={language.locales.map((option: { id: string; label: string }) => option)} selectedId={language.active}
+      onSelect={(id) => { ctx.mygoLocale.setLocale(id); setOpen(false) }}
+      anchor={<button type="button" className={shellCSS.languageSelector} aria-haspopup="menu" aria-expanded={open}
+        onClick={() => setOpen(value => !value)}>{activeLabel}
+        <IconChevronDownOutlineRegular className={shellCSS.languageChevron} /></button>} />
+  </div>
 }
 
 export function mountLocalShell(ctx: MygoContext) {
@@ -62,15 +73,17 @@ export function mountLocalShell(ctx: MygoContext) {
     return <div data-mygo-local-shell="" className={shellCSS.shell}>
       <div className={shellCSS.frame}>
         <nav aria-label={t('Client navigation')} className={shellCSS.navigation}>
-          <span className={css.title}>mygo</span>
+          <div className={shellCSS.brand}><FishLogo size={22} /><span>mygo</span></div>
           <div className={shellCSS.actions}>
             <LocalLanguage ctx={ctx} />
             <Button data-mygo-open-settings="" variant="outline" onClick={() => { setFormError(''); setSettings(true) }}>{t('Instances')}</Button>
           </div>
         </nav>
         <main className={`${css.section} ${shellCSS.content}`}>
-          <h1 className={css.title}>{!hasInstanceRoute ? t('Connect to an instance') : error ? t('Not connected') : t('Connecting…')}</h1>
-          <p className={css.intro}>{t('Your instance profiles and device settings are available here.')}</p>
+          <div className={shellCSS.intro}>
+            <h1 className={shellCSS.heading}>{!hasInstanceRoute ? t('Connect to an instance') : error ? t('Not connected') : t('Connecting…')}</h1>
+            <p className={shellCSS.description}>{t('Your instance profiles and device settings are available here.')}</p>
+          </div>
           <div className={`${css.rowCard} ${shellCSS.connectionCard}`}>
             <div className={shellCSS.status} role="status">
               <StateDot state={!hasInstanceRoute ? 'idle' : error ? 'error' : 'ongoing'} size={8} />
