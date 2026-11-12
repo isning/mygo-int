@@ -61,6 +61,21 @@ try {
     const label = {en:'English',zh:'中文',ja:'日本語',es:'Español',fr:'Français',de:'Deutsch',ru:'Русский',pt:'Português'}[id]
     await evaluate(`[...document.querySelectorAll('[role=menu] [role=menuitem]')].find(item => item.innerText.trim() === ${JSON.stringify(label)}).click()`)
   }
+  const removeUiAuditProfiles = () => evaluate(`(async () => {
+    const startup = await fetch('/mygo-local/startup.json').then(response => response.json())
+    const profiles = startup.instances.filter(profile =>
+      profile.name.startsWith('MYGO UI audit ') || profile.name.startsWith('Offline saved profile ')
+    )
+    for (const profile of profiles) {
+      const response = await fetch('/mygo-local/connection', {
+        method: 'DELETE',
+        headers: {'content-type': 'application/json'},
+        body: JSON.stringify(profile),
+      })
+      if (!response.ok && response.status !== 404) throw Error('UI audit profile cleanup HTTP ' + response.status)
+    }
+    return profiles.length
+  })()`)
   const url = (await readFile(scratch + '/client-launch-url', 'utf8')).trim()
   if (process.argv.includes('--switch-instances')) {
     stage = 'real instance switching'
@@ -73,6 +88,8 @@ try {
   assert.equal(await evaluate("fetch('/').then(r => r.status)"), 200)
   if (process.argv.includes('--offline-only') || i18nOnly) {
     stage = 'offline local shell'
+    await removeUiAuditProfiles()
+    await send('Page.reload', {ignoreCache:true})
     await until(() => evaluate("!!document.querySelector('[data-mygo-local-shell]') && document.body.innerText.includes('Connect to an instance')"))
     assert.equal(await evaluate("fetch('/mygo/status').then(r=>r.status)"),410,'an unscoped remote request has no implicit instance')
     assert.equal(await evaluate("document.body.innerText.includes('Sign in required')"),false,'the local shell does not invent a remote authentication state')
@@ -98,9 +115,9 @@ try {
     await until(() => evaluate("!!document.querySelector('[data-mygo-instances]')"))
     await evaluate("[...document.querySelectorAll('[data-mygo-instances] button')].find(x=>x.innerText==='Add instance').click()")
     await until(() => evaluate("!!document.querySelector('[data-instance-editor]')"))
-    await evaluate(`(() => { for (const [label,value] of [['Name',${JSON.stringify(uiAudit ? 'Offline saved profile ' + 'W'.repeat(100) : 'Offline saved profile')}],['Address',${JSON.stringify(uiAudit ? 'https://' + 'a'.repeat(60) + '.' + 'b'.repeat(60) + '.example' : 'https://offline.example')}]]) { const input=document.querySelector('[data-instance-editor] input[aria-label="'+label+'"]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,value); input.dispatchEvent(new Event('input',{bubbles:true})); } })()`)
+    await evaluate(`(() => { for (const [label,value] of [['Name',${JSON.stringify(uiAudit ? 'MYGO UI audit ' + 'W'.repeat(100) : 'MYGO UI audit offline profile')}],['Address',${JSON.stringify(uiAudit ? 'https://' + 'a'.repeat(60) + '.' + 'b'.repeat(60) + '.example' : 'https://offline.example')}]]) { const input=document.querySelector('[data-instance-editor] input[aria-label="'+label+'"]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,value); input.dispatchEvent(new Event('input',{bubbles:true})); } })()`)
     await evaluate("document.querySelector('[data-instance-editor] button[type=submit]').click()")
-    await until(() => evaluate("!document.querySelector('[data-instance-editor]') && document.body.innerText.includes('Offline saved profile')"))
+    await until(() => evaluate("!document.querySelector('[data-instance-editor]') && document.body.innerText.includes('MYGO UI audit')"))
     const remoteAddress = await evaluate("fetch('/mygo-local/startup.json').then(r=>r.json()).then(config=>config.instances.find(row=>row.id==='local-test-dsh').address)")
     assert.notEqual(remoteAddress,new URL(url).origin,'remote instance address differs from the client entry')
     const editProfile = async (name,address) => {
@@ -130,6 +147,7 @@ try {
     }
     await writeFile(scratch+'/offline-shell.png' ,Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'))
     await writeFile(scratch+'/offline-shell-validation.json',JSON.stringify({ok:true,anonymousRemoteStatus:401,profileSavedWithoutRemote:true,profileSurvivedReload:true,hostManagementWrites:mutations}),{mode:0o600})
+    assert.ok(await removeUiAuditProfiles() >= 1, 'UI audit profile is removed after validation')
   }
   await send('Page.navigate', { url })
   await until(() => evaluate("!!document.querySelector('[data-mygo-navigation]')"))
