@@ -1,0 +1,4 @@
+# Apply only to a Host composition already providing the injected services.
+- insert:
+    - id: mygo-host
+      name: '@deepseek-ai/dsh-host-mygo'

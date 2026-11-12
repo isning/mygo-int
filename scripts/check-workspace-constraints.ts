@@ -83,6 +83,15 @@ const appPackageFiles: Readonly<Record<string, readonly string[]>> = {
   '@deepseek-ai/dsh-desktop-host': [
     'lib/index.js', 'lib/cli.js',
   ],
+  '@deepseek-ai/dsh-mygo-app': [
+    'bin.mjs', 'cordis.patch.yml', 'bootstrap.js', 'index.html', 'instance-route.js',
+    'dist/index.html', 'dist/assets/**/*', '!dist/**/*.map',
+    'local/**/*.js', 'local/**/*.json', 'runtime/apply-injections.js',
+    'scripts/dsh-authenticated-carrier.mjs', 'scripts/dsh-carrier-trust.mjs',
+    'scripts/dsh-client-auth.mjs', 'scripts/dsh-instance-router.mjs',
+    'scripts/dsh-local-startup-config.mjs', 'scripts/dsh-startup.mjs',
+    'lib/index.js', 'lib/types/**/*.d.ts',
+  ],
   // Sourcemaps stay out by payload policy; the worker-preview surface
   // (dist/preview.html and dist/preview/) backs opt-in experimental
   // packages and is not published.

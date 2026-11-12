@@ -1,0 +1,37 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/host/mygo/README.md
+/:
+  en: c99b63411a25b84e
+  zh: a37dc099bfde8dff
+/deepseek-ai-dsh-host-mygo:
+  en: 3f554795ce580bf4
+  zh: 45d7afd9e1b0fbb7
+/deepseek-ai-dsh-host-mygo/summary:
+  en: f4d6a07f9a3e7e26
+  zh: cfa17a7212b09d39
+/deepseek-ai-dsh-host-mygo/table-of-contents:
+  en: 4d5ec89f7a524c33
+  zh: ab42975cd55c9073
+/deepseek-ai-dsh-host-mygo/use-this-package:
+  en: 8d54ed4b47674888
+  zh: 4b3e89207628f00e
+/deepseek-ai-dsh-host-mygo/understand-the-implementation:
+  en: afe0a1646f9d78b3
+  zh: 40fb30bf1fff2141
+/deepseek-ai-dsh-host-mygo/further-exploration:
+  en: ffcc3ca441a6705e
+  zh: db2c3881e6a93177
+/deepseek-ai-dsh-host-mygo/model-experience:
+  en: 10dcb6c95e58efb1
+  zh: 623dced0683ce3bd
+/deepseek-ai-dsh-host-mygo/model-experience/kv-cache-effect:
+  en: ca75c51c89c2c9b0
+  zh: 201c985eba9dfcd3
+/deepseek-ai-dsh-host-mygo/known-limitations-and-deferred-work:
+  en: f3e0d85b1556c29b
+  zh: 135eb3bad25ff251
+/deepseek-ai-dsh-host-mygo/known-limitations-and-deferred-work/dev-note:
+  en: 0a1253c6f7b5e8b9
+  zh: 9f56528562c7c914

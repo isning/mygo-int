@@ -62,11 +62,12 @@ declare module '@deepseek-ai/cordis' {
 
 export type { PluginManagerPageProps } from './PluginManagerPage.tsx'
 export type { ConfigLedger, OfficialItem } from './config-ledger.ts'
-export type { PluginManagerFace } from './manager-store.ts'
+export type { PackageRow, PackageView, PluginManagerFace } from './manager-store.ts'
 export type { PluginManagerLocaleKey } from './locales.ts'
 export type {
   ConfigPageForm, PluginActivationOwnerProps, PluginAddActionsProps, PluginTabInstall, PluginTabProps,
   PluginConfigViewProps, PluginDetailProps, PluginPackageRef, PluginRowRef, PluginsSubject,
+  PluginTabCollection, PluginTabCollectionEntry, PluginTabCollectionGroup,
 } from './slot-contract.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {

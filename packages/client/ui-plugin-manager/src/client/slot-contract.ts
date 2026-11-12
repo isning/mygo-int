@@ -21,6 +21,8 @@
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
 import type { BundleInfo } from '@deepseek-ai/dsh-api-remotes/client'
 import type { ConfigForm, ConfigFormSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ReactNode } from 'react'
+import type { PackageRow, PackageView, PluginManagerFace } from './manager-store.ts'
 
 /** The view the page asks a configuration entry for. */
 export interface PluginConfigViewProps {
@@ -104,6 +106,37 @@ export interface PluginTabProps {
    * @param packageName - npm package name of the bundle.
    */
   readonly openPackage: (packageName: string) => void
+  /**
+   * Render a plugin collection with the Plugins feature's own cards, details,
+   * configuration seats and styles. Contributed tabs provide facts and
+   * commands; this package retains presentation ownership.
+   */
+  readonly renderCollection: (collection: PluginTabCollection) => ReactNode
+}
+
+/** One group in a contributed plugin collection. */
+export interface PluginTabCollectionGroup {
+  readonly id: string
+  readonly title: string
+  readonly entries: readonly PluginTabCollectionEntry[]
+}
+
+/** One official-style item or package card in a contributed collection. */
+export type PluginTabCollectionEntry =
+  | { readonly kind: 'item'; readonly key: string; readonly id: string; readonly label: string; readonly summary?: ReactNode }
+  | { readonly kind: 'package'; readonly key: string; readonly pkg: PackageView; readonly row: PackageRow; readonly configured: boolean; readonly form?: ConfigPageForm }
+
+/** Data and commands for a collection rendered by the Plugins feature. */
+export interface PluginTabCollection {
+  readonly groups: readonly PluginTabCollectionGroup[]
+  readonly selected?: string
+  readonly component: boolean
+  readonly busy: boolean
+  readonly error?: string
+  readonly resolveText: PluginManagerFace['resolveText']
+  readonly onSelect: (key?: string) => void
+  readonly onSetComponent: (value: boolean) => void
+  readonly onSetEnabled: (row: PackageRow, enabled: boolean) => void
 }
 
 /** Add-plugin menu actions, independent of any selected bundle or Session. */

@@ -1,0 +1,98 @@
+{
+  "name": "@deepseek-ai/dsh-mygo-app",
+  "description": "Multi-instance DSH client built on the Cordis client runtime",
+  "version": "0.2.2-rc.1",
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "bin": {
+    "mygo": "bin.mjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "bin.mjs",
+    "cordis.patch.yml",
+    "bootstrap.js",
+    "index.html",
+    "instance-route.js",
+    "locale-settings.js",
+    "dist/index.html",
+    "dist/assets/**/*",
+    "!dist/**/*.map",
+    "local/**/*.js",
+    "local/**/*.json",
+    "runtime/apply-injections.js",
+    "scripts/dsh-authenticated-carrier.mjs",
+    "scripts/dsh-carrier-trust.mjs",
+    "scripts/dsh-client-auth.mjs",
+    "scripts/dsh-instance-router.mjs",
+    "scripts/dsh-local-locale.mjs",
+    "scripts/dsh-local-startup-config.mjs",
+    "scripts/dsh-startup.mjs",
+    "lib/index.js",
+    "lib/types/**/*.d.ts"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs && tsc -b && tsdown --config-loader native",
+    "start": "node bin.mjs",
+    "test": "cd ../.. && node --test apps/mygo/scripts/test/*.test.mjs",
+    "test:browser": "node scripts/browser-acceptance.mjs",
+    "test:packed": "node scripts/packed-install-smoke.mjs"
+  },
+  "dependencies": {
+    "@deepseek-ai/cordis": "workspace:~",
+    "@deepseek-ai/cordis-plugin-loader": "workspace:~",
+    "@deepseek-ai/schemastery": "workspace:~",
+    "@deepseek-ai/dsh": "workspace:*",
+    "@deepseek-ai/dsh-app-boot": "workspace:*",
+    "@deepseek-ai/dsh-api-remotes": "workspace:*",
+    "@deepseek-ai/dsh-client-connection": "workspace:*",
+    "@deepseek-ai/dsh-client-locale": "workspace:*",
+    "@deepseek-ai/dsh-client-modules": "workspace:*",
+    "@deepseek-ai/dsh-client-ui-plugin-manager": "workspace:*",
+    "@deepseek-ai/dsh-client-ui-primitives": "workspace:*",
+    "@deepseek-ai/dsh-client-ui-renderer": "workspace:*",
+    "@deepseek-ai/dsh-client-ui-settings-account": "workspace:*",
+    "@deepseek-ai/dsh-client-ui-settings-agent-loop": "workspace:*",
+    "@deepseek-ai/dsh-client-ui-settings-general": "workspace:*",
+    "@deepseek-ai/dsh-client-ui-settings-models": "workspace:*",
+    "@deepseek-ai/dsh-client-ui-settings-shell": "workspace:*",
+    "@deepseek-ai/dsh-client-ui-settings-subagent": "workspace:*",
+    "@deepseek-ai/dsh-client-ui-settings-web-search": "workspace:*",
+    "@deepseek-ai/dsh-client-ui-sidebar": "workspace:*",
+    "@deepseek-ai/dsh-client-ui-theme": "workspace:*",
+    "@deepseek-ai/dsh-client-web": "workspace:*",
+    "@deepseek-ai/dsh-host-mygo": "workspace:*",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "@vitejs/plugin-react": "^4.7.0",
+    "vite": "^6.4.3",
+    "tsdown": "^0.22.2",
+    "typescript": "^6.0.3",
+    "ws": "8.21.3"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/isning/mygo.git",
+    "directory": "apps/mygo"
+  }
+}
