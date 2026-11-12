@@ -33,7 +33,7 @@ kind: "package-group"
 | [`directory-picker-browse/`](directory-picker-browse/README.zh.md) | 应用内目录浏览器后端，也服务于远程客户端 | 注册 `ctx.directoryPicker` |
 | [`directory-picker-auto/`](directory-picker-auto/README.zh.md) | 在启动时挂载匹配后端的宿主自适应选择器 | 挂载一个后端 |
 | [`open-in-app/`](open-in-app/README.zh.md) | 在已安装应用中打开 workspace 目录的应用探测、图标与启动路由 | 消费 `ctx.webServer` |
-| [`mygo-connection/`](mygo-connection/README.zh.md) | mygo 连接协议在 DSH Host 侧的实现 | 消费 `ctx.webServer` 与 `ctx.connection` |
+| [`mygo/`](mygo/README.zh.md) | 供 mygo 使用的 DSH 实例 Host 侧组件 | 消费 `ctx.webServer` 与 `ctx.connection` |
 | [`plugin-inventory/`](plugin-inventory/README.zh.md) | 当前 Loader 条目的只读投影 | Remote `pluginInventory/list` |
 | [`product-telemetry-otel/`](product-telemetry-otel/README.zh.md) | 通过 OTLP/HTTP 显式上报产品使用事件 | `ctx.productTelemetry` |
 

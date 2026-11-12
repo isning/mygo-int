@@ -990,9 +990,9 @@ importers:
       '@deepseek-ai/dsh-client-web':
         specifier: workspace:*
         version: link:../../packages/client/web
-      '@deepseek-ai/dsh-host-mygo-connection':
+      '@deepseek-ai/dsh-host-mygo':
         specifier: workspace:*
-        version: link:../../packages/host/mygo-connection
+        version: link:../../packages/host/mygo
       '@deepseek-ai/schemastery':
         specifier: link:../../vendor/schemastery
         version: link:../../vendor/schemastery
@@ -12677,7 +12677,7 @@ importers:
         specifier: workspace:*
         version: link:../webserver
 
-  packages/host/mygo-connection:
+  packages/host/mygo:
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~

@@ -42,7 +42,7 @@ mygo stores DSH launch tokens and authority-bound cookies only in its server-sid
 
 ## Further Exploration
 
-- [DSH connection plugin](../../packages/host/mygo-connection/README.md)
+- [mygo Host plugin](../../packages/host/mygo/README.md)
 - [Application manifest](package.json)
 
 ## Model Experience
@@ -55,7 +55,7 @@ None; mygo forwards the original DSH protocol without changing provider requests
 
 ## Known Limitations and Deferred Work
 
-- Each DSH instance must expose the authenticated mygo connection plugin.
+- Each DSH instance must install the authenticated mygo Host plugin.
 - The current browser proxy supports owner authentication; restricted-user admission needs an explicit application credential and RemoteAccess policy.
 - `publicOrigin` is an exact origin, not an authentication mechanism. Keep the private launch URL secret.
 

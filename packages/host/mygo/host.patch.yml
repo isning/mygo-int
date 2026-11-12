@@ -1,4 +1,4 @@
 # Apply only to a Host composition already providing the injected services.
 - insert:
-    - id: mygo-connection
-      name: '@deepseek-ai/dsh-host-mygo-connection'
+    - id: mygo-host
+      name: '@deepseek-ai/dsh-host-mygo'

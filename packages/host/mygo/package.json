@@ -1,6 +1,6 @@
 {
-  "name": "@deepseek-ai/dsh-host-mygo-connection",
-  "description": "DSH Host implementation of the mygo connection protocol",
+  "name": "@deepseek-ai/dsh-host-mygo",
+  "description": "Host-side components for DSH instances used through mygo",
   "version": "0.2.2-rc.1",
   "type": "module",
   "main": "lib/index.js",
@@ -38,6 +38,6 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
-    "directory": "packages/host/mygo-connection"
+    "directory": "packages/host/mygo"
   }
 }
