@@ -1,6 +1,7 @@
 // Original Plugins page and native client-tab acceptance; real Host and authority.
 import assert from 'node:assert/strict'
 import { verifyInstanceSwitch } from './dsh-instance-switch-scenario.mjs'
+import { capturePluginOverride, restorePluginOverride } from './dsh-client-config-fixture.mjs'
 import { spawn } from 'node:child_process'
 import { readFile, mkdir, writeFile } from 'node:fs/promises'
 import { openSync } from 'node:fs'
@@ -169,16 +170,8 @@ try {
     const touchEnabled = () => evaluate("document.querySelectorAll('style[data-mygo-touch-feedback]').length===1")
     const touchSaved = disabled => evaluate(`fetch('/mygo-local/client-config').then(response => response.json()).then(config => config.overrides['touch-feedback']?.disabled === ${disabled})`)
     const initialTouchEnabled = await touchEnabled()
-    const initialTouchOverride = await evaluate("fetch('/mygo-local/client-config').then(response => response.json()).then(config => ({exists:Object.hasOwn(config.overrides,'touch-feedback'),value:config.overrides['touch-feedback']}))")
-    restoreTouchFixture = () => evaluate(`(async () => {
-      const config = await fetch('/mygo-local/client-config').then(response => response.json())
-      const original = ${JSON.stringify(initialTouchOverride)}
-      const overrides = {...config.overrides}
-      if (original.exists) overrides['touch-feedback'] = original.value
-      else delete overrides['touch-feedback']
-      const response = await fetch('/mygo-local/client-config', {method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({expectedRevision:config.revision,base:config.base,overrides})})
-      if (!response.ok) throw Error('Unable to restore touch feedback configuration')
-    })()`)
+    const initialTouchOverride = await capturePluginOverride(evaluate, 'touch-feedback')
+    restoreTouchFixture = () => restorePluginOverride(evaluate, 'touch-feedback', initialTouchOverride)
     if (!initialTouchEnabled) {
       await toggleTouch()
       await until(touchEnabled)

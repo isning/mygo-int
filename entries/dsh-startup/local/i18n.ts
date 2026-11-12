@@ -1,6 +1,5 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { useSyncExternalStore } from 'react'
-export { localized } from './locales/index.js'
 export interface ClientLocaleService {
   subscribe(listener: () => void): () => void
   getSnapshot(): number

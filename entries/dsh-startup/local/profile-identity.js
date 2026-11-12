@@ -1,4 +1,4 @@
-export function connectionProfileKey(profile) {
+export function instanceAccessKey(profile) {
   return JSON.stringify([profile.id, profile.authenticationViewId])
 }
 

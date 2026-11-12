@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict'
 import { readFile, writeFile } from 'node:fs/promises'
+import { capturePluginOverride, restorePluginOverride } from './dsh-client-config-fixture.mjs'
 
 // Runs inside the existing private Chromium harness; never emits login links.
 export async function verifyInstanceSwitch({ send, evaluate, until, scratch, launchURL }) {
-  const a = JSON.parse(await readFile(scratch + '/status.json', 'utf8'))
-  const b = JSON.parse(await readFile(scratch + '/second/status.json', 'utf8'))
+  const primaryHost = JSON.parse(await readFile(scratch + '/status.json', 'utf8'))
+  const secondaryHost = JSON.parse(await readFile(scratch + '/second/status.json', 'utf8'))
   const tokenB = new URL((await readFile(scratch + '/second/launch-url', 'utf8')).trim()).searchParams.get('token')
   const pause = ms => new Promise(resolve => setTimeout(resolve, ms))
   const ready = async () => {
@@ -57,15 +58,15 @@ export async function verifyInstanceSwitch({ send, evaluate, until, scratch, lau
   await send('Page.navigate', { url: launchURL })
   await ready()
   await removeTestProfiles()
-  assert.ok(JSON.stringify(await list()).includes(a.sessionId), 'A lists its real fixture')
+  assert.ok(JSON.stringify(await list()).includes(primaryHost.sessionId), 'A lists its real fixture')
   await evaluate("localStorage.setItem('instance-switch-proof','A')")
   await plugins()
   initialTouchEnabled = await evaluate("!!document.querySelector('style[data-mygo-touch-feedback]')")
-  initialTouchOverride = await evaluate("fetch('/mygo-local/client-config').then(response => response.json()).then(config => ({exists:Object.hasOwn(config.overrides,'touch-feedback'),value:config.overrides['touch-feedback']}))")
+  initialTouchOverride = await capturePluginOverride(evaluate, 'touch-feedback')
   if (initialTouchEnabled) await evaluate("document.querySelector('[data-plugin-package=\"./plugins/touch-feedback.js\"] [role=switch]').click()")
   await until(() => evaluate("!document.querySelector('style[data-mygo-touch-feedback]')"))
   await instances()
-  await add('second-dsh', 'Second DSH', b.origin)
+  await add('second-dsh', 'Second DSH', secondaryHost.origin)
   await connect('second-dsh')
   await until(() => evaluate("!!document.querySelector('[data-mygo-local-shell] input[type=password]')"))
   const privateLinkB = new URL(await evaluate('location.href'))
@@ -87,11 +88,11 @@ export async function verifyInstanceSwitch({ send, evaluate, until, scratch, lau
   assert.equal(await evaluate("!!document.querySelector('[data-mygo-local-shell] input[type=password]')"), false, 'saved instance credential restores the proxy without another prompt')
   assert.equal(await evaluate("fetch('/mygo/status').then(r=>r.status)"), 200, 'the restored reverse-proxy credential is admitted upstream')
   const config = await evaluate("fetch('/mygo-local/startup.json').then(r=>r.json())")
-  assert.equal(config.selectedInstance.address, b.origin)
+  assert.equal(config.selectedInstance.address, secondaryHost.origin)
   assert.equal(config.selectedInstance.id, 'second-dsh')
   const sessionsB = JSON.stringify(await list())
-  assert.ok(sessionsB.includes(b.sessionId), 'B supplies its real sessions')
-  assert.ok(!sessionsB.includes(a.sessionId), 'A sessions do not leak into B')
+  assert.ok(sessionsB.includes(secondaryHost.sessionId), 'B supplies its real sessions')
+  assert.ok(!sessionsB.includes(primaryHost.sessionId), 'A sessions do not leak into B')
   assert.equal(await evaluate("localStorage.getItem('instance-switch-proof')"), null)
   await evaluate("localStorage.setItem('instance-switch-proof','B')")
   assert.equal(await evaluate("!!document.querySelector('style[data-mygo-touch-feedback]')"), false, 'device plugin preference survives A to B')
@@ -116,7 +117,7 @@ export async function verifyInstanceSwitch({ send, evaluate, until, scratch, lau
   await until(() => evaluate(`location.pathname !== ${JSON.stringify(pathB)}`))
   await ready()
   const sessionsA = JSON.stringify(await list())
-  assert.ok(sessionsA.includes(a.sessionId) && !sessionsA.includes(b.sessionId))
+  assert.ok(sessionsA.includes(primaryHost.sessionId) && !sessionsA.includes(secondaryHost.sessionId))
   assert.equal(await evaluate("localStorage.getItem('instance-switch-proof')"), 'A', 'A cache survives the return')
   assert.equal(await evaluate("fetch('/mygo/status').then(r=>r.status)"), 200, 'A login survived B login')
   assert.equal(await evaluate("!!document.querySelector('style[data-mygo-touch-feedback]')"), false)
@@ -144,15 +145,7 @@ export async function verifyInstanceSwitch({ send, evaluate, until, scratch, lau
         await evaluate("document.querySelector('[data-plugin-package=\"./plugins/touch-feedback.js\"] [role=switch]').click()")
         await until(() => evaluate(`!!document.querySelector('style[data-mygo-touch-feedback]') === ${initialTouchEnabled}`))
       }
-      await evaluate(`(async () => {
-        const config = await fetch('/mygo-local/client-config').then(response => response.json())
-        const original = ${JSON.stringify(initialTouchOverride)}
-        const overrides = {...config.overrides}
-        if (original.exists) overrides['touch-feedback'] = original.value
-        else delete overrides['touch-feedback']
-        const response = await fetch('/mygo-local/client-config', {method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({expectedRevision:config.revision,base:config.base,overrides})})
-        if (!response.ok) throw Error('Unable to restore touch feedback configuration')
-      })()`)
+      await restorePluginOverride(evaluate, 'touch-feedback', initialTouchOverride)
     }
     await removeTestProfiles()
   }

@@ -85,6 +85,8 @@ See ADR 0007 for the implemented boundary.
 - An instance may have multiple connection profiles. Associate routes only after
   verifiable remote identity or explicit user confirmation. Reconnection does not
   create a new instance; cache private data separately by identity/access context.
+  The current Web adapter implements one active address per instance and
+  authentication view; stable multi-profile identity remains future work.
   See the [instance model](instance-and-connection-model.md).
 - Trusted local plugins can compose or replace the complete client shell, navigation,
   chat and settings. Remote plugins default to the scope of their owning instance

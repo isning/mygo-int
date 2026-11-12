@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { createAuthenticatedCarrier } from './dsh-authenticated-carrier.mjs'
 import { createCarrierTrust } from './dsh-carrier-trust.mjs'
-import { connectionProfileKey, normalizeConnectionProfile } from '../entries/dsh-startup/local/profile-identity.js'
+import { instanceAccessKey, normalizeConnectionProfile } from '../entries/dsh-startup/local/profile-identity.js'
 
 const digest = value => createHash('sha256').update(value).digest('hex')
 
@@ -21,7 +21,7 @@ export function createInstanceRouter({ publicOrigins = [], profiles = [], onRegi
   function register(value) {
     const profile = normalizeConnectionProfile(value)
     const id = createHash('sha256').update(JSON.stringify([profile.id, profile.address, profile.authenticationViewId])).digest('hex')
-    const profileKey = connectionProfileKey(profile)
+    const profileKey = instanceAccessKey(profile)
     const credentialId = digest(profileKey)
     if (routes.has(id)) {
       const route = routes.get(id)
@@ -77,8 +77,8 @@ export function createInstanceRouter({ publicOrigins = [], profiles = [], onRegi
       }
       if (req.method === 'DELETE') {
         const removed = normalizeConnectionProfile(value)
-        const key = connectionProfileKey(removed)
-        const activeKey = route && connectionProfileKey(route.profile)
+        const key = instanceAccessKey(removed)
+        const activeKey = route && instanceAccessKey(route.profile)
         if (key === activeKey) { res.writeHead(409, { 'cache-control': 'no-store' }).end(); return }
         const target = current.get(key)
         if (target) {

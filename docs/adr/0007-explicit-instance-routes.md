@@ -2,9 +2,14 @@
 
 Status: accepted, amended by ADRs 0008 and 0009, 2026-11-12.
 
-Saving and connecting are separate operations. Every profile is identified by
-`(instance id, authentication view)` and connects through an explicit
+Saving and connecting are separate operations. The current Web adapter identifies
+one active access configuration by `(instance id, authentication view)` and connects it through an explicit
 `/mygo-instance/<route>/` document. There is no seed or privileged default.
+
+This is narrower than the complete product model: it does not yet retain several
+LAN, tunnel or relay profiles for one instance and authentication view. That
+requires a separate stable connection-profile identity. Editing the address in
+the current adapter replaces the active access configuration.
 
 Switching reloads the document. The selected Host supplies its original client
 graph, RPC, assets and WebSocket transport to one fresh Cordis Context and Loader.

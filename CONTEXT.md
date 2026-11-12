@@ -60,6 +60,9 @@ _Avoid_: Instance identity inferred solely from the current screen or URL
 **Connection profile**:
 A saved selection of route, endpoint and authentication used to reach an instance;
 several profiles may refer to one verified or explicitly associated instance.
+The current Web adapter stores one active endpoint for each `(instance,
+authentication view)` pair. Retaining several endpoints for that pair requires a
+separate stable profile identity and remains future work.
 _Avoid_: A URL treated as durable remote identity
 
 **Authentication view**:
