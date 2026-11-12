@@ -2,7 +2,13 @@
   "bootstrap": [
     { "id": "dsh-instance", "name": "./plugins/dsh-instance.js" },
     { "id": "client-i18n", "name": "./plugins/client-i18n.js" },
-    { "id": "local-shell", "name": "./plugins/local-shell.js" }
+    { "id": "local-shell", "name": "./plugins/local-shell.js" },
+    {
+      "id": "ui-plugin-manager-override",
+      "name": "./plugins/ui-plugin-manager-override.js",
+      "mode": "override",
+      "target": "@deepseek-ai/dsh-client-ui-plugin-manager"
+    }
   ],
   "entries": [
     { "id": "client-composition", "name": "./plugins/client-composition.js" },
