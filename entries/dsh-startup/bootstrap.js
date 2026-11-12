@@ -6,7 +6,11 @@ try {
   const response = await fetch('/mygo/index-injections', { credentials: 'same-origin', cache: 'no-store' })
   if (!response.ok) {
     const detail = (await response.text()).trim().slice(0, 1000)
-    throw Object.assign(new Error(`mygo boot: index injections HTTP ${response.status}${detail ? `: ${detail}` : ''}`), { status: response.status })
+    const fallback = response.status === 401 ? 'Sign in to this instance'
+      : response.status === 403 ? 'This instance refused access'
+        : response.status === 404 ? 'This instance does not support the mygo client adapter'
+          : 'The selected instance is unavailable'
+    throw Object.assign(new Error(detail || fallback), { status: response.status })
   }
   const payload = await response.json()
   if (payload.schemaVersion !== 1 || !Array.isArray(payload.injections)) {
