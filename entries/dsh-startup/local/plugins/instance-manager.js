@@ -22,9 +22,13 @@ export function apply(ctx) {
       if (![2, 3].includes(saved.version) || !Number.isSafeInteger(saved.revision) || !Array.isArray(saved.catalog) || saved.catalog.length > 32) throw Error('Invalid catalog')
       const rows = saved.catalog.map(validate)
       if (new Set(rows.map(r => r.id)).size !== rows.length) throw Error('Invalid catalog identities')
-      if (binding && !rows.some(row => row.id === binding.id)) {
-        if (rows.length >= 32) throw Error('Catalog limit reached')
-        rows.push(binding)
+      if (binding) {
+        const current = rows.findIndex(row => row.id === binding.id && row.authenticationViewId === binding.authenticationViewId)
+        if (current >= 0) rows[current] = { ...rows[current], address: binding.address }
+        else {
+          if (rows.length >= 32) throw Error('Catalog limit reached')
+          rows.push(binding)
+        }
       }
       catalog = rows; revision = saved.revision
     }

@@ -86,10 +86,24 @@ test('connected and added profiles are equally editable; changed profiles do not
   assert.equal(service.snapshot().currentProfile.address, connected.address)
   await service.save({ ...edited, id: 'other', name: 'Other DSH' })
   assert.equal(JSON.parse(values.get(key)).version, 3)
-  service = start(location.origin)
+  service = start(edited.address)
   assert.equal(service.snapshot().catalog.find(row => row.id === connected.id).address, edited.address)
   assert.equal(service.snapshot().catalog.find(row => row.id === 'other').address, edited.address)
   assert.equal(service.snapshot().catalog.find(row => row.id === connected.id).name, edited.name)
+})
+
+test('the route binding replaces a stale saved address for the same instance identity', t => {
+  const { start, values, key } = fixture(t)
+  values.set(key, JSON.stringify({
+    version: 3,
+    revision: 2,
+    catalog: [{ id: 'first', name: 'Old route', address: 'http://127.0.0.1:3999', authenticationViewId: 'owner' }],
+  }))
+  const service = start('http://127.0.0.1:4001')
+  assert.deepEqual(service.snapshot().catalog, [{
+    id: 'first', name: 'Old route', address: 'http://127.0.0.1:4001', authenticationViewId: 'owner',
+  }])
+  assert.equal(service.isCurrentProfile(service.snapshot().catalog[0]), true)
 })
 
 test('explicit profile edits survive reload', async t => {
