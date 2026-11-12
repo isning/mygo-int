@@ -2,155 +2,82 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { apply } from '../../entries/dsh-startup/local/plugins/instance-manager.js'
 
-function fixture(t) {
-  const values = new Map()
+const first = { id: 'first', name: 'First', address: 'https://first.example', authenticationViewId: 'owner' }
+const other = { id: 'other', name: 'Other', address: 'https://other.example', authenticationViewId: 'owner' }
+
+function fixture(t, { selectedInstance, instances = [], admit = async () => {} } = {}) {
+  const requests = [], navigations = []
   for (const [key, value] of Object.entries({
-    location: { origin: 'http://mygo.test:4224' },
-    localStorage: { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) },
+    location: { assign: url => navigations.push(url) },
+    localStorage: new Proxy({}, { get() { throw Error('instance catalog must not use browser storage') } }),
   })) {
     const previous = Object.getOwnPropertyDescriptor(globalThis, key)
     Object.defineProperty(globalThis, key, { value, configurable: true })
     t.after(() => previous ? Object.defineProperty(globalThis, key, previous) : delete globalThis[key])
   }
-  const key = 'mygo.instances.v2:http://mygo.test:4224'
-  const start = (address = 'http://127.0.0.1:4001', admit = async () => {}) => {
-    let service
-    const selectedInstance = address === null ? undefined : { id: 'first', address, authenticationViewId: 'owner' }
-    apply({
-      mygoStartup: { configuration: { selectedInstance }, admit },
-      provide(name, value) { assert.equal(name, 'instanceManager'); service = value },
-    })
-    return service
-  }
-  return { values, key, start }
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    requests.push({ url, options, body: JSON.parse(options.body) })
+    if (options.method === 'DELETE') return { ok: true, status: 204 }
+    return { ok: true, json: async () => ({ url: '/mygo-instance/' + 'a'.repeat(64) + '/' }) }
+  })
+  let service
+  apply({
+    mygoStartup: { configuration: { selectedInstance, instances }, admit },
+    provide(name, value) { assert.equal(name, 'instanceManager'); service = value },
+  })
+  return { service, requests, navigations }
 }
 
-test('an empty client has no implicit instance and treats the first saved profile like every later profile', async t => {
-  const { start, values, key } = fixture(t)
-  const service = start(null)
-  assert.deepEqual(service.snapshot().catalog, [])
+test('the browser presents the reverse proxy catalog without local persistence', t => {
+  const { service } = fixture(t, { instances: [first, other] })
+  assert.deepEqual(service.snapshot().catalog, [first, other])
   assert.equal(service.snapshot().currentProfile, null)
   assert.equal(service.snapshot().connectionStatus, 'idle')
-  await service.save({ id: 'first', name: 'First', address: 'https://first.example', authenticationViewId: 'owner' })
-  assert.equal(service.snapshot().catalog.length, 1)
-  assert.equal(service.isCurrentProfile(service.snapshot().catalog[0]), false)
-  assert.deepEqual(JSON.parse(values.get(key)), { version: 3, revision: 1, catalog: service.snapshot().catalog })
 })
 
-test('version 2 catalogs migrate without restoring the obsolete selected profile state', async t => {
-  const { start, values, key } = fixture(t)
-  const saved = {
-    version: 2,
-    revision: 4,
-    selectedId: 'other',
-    catalog: [
-      { id: 'first', name: 'First', address: 'https://first.example', authenticationViewId: 'owner' },
-      { id: 'other', name: 'Other', address: 'https://other.example', authenticationViewId: 'owner' },
-    ],
-  }
-  values.set(key, JSON.stringify(saved))
-  const service = start('https://first.example')
-  assert.equal(service.snapshot().diagnostic, '')
-  assert.deepEqual(service.snapshot().catalog, saved.catalog)
-  assert.equal(service.snapshot().currentProfile.id, 'first')
-  assert.equal('selectedId' in service.snapshot(), false)
-  await service.save({ ...saved.catalog[1], name: 'Renamed' }, 'other')
-  assert.deepEqual(JSON.parse(values.get(key)), {
-    version: 3,
-    revision: 5,
-    catalog: [saved.catalog[0], { ...saved.catalog[1], name: 'Renamed' }],
-  })
-})
-
-test('connection checks expose success and the original failure diagnostic', async t => {
-  const { start } = fixture(t)
-  let service = start()
+test('the current route is explicit and its admission result is observable', async t => {
+  let { service } = fixture(t, { selectedInstance: first, instances: [first] })
   await service.refresh()
+  assert.equal(service.isCurrentProfile(first), true)
   assert.equal(service.snapshot().connectionStatus, 'authenticated')
-  assert.equal(service.snapshot().connectionDiagnostic, '')
 
-  service = start('http://127.0.0.1:4002', async () => { throw Error('index injections HTTP 502') })
+  ;({ service } = fixture(t, { selectedInstance: first, instances: [first], admit: async () => { throw Error('index injections HTTP 502') } }))
   await service.refresh()
   assert.equal(service.snapshot().connectionStatus, 'unavailable')
   assert.equal(service.snapshot().connectionDiagnostic, 'index injections HTTP 502')
 })
 
-test('connected and added profiles are equally editable; changed profiles do not masquerade as the running connection', async t => {
-  const { start, values, key } = fixture(t)
-  let service = start()
-  const connected = service.snapshot().catalog[0]
-  assert.equal(service.isCurrentProfile(connected), true)
-  const edited = { ...connected, name: 'Personal DSH', address: 'https://personal.example' }
-  await service.save(edited, connected.id)
-  assert.equal(service.isCurrentProfile(service.snapshot().catalog[0]), false)
-  assert.equal(service.snapshot().currentProfile.address, connected.address)
-  await service.save({ ...edited, id: 'other', name: 'Other DSH' })
-  assert.equal(JSON.parse(values.get(key)).version, 3)
-  service = start(edited.address)
-  assert.equal(service.snapshot().catalog.find(row => row.id === connected.id).address, edited.address)
-  assert.equal(service.snapshot().catalog.find(row => row.id === 'other').address, edited.address)
-  assert.equal(service.snapshot().catalog.find(row => row.id === connected.id).name, edited.name)
-})
-
-test('the route binding replaces a stale saved address for the same instance identity', t => {
-  const { start, values, key } = fixture(t)
-  values.set(key, JSON.stringify({
-    version: 3,
-    revision: 2,
-    catalog: [{ id: 'first', name: 'Old route', address: 'http://127.0.0.1:3999', authenticationViewId: 'owner' }],
-  }))
-  const service = start('http://127.0.0.1:4001')
-  assert.deepEqual(service.snapshot().catalog, [{
-    id: 'first', name: 'Old route', address: 'http://127.0.0.1:4001', authenticationViewId: 'owner',
-  }])
-  assert.equal(service.isCurrentProfile(service.snapshot().catalog[0]), true)
-})
-
-test('explicit profile edits survive reload', async t => {
-  const { start } = fixture(t)
-  let service = start()
-  await service.save({ ...service.snapshot().catalog[0], name: 'Renamed', address: location.origin }, 'first')
-  service = start(location.origin)
-  assert.equal(service.snapshot().catalog.find(row => row.id === 'first').address, location.origin)
-  assert.equal(service.snapshot().catalog.find(row => row.id === 'first').name, 'Renamed')
-  assert.equal(service.snapshot().catalog.some(row => service.isCurrentProfile(row)), true)
-})
-
-test('select registers an explicit route before navigation; refusal leaves current connection unchanged', async t => {
-  const { start, values, key } = fixture(t)
-  const navigations = []
-  location.assign = url => navigations.push(url)
-  const service = start()
-  const other = { ...service.snapshot().catalog[0], id: 'other', name: 'Other', address: 'https://other.example' }
+test('saving an instance writes the mygo proxy catalog', async t => {
+  const { service, requests } = fixture(t, { instances: [first] })
   await service.save(other)
-  const path = '/mygo-instance/' + 'a'.repeat(64) + '/'
-  t.mock.method(globalThis, 'fetch', async (url, options) => {
-    assert.equal(url, '/mygo-local/connection')
-    assert.deepEqual(JSON.parse(options.body), other)
-    return { ok: true, json: async () => ({ url: path }) }
-  })
-  await service.select('other')
-  assert.deepEqual(navigations, [path])
-  assert.equal(service.snapshot().currentProfile.id, 'first')
-  assert.equal(JSON.parse(values.get(key)).catalog.find(row => row.id === 'other').name, 'Other')
-  t.mock.method(globalThis, 'fetch', async () => ({ ok: false, status: 403 }))
-  await assert.rejects(service.select('other'), /HTTP 403/)
-  assert.deepEqual(navigations, [path])
+  assert.deepEqual(service.snapshot().catalog, [first, other])
+  assert.equal(requests.length, 1)
+  assert.equal(requests[0].url, '/mygo-local/connection')
+  assert.equal(requests[0].options.method, 'POST')
+  assert.deepEqual(requests[0].body, other)
+
+  const renamed = { ...other, name: 'Renamed' }
+  await service.save(renamed, other.id)
+  assert.deepEqual(service.snapshot().catalog, [first, renamed])
 })
 
-test('removing a saved instance deletes its route and keeps the connected instance', async t => {
-  const { start } = fixture(t)
-  const service = start()
-  const connected = service.snapshot().currentProfile
-  const other = { ...connected, id: 'other', name: 'Other', address: 'https://other.example' }
-  await service.save(other)
-  t.mock.method(globalThis, 'fetch', async (url, options) => {
-    assert.equal(url, '/mygo-local/connection')
-    assert.equal(options.method, 'DELETE')
-    assert.deepEqual(JSON.parse(options.body), other)
-    return { ok: true, status: 204 }
-  })
-  await service.remove('other')
-  assert.deepEqual(service.snapshot().catalog, [connected])
-  await assert.rejects(service.remove(connected.id), /current instance/)
+test('selecting an instance registers its current profile and navigates to its route', async t => {
+  const { service, requests, navigations } = fixture(t, { selectedInstance: first, instances: [first, other] })
+  await service.select(other.id)
+  assert.deepEqual(requests[0].body, other)
+  assert.deepEqual(navigations, ['/mygo-instance/' + 'a'.repeat(64) + '/'])
+  assert.equal(service.snapshot().currentProfile.id, first.id)
+})
+
+test('removing an instance deletes it from the proxy while protecting the current route', async t => {
+  const { service, requests } = fixture(t, { selectedInstance: first, instances: [first, other] })
+  await service.remove(other.id)
+  assert.equal(requests[0].options.method, 'DELETE')
+  assert.deepEqual(service.snapshot().catalog, [first])
+  await assert.rejects(service.remove(first.id), /current instance/)
+})
+
+test('invalid server catalogs fail closed', t => {
+  assert.throws(() => fixture(t, { instances: [{ ...first, address: 'file:///tmp/dsh' }] }), /HTTP\(S\) origin/)
+  assert.throws(() => fixture(t, { instances: [first, { ...other, id: first.id }] }), /Invalid instance catalog/)
 })

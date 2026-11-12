@@ -73,18 +73,18 @@ try {
   assert.equal(await evaluate("fetch('/').then(r => r.status)"), 200)
   if (process.argv.includes('--offline-only') || i18nOnly) {
     stage = 'offline local shell'
-    await until(() => evaluate("!!document.querySelector('[data-mygo-local-shell]') && document.body.innerText.includes('Not connected')"))
+    await until(() => evaluate("!!document.querySelector('[data-mygo-local-shell]') && document.body.innerText.includes('Connect to an instance')"))
     assert.equal(await evaluate("fetch('/mygo/status').then(r=>r.status)"),410,'an unscoped remote request has no implicit instance')
     assert.equal(await evaluate("document.body.innerText.includes('Sign in required')"),false,'the local shell does not invent a remote authentication state')
     assert.equal(await evaluate("document.body.innerText.includes('index injections HTTP 410')"),false,'an absent instance is not shown as an internal boot fault')
     if (i18nOnly) {
-      for (const [language, heading] of Object.entries({en:'Not connected',zh:'未连接',ja:'未接続',es:'Sin conexión',fr:'Non connecté',de:'Nicht verbunden',ru:'Нет подключения',pt:'Sem conexão'})) {
+      for (const [language, heading] of Object.entries({en:'Connect to an instance',zh:'连接到实例',ja:'インスタンスに接続',es:'Conectar a una instancia',fr:'Se connecter à une instance',de:'Mit einer Instanz verbinden',ru:'Подключиться к экземпляру',pt:'Conectar a uma instância'})) {
         await selectOfflineLanguage(language)
         await until(() => evaluate(`document.documentElement.lang===${JSON.stringify(language==='zh'?'zh-CN':language)} && document.querySelector('[data-mygo-local-shell] main h1')?.innerText===${JSON.stringify(heading)}`))
       }
     }
     await selectOfflineLanguage('zh')
-    await until(() => evaluate("document.documentElement.lang.startsWith('zh') && document.querySelector('[data-mygo-local-shell] main h1')?.innerText==='未连接'"))
+    await until(() => evaluate("document.documentElement.lang.startsWith('zh') && document.querySelector('[data-mygo-local-shell] main h1')?.innerText==='连接到实例'"))
     await send('Page.reload', {ignoreCache:true})
     await until(() => evaluate("document.documentElement.lang.startsWith('zh') && !!document.querySelector('[data-mygo-open-settings]')"))
     await evaluate("document.querySelector('[data-mygo-open-settings]').click()")
@@ -101,7 +101,7 @@ try {
     await evaluate(`(() => { for (const [label,value] of [['Name',${JSON.stringify(uiAudit ? 'Offline saved profile ' + 'W'.repeat(100) : 'Offline saved profile')}],['Address',${JSON.stringify(uiAudit ? 'https://' + 'a'.repeat(60) + '.' + 'b'.repeat(60) + '.example' : 'https://offline.example')}]]) { const input=document.querySelector('[data-instance-editor] input[aria-label="'+label+'"]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,value); input.dispatchEvent(new Event('input',{bubbles:true})); } })()`)
     await evaluate("document.querySelector('[data-instance-editor] button[type=submit]').click()")
     await until(() => evaluate("!document.querySelector('[data-instance-editor]') && document.body.innerText.includes('Offline saved profile')"))
-    const remoteAddress = await evaluate("fetch('/mygo-local/startup.json').then(r=>r.json()).then(config=>config.selectedInstance.address)")
+    const remoteAddress = await evaluate("fetch('/mygo-local/startup.json').then(r=>r.json()).then(config=>config.instances.find(row=>row.id==='local-test-dsh').address)")
     assert.notEqual(remoteAddress,new URL(url).origin,'remote instance address differs from the client entry')
     const editProfile = async (name,address) => {
       await evaluate("document.querySelector('[data-instance-id=\"local-test-dsh\"] [aria-label^=\"Edit \"]').click()")
@@ -294,10 +294,11 @@ try {
   await fillInstance('Address','https://example.invalid')
   await instanceSave()
   await until(() => evaluate(`!!document.querySelector('[data-instance-id="${addedInstance}"]') && !document.querySelector('[data-instance-editor]')`))
-  assert.equal(await evaluate(`(() => {
-    const saved=Object.keys(localStorage).filter(key=>key.startsWith('mygo.instances.v2:')).map(key=>JSON.parse(localStorage.getItem(key))).find(value=>value.catalog.some(row=>row.id==='${addedInstance}'));
-    return saved.catalog.find(row=>row.id==='${addedInstance}').authenticationViewId === saved.catalog.find(row=>row.id==='${boundInstance}').authenticationViewId;
-  })()`),true,'new profiles inherit the current authentication context without asking for a role')
+  assert.equal(await evaluate(`fetch('/mygo-local/startup.json').then(response => response.json()).then(value => {
+    const added=value.instances.find(row=>row.id==='${addedInstance}');
+    const bound=value.instances.find(row=>row.id==='${boundInstance}');
+    return added.authenticationViewId === bound.authenticationViewId;
+  })`),true,'new profiles inherit the current authentication context and persist in the mygo proxy catalog')
   await evaluate("document.querySelector('[aria-label=\"Edit Work PC\"]').click()")
   await fillInstance('Address','https://example.invalid/path')
   await instanceSave()

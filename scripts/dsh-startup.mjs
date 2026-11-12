@@ -144,7 +144,7 @@ if (command === 'serve') {
         data = html
         extension = '.html'
       } else if (path === '/mygo-local/startup.json') {
-        data = JSON.stringify(route ? { ...localStartup, selectedInstance: route.profile } : localStartup)
+        data = JSON.stringify({ ...localStartup, instances: router.profiles(), ...(route ? { selectedInstance: route.profile } : {}) })
         extension = '.json'
       } else if (/^\/mygo-local\/plugins\/[a-zA-Z0-9_-]+\.js$/.test(path)) {
         const localRoot = await realpath(resolve(workspace, 'entries/dsh-startup/local/plugins'))

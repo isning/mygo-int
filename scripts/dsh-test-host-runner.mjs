@@ -16,9 +16,11 @@ const {prepareTestModel}=await import(root+'/scripts/dsh-test-model.mjs');
 const model=await prepareTestModel(scratch);
 const environment=loadLayeredEnv('dsh',scratch);
 const clientPort=Number(process.env.DSH_CLIENT_PORT??4180);
+const hostPort=Number(process.env.DSH_TEST_HOST_PORT??40569);
+if(!Number.isInteger(hostPort)||hostPort<1024||hostPort>65535)throw Error('Invalid DSH_TEST_HOST_PORT');
 const localClientUrl='http://127.0.0.1:'+clientPort+'/';
 const clientUrl=process.env.DSH_CLIENT_PUBLIC_ORIGIN ? process.env.DSH_CLIENT_PUBLIC_ORIGIN+'/' : localClientUrl;
-let boot;try{boot=await runProfile({environment,profile:'web',patchFiles:[root+'/packages/dsh-host-status/host.patch.yml',...model.patchFiles],args:['--host','127.0.0.1','--port','0','--no-open',...process.env.DSH_CLIENT_PUBLIC_ORIGIN?['--trusted-host',new URL(process.env.DSH_CLIENT_PUBLIC_ORIGIN).host]:[]]});}catch(e){await model.close();throw e;}
+let boot;try{boot=await runProfile({environment,profile:'web',patchFiles:[root+'/packages/dsh-host-status/host.patch.yml',...model.patchFiles],args:['--host','127.0.0.1','--port',String(hostPort),'--no-open',...process.env.DSH_CLIENT_PUBLIC_ORIGIN?['--trusted-host',new URL(process.env.DSH_CLIENT_PUBLIC_ORIGIN).host]:[]]});}catch(e){await model.close();throw e;}
 const {ctx,shutdown}=boot;
 let carrier,stopping=false;
 async function stop(code=0){if(stopping)return;stopping=true;if(carrier&&carrier.exitCode===null){carrier.kill('SIGTERM');await new Promise(r=>carrier.once('exit',r));}await shutdown.shutdown(0);await model.close();process.exit(code);}
