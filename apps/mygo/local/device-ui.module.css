@@ -1,0 +1,18 @@
+/* Preserve upstream chrome while arbitrary profile names and origins fit. */
+.instanceCard {
+  min-width: 0;
+}
+
+.instanceHead {
+  flex-wrap: wrap;
+}
+
+.instanceIdentity {
+  flex: 1 1 160px;
+  overflow-wrap: anywhere;
+}
+
+.address {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}

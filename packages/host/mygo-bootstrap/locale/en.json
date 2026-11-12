@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "mygo bootstrap",
+    "description": "Expose the authenticated startup injection table used by the mygo client."
+  }
+}

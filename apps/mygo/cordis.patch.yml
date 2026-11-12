@@ -1,0 +1,3 @@
+- insert:
+    - id: mygo-app
+      name: '@deepseek-ai/dsh-mygo-app'

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Inicialização do mygo",
+    "description": "Expõe a tabela autenticada de injeções de inicialização usada pelo cliente mygo."
+  }
+}

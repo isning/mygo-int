@@ -1,0 +1,23 @@
+{
+  "extends": "../../tsconfig.base.client.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "lib/types",
+    "tsBuildInfoFile": "lib/tsconfig.client.tsbuildinfo"
+  },
+  "include": ["local/**/*.ts", "local/**/*.tsx", "src/client/**/*.ts", "src-css.d.ts"],
+  "references": [
+    { "path": "../../vendor/cordis" },
+    { "path": "../../vendor/loader" },
+    { "path": "../../packages/api/remotes/tsconfig.client.json" },
+    { "path": "../../packages/client/locale/tsconfig.client.json" },
+    { "path": "../../packages/client/modules" },
+    { "path": "../../packages/client/ui-plugin-manager/tsconfig.client.json" },
+    { "path": "../../packages/client/ui-primitives" },
+    { "path": "../../packages/client/ui-settings-general/tsconfig.client.json" },
+    { "path": "../../packages/client/ui-sidebar" },
+    { "path": "../../packages/client/ui-slots" },
+    { "path": "../../packages/client/ui-theme/tsconfig.client.json" },
+    { "path": "../../packages/client/web" }
+  ]
+}

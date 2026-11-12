@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Amorçage mygo",
+    "description": "Expose la table authentifiée des injections de démarrage utilisée par le client mygo."
+  }
+}

@@ -1,0 +1,73 @@
+/* Layout only. Controls, typography, surfaces and settings remain upstream UI. */
+.shell {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 100%;
+  padding: 24px;
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-bg-base);
+}
+
+.frame {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.navigation,
+.actions,
+.status {
+  display: flex;
+  align-items: center;
+}
+
+.navigation {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 32px;
+  min-height: 36px;
+}
+
+.actions {
+  flex-wrap: wrap;
+  gap: 12px;
+  min-width: 0;
+}
+
+.status {
+  gap: 8px;
+}
+
+.content {
+  max-width: 640px;
+  padding-top: clamp(32px, 9vh, 96px);
+}
+
+.connectionCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.error {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 767px) {
+  .shell {
+    padding: 16px;
+  }
+
+  .content {
+    padding-top: 24px;
+  }
+
+  .actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

@@ -37,6 +37,7 @@ import type { ConfigPageForm } from './slot-contract.ts'
 import { UpdateDialog, VersionSection } from './versions.tsx'
 import { BundleDetailSection } from './BundleDetailSection.tsx'
 import css from './PluginManagerPage.module.css'
+export { css as pluginManagerStyles }
 
 /** Full component props assembled by the main slot renderer. */
 export type PluginManagerPageProps =
@@ -274,7 +275,7 @@ function RuntimeError({ error, t }: { readonly error: string | undefined; readon
  * registered a page, and, when the pack is on, a switch. A pack like base
  * carries close to a hundred rows, so a long list gets a filter.
  */
-function RowsSection({ rows, t, resolveText, toggle, configure }: {
+export function RowsSection({ rows, t, resolveText, toggle, configure }: {
   readonly rows: readonly PackageRow[]
   readonly t: Translate
   readonly resolveText: ResolveText
@@ -530,7 +531,7 @@ function updateAvailable(pkg: PackageView): boolean {
 }
 
 /** One package as a card that opens its page: its name, its one-liner, its tags, and its bundle switch. */
-function PackageCard({ pkg, t, resolveText, busy, highlighted, newer, onOpen, onSetEnabled }: {
+export function PackageCard({ pkg, t, resolveText, busy, highlighted, newer, onOpen, onSetEnabled }: {
   readonly pkg: PackageView
   /** The newer registry version a version check offers. */
   readonly newer: string | undefined
@@ -576,7 +577,7 @@ function PackageCard({ pkg, t, resolveText, busy, highlighted, newer, onOpen, on
  * One official plugin as a card that opens its page: its icon, its title from
  * the registration, and the one-liner the entry renders in its summary view.
  */
-function ItemCard({ item, t, onOpen, renderSlot }: {
+export function ItemCard({ item, t, onOpen, renderSlot }: {
   readonly item: OfficialItem
   readonly t: Translate
   readonly onOpen: () => void
@@ -612,7 +613,7 @@ function packageRef(pkg: PackageView): PluginPackageRef {
  * contributed actions, its title with the contributed badges over its
  * one-liner, the form the entry renders, and the contributed sections.
  */
-function ItemDetail({ item, t, onBack, renderSlot, form }: {
+export function ItemDetail({ item, t, onBack, renderSlot, form }: {
   readonly item: OfficialItem
   readonly t: Translate
   readonly onBack: () => void
@@ -650,7 +651,7 @@ function ItemDetail({ item, t, onBack, renderSlot, form }: {
  * A row's configuration page keeps its technical identity beside local package
  * text and the form supplied by its configuration entry.
  */
-function RowDetail({ pkg, row, t, resolveText, onBack, renderSlot, form }: {
+export function RowDetail({ pkg, row, t, resolveText, onBack, renderSlot, form }: {
   readonly pkg: PackageView
   readonly row: PackageRow
   readonly t: Translate
@@ -699,7 +700,7 @@ function RowDetail({ pkg, row, t, resolveText, onBack, renderSlot, form }: {
  * configuration the bundle registered for itself; its rows with their switches
  * and configure controls; and where it comes from.
  */
-function PackageDetail({
+export function PackageDetail({
   pkg, t, resolveText, busy, rowBusy, configured, configure, renderSlot, inMore, versions, detail,
   onBack, onSetEnabled, onUninstall, onUpdate, onSetRowEnabled, onEnsureVersions, onCheckVersions, onUpdateVersion,
 }: {

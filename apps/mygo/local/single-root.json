@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "bootstrap": [
+    { "id": "dsh-instance", "name": "./plugins/dsh-instance.js" },
+    { "id": "client-i18n", "name": "./plugins/client-i18n.js" },
+    { "id": "local-shell", "name": "./plugins/local-shell.js" }
+  ],
+  "entries": [
+    { "id": "client-composition", "name": "./plugins/client-composition.js" },
+    { "id": "instance-manager", "name": "./plugins/instance-manager.js" },
+    { "id": "unified-plugin-manager", "name": "./plugins/unified-plugin-manager.js" },
+    { "id": "local-navigation", "name": "./plugins/local-navigation.js" },
+    { "id": "ui-client-manager", "name": "./plugins/ui-client-manager.js" },
+    { "id": "touch-feedback", "name": "./plugins/touch-feedback.js" }
+  ]
+}

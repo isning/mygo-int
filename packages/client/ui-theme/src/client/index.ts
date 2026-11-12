@@ -27,6 +27,7 @@ import { createAppearanceRowStore, createFontRowStore } from './settings-store.t
 import { ICON_SYMBOLS, type IconSymbolId } from '@deepseek-ai/dsh-client-ui-primitives'
 import { installIconSprite, type IconReplacements } from './icon-sprite.ts'
 import { installThemeStyles } from './styles.ts'
+export { installThemeStyles } from './styles.ts'
 import { en, ja, es, fr, de, ru, pt, zh, type ThemeKey } from './locales.ts'
 import {
   DEFAULT_FONT_SIZES, DEFAULT_PREFERENCE, FONT_FAMILY_FIELDS, FONT_ROLES, FONT_SIZE_SPECS,

@@ -22,7 +22,7 @@ describe('shipped MCP resource composition', () => {
         profile.patches,
       ], message => warnings.push(message))
 
-      expect(rows.filter(row => row.name === resourcePackage)).toEqual([
+      expect(rows.filter(row => row.name === resourcePackage)).toEqual(name === 'mygo' ? [] : [
         { id: 'mcp-resources', name: resourcePackage },
       ])
       expect(rows.filter(row => row.name === '@deepseek-ai/dsh-mcp-client')).toEqual([])
@@ -34,7 +34,7 @@ describe('shipped MCP resource composition', () => {
         }
         return manifest.dependencies?.[resourcePackage] !== undefined
       })
-      expect(owners.map(owner => owner.packageName)).toEqual([
+      expect(owners.map(owner => owner.packageName)).toEqual(name === 'mygo' ? [] : [
         name === 'sdk-minimal' ? '@deepseek-ai/dsh-sdk-minimal' : '@deepseek-ai/dsh-base',
       ])
     } finally {

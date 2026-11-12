@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "mygo 启动适配",
+    "description": "提供 mygo 客户端使用的认证启动注入表。"
+  }
+}
