@@ -1,6 +1,6 @@
 import type { Context } from '@deepseek-ai/cordis'
-import type { PackageRow } from '@deepseek-ai/dsh-client-ui-plugin-manager/src/client/manager-store.ts'
 import type { ConfigPageForm } from '@deepseek-ai/dsh-client-ui-plugin-manager/src/client/slot-contract.ts'
+import type { PackageRow } from '@deepseek-ai/dsh-client-ui-plugin-manager/src/client/manager-store.ts'
 
 export interface InstanceProfile { id: string; name: string; address: string; authenticationViewId: string }
 export interface InstanceSnapshot {

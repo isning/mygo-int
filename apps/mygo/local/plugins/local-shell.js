@@ -2,10 +2,8 @@
 import * as managementUI from '../management-ui.tsx'
 import * as unifiedUI from '../unified-plugin-ui.tsx'
 import { mountLocalShell } from '../local-shell-ui.tsx'
-import { installThemeStyles } from '@deepseek-ai/dsh-client-ui-theme/client'
 export const inject = ['mygoLocale', 'clientHost', 'mygoStartup', 'loader']
 export async function apply(ctx) {
-  installThemeStyles(ctx)
   const host = ctx.clientHost
   host.modules['mygo/dsh-management-ui'] = managementUI
   host.modules['mygo/dsh-unified-plugin-ui'] = unifiedUI

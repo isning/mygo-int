@@ -1,0 +1,7 @@
+.detailSection { display: flex; flex-direction: column; gap: 12px; padding: 16px 0; border-top: .5px solid var(--dsw-alias-border-l4); }
+.sectionTitle { margin: 0; color: var(--dsw-alias-label-primary); font-size: 14px; font-weight: 500; }
+.facts { display: grid; gap: 8px; margin: 0; }
+.facts > div { display: grid; grid-template-columns: minmax(120px, .35fr) 1fr; gap: 12px; }
+.facts dt, .status { color: var(--dsw-alias-label-secondary); }
+.facts dd { min-width: 0; margin: 0; overflow-wrap: anywhere; }
+.rowFailure { overflow: auto; margin: 0; padding: 10px; border-radius: 8px; background: var(--dsw-alias-bg-module-platform); color: var(--dsw-alias-state-error-primary); white-space: pre-wrap; }

@@ -2,14 +2,10 @@
 import { useClientText, clientError } from './i18n'
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import { Button, FishLogo, IconChevronDownOutlineRegular, Menu, StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, FishLogo, IconChevronDownOutlineRegular, Menu, Modal, StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
 import { Instances, ClientSettings } from './management-ui'
-import { SettingsPanel } from '@deepseek-ai/dsh-client-ui-settings-general/src/client/SettingsRoot.tsx'
 import '@deepseek-ai/dsh-client-web/src/base.css'
-import '@deepseek-ai/dsh-client-ui-theme/src/styles/base.css'
-import '@deepseek-ai/dsh-client-ui-theme/src/styles/design-platform.css'
-import '@deepseek-ai/dsh-client-ui-theme/src/styles/focus.css'
-import css from '@deepseek-ai/dsh-client-ui-settings-models/src/client/ModelsSection.module.css'
+import css from './management-ui.module.css'
 import shellCSS from './local-shell.module.css'
 import type { MygoContext } from './types'
 
@@ -120,10 +116,16 @@ export function mountLocalShell(ctx: MygoContext) {
             </form>}
           </div>
         </main>
-        {settings && <SettingsPanel rows={[{ id: 'instances', label: t('Instances'), order: 0 }, { id: 'client', label: t('Client'), order: 1 }]} activeId={active} onSelect={setActive}
-          onClose={() => setSettings(false)} renderSlot={key => key === 'settings.header' ? t('Settings')
-            : key === 'settings.close' ? t('Close settings')
-              : key === 'settings.section' ? <>{formError && <p role="alert" className={css.error}>{formError}</p>}{active === 'instances' ? <Instances ctx={ctx} run={run} /> : <ClientSettings ctx={ctx} run={run} />}</> : null} />}
+        <Modal open={settings} title={t('Settings')} closeLabel={t('Close settings')} onClose={() => setSettings(false)}>
+          <div className={shellCSS.settingsTabs} role="tablist" aria-label={t('Settings')}>
+            {([['instances', t('Instances')], ['client', t('Client')]] as const).map(([id, label]) => <button
+              key={id} type="button" role="tab" aria-selected={active === id} className={shellCSS.settingsTab}
+              data-active={active === id ? '' : undefined} onClick={() => setActive(id)}>{label}</button>)}
+          </div>
+          <div className={shellCSS.settingsBody}>{formError && <p role="alert" className={css.error}>{formError}</p>}
+            {active === 'instances' ? <Instances ctx={ctx} run={run} /> : <ClientSettings ctx={ctx} run={run} />}
+          </div>
+        </Modal>
       </div>
     </div>
   }

@@ -1,0 +1,23 @@
+.section { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.title { margin: 0; color: var(--dsw-alias-label-primary); font-size: 20px; font-weight: 500; }
+.intro, .description, .editorRoute { margin: 0; color: var(--dsw-alias-label-secondary); font-size: 13px; line-height: 20px; }
+.rows { display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.rowCard, .row { padding: 16px; border: .5px solid var(--dsw-alias-border-l4); border-radius: 10px; background: var(--dsw-alias-bg-layer-1); }
+.row, .rowHead, .rowIdentity, .rowActions, .editorHeader, .editorActions, .addActions { display: flex; align-items: center; gap: 10px; }
+.row, .rowHead { justify-content: space-between; }
+.rowText { display: flex; flex-direction: column; gap: 2px; }
+.rowIdentity { min-width: 0; }
+.rowName, .editorTitle, .fieldLabel, .rowText .title { color: var(--dsw-alias-label-primary); font-size: 14px; font-weight: 500; }
+.rowTag { padding: 2px 7px; border-radius: 999px; background: var(--dsw-alias-bg-module-platform); color: var(--dsw-alias-label-secondary); font-size: 11px; }
+.editor { display: flex; flex-direction: column; gap: 14px; margin-top: 14px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.input { box-sizing: border-box; width: 100%; min-height: 36px; padding: 7px 10px; border: .5px solid var(--dsw-alias-border-l3); border-radius: 8px; background: var(--dsw-alias-bg-base); color: var(--dsw-alias-label-primary); font: inherit; }
+.editorActions, .addActions { justify-content: flex-end; }
+.primaryButton, .secondaryButton, .linkButton, .addButton { min-height: 32px; padding: 0 11px; border: .5px solid var(--dsw-alias-border-l3); border-radius: 8px; background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-primary); font: inherit; cursor: pointer; }
+.primaryButton, .addButton { border-color: transparent; background: var(--dsw-alias-interactive-primary); color: var(--dsw-alias-label-oncolor); }
+.linkButton { min-height: auto; padding: 0; border: 0; background: transparent; color: var(--dsw-alias-label-link); }
+.error { margin: 0; color: var(--dsw-alias-state-error-primary); font-size: 13px; white-space: pre-wrap; }
+.customized { border-top: .5px solid var(--dsw-alias-border-l4); padding-top: 12px; }
+.customizedSummary { color: var(--dsw-alias-label-secondary); cursor: pointer; }
+.customizedBody, .addBlock { margin-top: 12px; }
+button:disabled { cursor: default; opacity: .5; }

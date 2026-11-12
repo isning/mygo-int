@@ -32,7 +32,7 @@ import {
   type PluginManagerFace, type PluginManagerState, type RegistryChoice, type VersionCheck,
 } from './manager-store.ts'
 import { managementText, noticeText, packageText, registryText, restartText, rowText, type Translate } from './presentation.ts'
-import type { PluginPackageRef, PluginRowRef, PluginsSubject } from './slot-contract.ts'
+import type { PluginConfigViewProps, PluginPackageRef, PluginRowRef, PluginsSubject, PluginTabCollection } from './slot-contract.ts'
 import type { ConfigPageForm } from './slot-contract.ts'
 import { UpdateDialog, VersionSection } from './versions.tsx'
 import { BundleDetailSection } from './BundleDetailSection.tsx'
@@ -530,7 +530,7 @@ function updateAvailable(pkg: PackageView): boolean {
 }
 
 /** One package as a card that opens its page: its name, its one-liner, its tags, and its bundle switch. */
-export function PackageCard({ pkg, t, resolveText, busy, highlighted, newer, onOpen, onSetEnabled }: {
+function PackageCard({ pkg, t, resolveText, busy, highlighted, newer, onOpen, onSetEnabled }: {
   readonly pkg: PackageView
   /** The newer registry version a version check offers. */
   readonly newer: string | undefined
@@ -576,7 +576,7 @@ export function PackageCard({ pkg, t, resolveText, busy, highlighted, newer, onO
  * One official plugin as a card that opens its page: its icon, its title from
  * the registration, and the one-liner the entry renders in its summary view.
  */
-export function ItemCard({ item, t, onOpen, renderSlot }: {
+function ItemCard({ item, t, onOpen, renderSlot }: {
   readonly item: OfficialItem
   readonly t: Translate
   readonly onOpen: () => void
@@ -612,7 +612,7 @@ function packageRef(pkg: PackageView): PluginPackageRef {
  * contributed actions, its title with the contributed badges over its
  * one-liner, the form the entry renders, and the contributed sections.
  */
-export function ItemDetail({ item, t, onBack, renderSlot, form }: {
+function ItemDetail({ item, t, onBack, renderSlot, form }: {
   readonly item: OfficialItem
   readonly t: Translate
   readonly onBack: () => void
@@ -650,7 +650,7 @@ export function ItemDetail({ item, t, onBack, renderSlot, form }: {
  * A row's configuration page keeps its technical identity beside local package
  * text and the form supplied by its configuration entry.
  */
-export function RowDetail({ pkg, row, t, resolveText, onBack, renderSlot, form }: {
+function RowDetail({ pkg, row, t, resolveText, onBack, renderSlot, form }: {
   readonly pkg: PackageView
   readonly row: PackageRow
   readonly t: Translate
@@ -699,7 +699,7 @@ export function RowDetail({ pkg, row, t, resolveText, onBack, renderSlot, form }
  * configuration the bundle registered for itself; its rows with their switches
  * and configure controls; and where it comes from.
  */
-export function PackageDetail({
+function PackageDetail({
   pkg, t, resolveText, busy, rowBusy, configured, configure, renderSlot, inMore, versions, detail,
   onBack, onSetEnabled, onUninstall, onUpdate, onSetRowEnabled, onEnsureVersions, onCheckVersions, onUpdateVersion,
 }: {
@@ -814,6 +814,50 @@ export function PackageDetail({
       </div>
     </div>
   )
+}
+
+/** Render a contributed collection while this feature retains all page presentation. */
+function PluginTabCollectionView({ collection, t, renderSlot }: {
+  readonly collection: PluginTabCollection
+  readonly t: Translate
+  readonly renderSlot: RenderConfig
+}): ReactNode {
+  const selected = collection.groups.flatMap(group => group.entries).find(entry => entry.key === collection.selected)
+  const back = () => { collection.onSelect(undefined) }
+  if (selected?.kind === 'item') {
+    const item = { id: selected.id, label: selected.label }
+    const slots: RenderConfig = (name, owner, options) => name === 'plugins.item' && (owner as unknown as PluginConfigViewProps).view === 'summary'
+      ? selected.summary
+      : renderSlot(name, owner, options)
+    return <ItemDetail item={item} t={t} onBack={back} renderSlot={slots} form={undefined} />
+  }
+  if (selected?.kind === 'package') {
+    if (collection.component) return <RowDetail pkg={selected.pkg} row={selected.row} t={t}
+      resolveText={collection.resolveText} form={selected.form} renderSlot={renderSlot}
+      onBack={() => { collection.onSetComponent(false) }} />
+    return <PackageDetail pkg={selected.pkg} t={t} resolveText={collection.resolveText}
+      busy={collection.busy} rowBusy={() => collection.busy} configured={selected.configured}
+      configure={{ has: () => true, open: () => { collection.onSetComponent(true) } }} renderSlot={renderSlot}
+      inMore={false} versions={undefined} detail={null} onBack={back}
+      onSetEnabled={(enabled) => { collection.onSetEnabled(selected.row, enabled) }}
+      onSetRowEnabled={(row, enabled) => { collection.onSetEnabled(row, enabled) }}
+      onUninstall={() => {}} onUpdate={() => {}} onEnsureVersions={() => {}}
+      onCheckVersions={() => {}} onUpdateVersion={() => {}} />
+  }
+  return <div className={css.installedPanel} data-plugin-collection="">
+    {collection.error === undefined ? null : <p role="alert" className={css.reason}>{collection.error}</p>}
+    {collection.groups.map(group => group.entries.length === 0 ? null : <section key={group.id} className={css.group}>
+      <div className={css.groupHead}><h3 className={css.groupTitle}>{group.title}</h3></div>
+      <ul className={css.cards}>{group.entries.map(entry => entry.kind === 'item'
+        ? <ItemCard key={entry.key} item={{ id: entry.id, label: entry.label }} t={t}
+          renderSlot={(name, owner, options) => name === 'plugins.item' && (owner as unknown as PluginConfigViewProps).view === 'summary'
+            ? entry.summary : renderSlot(name, owner, options)} onOpen={() => { collection.onSelect(entry.key) }} />
+        : <PackageCard key={entry.key} pkg={entry.pkg} t={t} resolveText={collection.resolveText}
+          busy={collection.busy} highlighted={false} newer={undefined}
+          onOpen={() => { collection.onSelect(entry.key) }}
+          onSetEnabled={(enabled) => { collection.onSetEnabled(entry.row, enabled) }} />)}</ul>
+    </section>)}
+  </div>
 }
 
 /** Output lines an install run's terminal shows before its middle folds: the first and last six of a long pnpm log. */
@@ -1732,6 +1776,7 @@ export function PluginManagerPage(props: PluginManagerPageProps): ReactNode {
               {renderSlot('plugins.tab', {
                 install: props.installFrom,
                 openPackage: (name) => { setTab(INSTALLED_TAB); setView({ kind: 'package', name, returnTab: tab }) },
+                renderCollection: collection => <PluginTabCollectionView collection={collection} t={t} renderSlot={renderSlot} />,
               }, { only: tab })}
             </div>
           )

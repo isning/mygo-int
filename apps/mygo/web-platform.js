@@ -1,5 +1,4 @@
 // Browser platform and available bundled plugins, not a fixed composition.
-import '@deepseek-ai/dsh-client-ui-theme/src/styles/brand-font.css'
 import { getStaticModules } from '@deepseek-ai/dsh-client-web/src/seed.ts'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import * as dshInstance from './local/plugins/dsh-instance.js'

@@ -5,9 +5,7 @@ export { registerInstanceNavigation } from './instance-navigation'
 import { useClientText, clientError } from './i18n'
 import React, { useEffect, useState } from 'react'
 import { Button, IconPlusOutlineRegular, IconTrashOutlineRegular, Modal, StateDot, closeTopModal } from '@deepseek-ai/dsh-client-ui-primitives'
-import generalCSS from '@deepseek-ai/dsh-client-ui-settings-general/src/client/GeneralSection.module.css'
-import rowCSS from '@deepseek-ai/dsh-client-ui-settings-general/src/client/DesktopChannelRow.module.css'
-import modelsCSS from '@deepseek-ai/dsh-client-ui-settings-models/src/client/ModelsSection.module.css'
+import modelsCSS from './management-ui.module.css'
 import deviceCSS from './device-ui.module.css'
 import { MAX_INSTANCE_PROFILES } from './profile-identity'
 import type { InstanceManager, InstanceProfile as Profile, MygoContext } from './types'
@@ -45,21 +43,21 @@ export function ClientSettings({ ctx, run }: { ctx: MygoContext; run: Run }) {
     return () => { live = false; void fiber.dispose() }
   }, [ctx])
   const status = service.status()
-  return <div className={generalCSS.section} data-mygo-client-settings="">
+  return <div className={modelsCSS.section} data-mygo-client-settings="">
     {status.diagnostic && <p role="alert" className={modelsCSS.error}>{status.diagnostic}</p>}
-    <div className={rowCSS.row}>
-      <div className={rowCSS.rowText}>
-        <div className={rowCSS.title}>{t('Plugins')}</div>
-        <div className={rowCSS.description}>{t('Manage plugins installed on this device.')}</div>
+    <div className={modelsCSS.row}>
+      <div className={modelsCSS.rowText}>
+        <div className={modelsCSS.title}>{t('Plugins')}</div>
+        <div className={modelsCSS.description}>{t('Manage plugins installed on this device.')}</div>
       </div>
       <Button variant="outline" size="sm" disabled={!openPlugins} onClick={openPlugins}>{t('Manage plugins')}</Button>
     </div>
     <details className={modelsCSS.customized} data-client-advanced="">
       <summary className={modelsCSS.customizedSummary}>{t('Advanced')}</summary>
-      <div className={rowCSS.row}>
-        <div className={rowCSS.rowText}>
-          <div className={rowCSS.title}>{t('Restore defaults')}</div>
-          <div className={rowCSS.description}>{t('Reset this device’s plugin preferences.')}</div>
+      <div className={modelsCSS.row}>
+        <div className={modelsCSS.rowText}>
+          <div className={modelsCSS.title}>{t('Restore defaults')}</div>
+          <div className={modelsCSS.description}>{t('Reset this device’s plugin preferences.')}</div>
         </div>
         <Button variant="outline" size="sm" disabled={status.busy} onClick={() => setConfirmReset(true)}>{t('Restore defaults')}</Button>
       </div>
