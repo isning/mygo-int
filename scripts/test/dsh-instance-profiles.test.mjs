@@ -37,6 +37,31 @@ test('an empty client has no implicit instance and treats the first saved profil
   assert.deepEqual(JSON.parse(values.get(key)), { version: 3, revision: 1, catalog: service.snapshot().catalog })
 })
 
+test('version 2 catalogs migrate without restoring the obsolete selected profile state', async t => {
+  const { start, values, key } = fixture(t)
+  const saved = {
+    version: 2,
+    revision: 4,
+    selectedId: 'other',
+    catalog: [
+      { id: 'first', name: 'First', address: 'https://first.example', authenticationViewId: 'owner' },
+      { id: 'other', name: 'Other', address: 'https://other.example', authenticationViewId: 'owner' },
+    ],
+  }
+  values.set(key, JSON.stringify(saved))
+  const service = start('https://first.example')
+  assert.equal(service.snapshot().diagnostic, '')
+  assert.deepEqual(service.snapshot().catalog, saved.catalog)
+  assert.equal(service.snapshot().currentProfile.id, 'first')
+  assert.equal('selectedId' in service.snapshot(), false)
+  await service.save({ ...saved.catalog[1], name: 'Renamed' }, 'other')
+  assert.deepEqual(JSON.parse(values.get(key)), {
+    version: 3,
+    revision: 5,
+    catalog: [saved.catalog[0], { ...saved.catalog[1], name: 'Renamed' }],
+  })
+})
+
 test('connection checks expose success and the original failure diagnostic', async t => {
   const { start } = fixture(t)
   let service = start()

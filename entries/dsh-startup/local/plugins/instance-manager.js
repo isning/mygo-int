@@ -19,7 +19,7 @@ export function apply(ctx) {
   try {
     const saved = JSON.parse(storage.getItem(key) || 'null')
     if (saved) {
-      if (saved.version !== 3 || !Number.isSafeInteger(saved.revision) || !Array.isArray(saved.catalog) || saved.catalog.length > 32) throw Error('Invalid catalog')
+      if (![2, 3].includes(saved.version) || !Number.isSafeInteger(saved.revision) || !Array.isArray(saved.catalog) || saved.catalog.length > 32) throw Error('Invalid catalog')
       const rows = saved.catalog.map(validate)
       if (new Set(rows.map(r => r.id)).size !== rows.length) throw Error('Invalid catalog identities')
       if (binding && !rows.some(row => row.id === binding.id)) {
