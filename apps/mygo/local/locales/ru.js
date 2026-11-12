@@ -111,9 +111,9 @@ export default {
   "Sign in to this instance": "Войдите в этот экземпляр",
   "This instance refused access": "Этот экземпляр отклонил доступ",
   "The selected instance is unavailable": "Выбранный экземпляр недоступен",
-  "This instance does not support the mygo client adapter": "Этот экземпляр не поддерживает клиентский адаптер mygo",
+  "This instance does not support the MyGO client adapter": "Этот экземпляр не поддерживает клиентский адаптер MyGO",
   "Unable to save this instance": "Не удалось сохранить этот экземпляр",
   "Unable to remove this instance": "Не удалось удалить этот экземпляр",
-  "Unable to load the mygo plugin configuration": "Не удалось загрузить конфигурацию плагинов mygo",
-  "Unable to save the mygo plugin configuration": "Не удалось сохранить конфигурацию плагинов mygo"
+  "Unable to load the MyGO plugin configuration": "Не удалось загрузить конфигурацию плагинов MyGO",
+  "Unable to save the MyGO plugin configuration": "Не удалось сохранить конфигурацию плагинов MyGO"
 }

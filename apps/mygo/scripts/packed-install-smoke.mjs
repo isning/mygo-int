@@ -12,7 +12,7 @@ const json = JSON.parse(execFileSync('pnpm', ['pack', '--filter', '@deepseek-ai/
 const archive = json.filename
 execFileSync('tar', ['-xzf', archive, '-C', target])
 const manifest = JSON.parse(await readFile(join(target, 'package/package.json'), 'utf8'))
-if (manifest.bin?.mygo !== 'bin.mjs') throw Error('Packed mygo executable is missing')
+if (manifest.bin?.mygo !== 'bin.mjs') throw Error('Packed MyGO executable is missing')
 const entry = await import(pathToFileURL(join(target, 'package/lib/index.js')).href)
 if (typeof entry.apply !== 'function' || !entry.Config) throw Error('Packed Cordis entry is incomplete')
 const stateDirectory = join(target, 'state')
@@ -27,7 +27,7 @@ try {
     if (launch !== undefined) break
     await new Promise(resolveWait => setTimeout(resolveWait, 100))
   }
-  if (launch === undefined) throw Error('Packed mygo executable did not publish its launch URL')
+  if (launch === undefined) throw Error('Packed MyGO executable did not publish its launch URL')
   launch = launch.trim()
   const response = await fetch(launch, { redirect: 'manual' })
   if (response.status !== 303 || !response.headers.get('set-cookie')?.includes('mygo-session=')) throw Error('Packed login exchange failed')

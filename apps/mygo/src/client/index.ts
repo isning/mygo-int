@@ -1,4 +1,4 @@
-/** Public browser surfaces contributed by the mygo client application. */
+/** Public browser surfaces contributed by the MyGO client application. */
 
 export * from '../../local/i18n.ts'
 export * from '../../local/instance-navigation.tsx'

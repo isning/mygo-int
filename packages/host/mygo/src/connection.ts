@@ -5,7 +5,7 @@ import type {} from '@deepseek-ai/dsh-host-webserver'
 /** Authenticated route returning the ordered client bootstrap injection table. */
 export const INDEX_INJECTIONS_PATH = '/mygo/index-injections'
 
-/** Install the mygo connection protocol component; Cordis owns registration disposal. */
+/** Install the MyGO connection protocol implementation; Cordis owns registration disposal. */
 export function installConnection(ctx: Context): void {
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact',

@@ -73,7 +73,7 @@ export function mountLocalShell(ctx: MygoContext) {
     return <div data-mygo-local-shell="" className={shellCSS.shell}>
       <div className={shellCSS.frame}>
         <nav aria-label={t('Client navigation')} className={shellCSS.navigation}>
-          <div className={shellCSS.brand}><FishLogo size={22} /><span>mygo</span></div>
+          <div className={shellCSS.brand}><FishLogo size={22} /><span>MyGO</span></div>
           <div className={shellCSS.actions}>
             <LocalLanguage ctx={ctx} />
             <Button data-mygo-open-settings="" variant="outline" onClick={() => { setFormError(''); setSettings(true) }}>{t('Instances')}</Button>

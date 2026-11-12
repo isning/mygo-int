@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "mygo bootstrap",
-    "description": "Expose the authenticated startup injection table used by the mygo client."
+    "title": "MyGO Host",
+    "description": "Provides the DSH Host integration used by MyGO."
   }
 }

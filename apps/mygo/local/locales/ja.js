@@ -111,9 +111,9 @@ export default {
   "Sign in to this instance": "このインスタンスにサインインしてください",
   "This instance refused access": "このインスタンスがアクセスを拒否しました",
   "The selected instance is unavailable": "選択したインスタンスは利用できません",
-  "This instance does not support the mygo client adapter": "このインスタンスは mygo クライアントアダプターに対応していません",
+  "This instance does not support the MyGO client adapter": "このインスタンスは MyGO クライアントアダプターに対応していません",
   "Unable to save this instance": "このインスタンスを保存できません",
   "Unable to remove this instance": "このインスタンスを削除できません",
-  "Unable to load the mygo plugin configuration": "mygo プラグイン設定を読み込めません",
-  "Unable to save the mygo plugin configuration": "mygo プラグイン設定を保存できません"
+  "Unable to load the MyGO plugin configuration": "MyGO プラグイン設定を読み込めません",
+  "Unable to save the MyGO plugin configuration": "MyGO プラグイン設定を保存できません"
 }

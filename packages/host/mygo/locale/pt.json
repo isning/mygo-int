@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "Inicialização do mygo",
-    "description": "Expõe a tabela autenticada de injeções de inicialização usada pelo cliente mygo."
+    "title": "MyGO Host",
+    "description": "Fornece a integração DSH Host usada pelo MyGO."
   }
 }

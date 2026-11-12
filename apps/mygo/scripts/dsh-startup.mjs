@@ -12,12 +12,12 @@ import { createClientAuth } from './dsh-client-auth.mjs'
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const workspace = resolve(appRoot, '../..')
 const upstream = workspace
-/** Build or serve mygo inside the owning Cordis lifecycle. */
+/** Build or serve MyGO inside the owning Cordis lifecycle. */
 export async function runMygo(command, options = {}) {
   const localStartup = await readLocalStartup(appRoot, options.startupConfig ?? 'local/single-root.json')
   const dist = resolve(appRoot, 'dist')
   const state = resolve(options.stateDirectory ?? resolve(process.cwd(), '.dsh-build/mygo/state'))
-  if (!['build', 'serve'].includes(command)) throw new Error(`Unknown mygo command: ${command}`)
+  if (!['build', 'serve'].includes(command)) throw new Error(`Unknown MyGO command: ${command}`)
   if (command === 'build') {
     const { readClientBuildRecord } = await import(resolve(upstream, 'scripts/client-build-environment.ts'))
     if (!readClientBuildRecord(upstream)) throw new Error('Missing original client build record; rebuild artifacts first')
@@ -36,7 +36,7 @@ export async function runMygo(command, options = {}) {
     await writeFile(resolve(dist, 'index.html'), template.replace('<!-- DSH_ASSETS -->', bootTags + '\n    ' + assets.join('\n    ')))
     await mkdir(resolve(appRoot, 'runtime'), { recursive: true })
     await copyFile(resolve(upstream, 'packages/client/web/lib/apply-injections.js'), resolve(appRoot, 'runtime/apply-injections.js'))
-    console.log(`Built self-contained mygo Web application (${assets.length} asset tags)`)
+    console.log(`Built self-contained MyGO Web application (${assets.length} asset tags)`)
     return async () => {}
   }
   const html = await readFile(resolve(dist, 'index.html'), 'utf8')
@@ -60,7 +60,7 @@ export async function runMygo(command, options = {}) {
     try { clientConfig = JSON.parse(await readFile(clientConfigFile, 'utf8')) } catch (error) { if (error.code !== 'ENOENT') throw error }
     if (clientConfig?.version !== 1 || !Number.isSafeInteger(clientConfig.revision) || clientConfig.revision < 0
       || clientConfig.base !== null && typeof clientConfig.base !== 'string' || !clientConfig.overrides
-      || typeof clientConfig.overrides !== 'object' || Array.isArray(clientConfig.overrides)) throw Error('Invalid mygo client configuration')
+      || typeof clientConfig.overrides !== 'object' || Array.isArray(clientConfig.overrides)) throw Error('Invalid MyGO client configuration')
     let routeWrite = Promise.resolve()
     const writePrivateJSON = async (file, value) => {
       await writeFile(file + '.next', JSON.stringify(value), { mode: 0o600 })
@@ -81,7 +81,7 @@ export async function runMygo(command, options = {}) {
       try {
         if (!trusted(request)) { response.writeHead(403).end(); return }
         if (clientAuth.exchange(request, response)) return
-        if (!clientAuth.authenticated(request)) { response.writeHead(401, { 'cache-control': 'no-store' }).end('mygo authentication required'); return }
+        if (!clientAuth.authenticated(request)) { response.writeHead(401, { 'cache-control': 'no-store' }).end('MyGO authentication required'); return }
         const originalPath = new URL(request.url, 'http://localhost').pathname
         const route = router?.resolve(request)
         const localPath = originalPath === '/' || originalPath === '/index.html' || originalPath.startsWith('/assets/')
@@ -198,8 +198,8 @@ export async function runMygo(command, options = {}) {
       server.once('error', rejectListen)
       server.listen(port, bindHost, () => {
         server.off('error', rejectListen)
-        console.log(`mygo: ${publicOrigins[0] ?? 'http://127.0.0.1:' + port} (bind ${bindHost})`)
-        console.log(`mygo private launch URL: ${clientAuth.launchFile}`)
+        console.log(`MyGO: ${publicOrigins[0] ?? 'http://127.0.0.1:' + port} (bind ${bindHost})`)
+        console.log(`MyGO private launch URL: ${clientAuth.launchFile}`)
         resolveListen()
       })
     })

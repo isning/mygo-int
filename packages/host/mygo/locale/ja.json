@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "mygo ブートストラップ",
-    "description": "mygo クライアントが使用する認証済み起動インジェクションテーブルを提供します。"
+    "title": "MyGO Host",
+    "description": "MyGO が使用する DSH Host 統合を提供します。"
   }
 }

@@ -1,5 +1,5 @@
 ---
-description: "Host-side components for DSH instances used through mygo."
+description: "Host plugin for DSH instances connected through MyGO."
 kind: "package-reference"
 ---
 
@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`dsh-host-mygo` is the Host-side plugin for DSH instances used through mygo. Its first component implements the mygo connection protocol: it exposes the instance's ordered client startup injection table at `GET /mygo/index-injections`, allowing mygo to load the instance's client plugins without parsing its HTML page. It reuses DSH admission, the exact admitted owner Peer, the WebServer registry, and Cordis disposal.
+`dsh-host-mygo` is the Host plugin for DSH instances connected through MyGO. It implements the MyGO connection protocol, currently exposing the instance's ordered client startup injection table at `GET /mygo/index-injections`. This lets MyGO load the instance's client plugins without parsing its HTML page. The plugin reuses DSH admission, the exact admitted owner Peer, the WebServer registry, and Cordis disposal.
 
 ## Table of Contents
 
@@ -24,16 +24,16 @@ English | [中文](README.zh.md)
 
 ## Use this package
 
-Install this Host plugin in each remote DSH instance that should support mygo, after `connection` and `webServer`. It currently has no configuration. The connection component admits the request through `ctx.connection.admit`, requires the owner principal, and returns `ctx.webServer.collectIndexInjections(peer)` without interpreting or reordering rows.
+Install this Host plugin in each remote DSH instance that should support MyGO, after `connection` and `webServer`. It currently has no configuration. It admits the request through `ctx.connection.admit`, requires the owner principal, and returns `ctx.webServer.collectIndexInjections(peer)` without interpreting or reordering rows.
 
 ## Understand the implementation
 
-The package entry composes Host-side mygo components. The connection component lives in `src/connection.ts` and registers its endpoint inside a Cordis effect, so unloading the parent plugin removes the route. Other Host plugins keep contributing startup rows through the existing WebServer injection event. RPC and WebSocket traffic continue through the existing DSH connection protocol; this plugin does not replace those transports, store credentials, provide UI, or create another Cordis tree.
+The connection protocol implementation lives in `src/connection.ts` and registers its endpoint inside a Cordis effect, so unloading the Host plugin removes the route. Other Host plugins keep contributing startup rows through the existing WebServer injection event. RPC and WebSocket traffic continue through the existing DSH protocol; this plugin does not replace those transports, store credentials, provide UI, or create another Cordis tree.
 
 ## Further Exploration
 
 - [Host package map](../README.md)
-- [mygo application](../../../apps/mygo/package.json)
+- [MyGO application](../../../apps/mygo/package.json)
 
 ## Model Experience
 

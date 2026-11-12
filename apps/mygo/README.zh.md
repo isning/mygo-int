@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概要
 
-`dsh-mygo-app` 是独立的 mygo 客户端。它启动一棵本地 Cordis 客户端树，通过持有凭据的反向代理连接显式配置的 DSH 实例，并原样渲染各实例的客户端插件。
+`dsh-mygo-app` 是独立的 MyGO 客户端。它启动一棵本地 Cordis 客户端树，通过持有凭据的反向代理连接显式配置的 DSH 实例，并原样渲染各实例的客户端插件。
 
 ## 目录
 
@@ -25,13 +25,13 @@ kind: "package-reference"
 <a id="use-this-package"></a>
 ## 使用此包
 
-运行 `mygo`。进程会输出一个权限为 `0600` 的私有 bearer 启动链接路径。打开链接后会创建 mygo 浏览器会话；该链接在 mygo 进程重启前一直有效。匿名 HTTP 与 WebSocket 请求会在附加任何已保存的 DSH 凭据之前被拒绝。
+运行 `mygo`。进程会输出一个权限为 `0600` 的私有 bearer 启动链接路径。打开链接后会创建 MyGO 浏览器会话；该链接在 MyGO 进程重启前一直有效。匿名 HTTP 与 WebSocket 请求会在附加任何已保存的 DSH 凭据之前被拒绝。
 
 Cordis 插件接受以下配置：
 
 | 参数 | 默认值 | 用途 |
 | --- | --- | --- |
-| `--port` | `4178` | mygo HTTP 监听端口。 |
+| `--port` | `4178` | MyGO HTTP 监听端口。 |
 | `--bind-host` | `127.0.0.1` | 监听地址。非回环地址必须设置 `--public-origin`。 |
 | `--public-origin` | 空 | 公共监听器允许的精确浏览器 origin。 |
 | `--state-directory` | `.dsh-build/mygo/state` | 私有实例目录、DSH 凭据、客户端偏好和启动链接。 |
@@ -40,27 +40,27 @@ Cordis 插件接受以下配置：
 <a id="understand-the-implementation"></a>
 ## 理解实现
 
-mygo 仅在服务端状态目录保存 DSH 启动令牌和绑定 authority 的 Cookie。浏览器只获得 mygo 会话与实例范围的代理路由。上游调用仍由 DSH admission 与 RemoteAccess 授权；本地插件设置不会修改 Host 插件状态。
+MyGO 仅在服务端状态目录保存 DSH 启动令牌和绑定 authority 的 Cookie。浏览器只获得 MyGO 会话与实例范围的代理路由。上游调用仍由 DSH admission 与 RemoteAccess 授权；本地插件设置不会修改 Host 插件状态。
 
 <a id="further-exploration"></a>
 ## 进一步阅读
 
-- [mygo Host 插件](../../packages/host/mygo/README.zh.md)
+- [MyGO Host 插件](../../packages/host/mygo/README.zh.md)
 - [应用清单](package.json)
 
 <a id="model-experience"></a>
 ## 模型体验
 
-mygo 不会增加模型输入。已连接实例的原始 agent 与客户端插件负责提示词、工具、流式输出和 Session 历史。
+MyGO 不会增加模型输入。已连接实例的原始 agent 与客户端插件负责提示词、工具、流式输出和 Session 历史。
 
 #### KV Cache 影响
 
-无；mygo 原样转发 DSH 协议，不修改 provider 请求。
+无；MyGO 原样转发 DSH 协议，不修改 provider 请求。
 
 <a id="known-limitations-and-deferred-work"></a>
 ## 已知限制与延后工作
 
-- 每个 DSH 实例必须安装经过认证的 mygo Host 插件。
+- 每个 DSH 实例必须安装经过认证的 MyGO Host 插件。
 - 当前浏览器代理支持 owner 认证；受限用户接入需要显式的应用凭据和 RemoteAccess 策略。
 - `publicOrigin` 是精确 origin，不是认证机制。请保护私有启动链接。
 

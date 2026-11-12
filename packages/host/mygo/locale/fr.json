@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "Amorçage mygo",
-    "description": "Expose la table authentifiée des injections de démarrage utilisée par le client mygo."
+    "title": "MyGO Host",
+    "description": "Fournit l’intégration DSH Host utilisée par MyGO."
   }
 }
