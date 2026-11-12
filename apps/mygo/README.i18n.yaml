@@ -3,7 +3,7 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write apps/mygo/README.md
 /:
-  en: 43bdbdba78f869a2
+  en: 7d1ce8e4d45b2480
   zh: d770822c1d2b1806
 /deepseek-ai-dsh-mygo-app:
   en: 2e8d44ce13e73477
@@ -18,8 +18,8 @@
   en: 2714b06009449655
   zh: 7ba19d1d928863cf
 /deepseek-ai-dsh-mygo-app/understand-the-implementation:
-  en: 71ca45afa2345c64
-  zh: 0a29044fac81efed
+  en: dfc6c56dab383958
+  zh: 7cb7282a81b3dee7
 /deepseek-ai-dsh-mygo-app/further-exploration:
   en: 04a1e4597056c6fd
   zh: 0756c3e64d17ab20

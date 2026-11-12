@@ -40,6 +40,8 @@ The Cordis plugin accepts these configuration fields:
 
 MyGO!!!! stores DSH launch tokens and authority-bound cookies only in its server-side state directory. The browser receives a MyGO!!!! session and instance-scoped proxy route. DSH admission and RemoteAccess still authorize upstream calls; local plugin settings never mutate Host plugin state.
 
+The Root language follows the DSH locale model. Browser languages provide the provisional value until the user makes an explicit selection. MyGO!!!! then stores `{ revision, preference }` in the private `locale-settings.json` state file. The authenticated same-origin `GET` and `PUT /mygo-local/locale` endpoint exposes revision-fenced reads and writes to the local locale plugin; conflicts return the latest accepted snapshot, and failed durable writes leave the accepted revision unchanged. Connected instances continue to use their own original DSH locale setting.
+
 ## Further Exploration
 
 - [MyGO!!!! Host plugin](../../packages/host/mygo/README.md)

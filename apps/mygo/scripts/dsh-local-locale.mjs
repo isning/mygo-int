@@ -1,41 +1,36 @@
 import { readFile, rename, writeFile } from 'node:fs/promises'
+import { isLocaleSnapshot, isLocaleUpdate } from '../locale-settings.js'
 
-const LOCALE_ID = /^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$/u
-
-function valid(value) {
-  return value && Object.keys(value).every(key => ['revision', 'preference'].includes(key))
-    && Number.isSafeInteger(value.revision) && value.revision >= 0
-    && (value.preference === null || typeof value.preference === 'string' && LOCALE_ID.test(value.preference))
-}
-
-/** Durable MyGO locale preference with the same revision semantics as DSH settings. */
+/**
+ * Open one durable MyGO locale preference.
+ * @param {string} file Private JSON file owned by the MyGO state directory.
+ * @returns {Promise<{snapshot(): {revision: number, preference: string | null}, update(input: unknown): Promise<object>}>} Revision-fenced locale store.
+ */
 export async function createLocalLocaleSettings(file) {
   let value = { revision: 0, preference: null }
   try { value = JSON.parse(await readFile(file, 'utf8')) }
   catch (error) { if (error.code !== 'ENOENT') throw error }
-  if (!valid(value)) throw Error('Invalid MyGO!!!! locale settings')
+  if (!isLocaleSnapshot(value)) throw Error('Invalid MyGO!!!! locale settings')
   let tail = Promise.resolve()
 
   return {
     snapshot: () => ({ ...value }),
     update(input) {
-      let result
-      tail = tail.then(async () => {
-        if (!input || !Number.isSafeInteger(input.expectedRevision)
-          || input.preference !== null && (typeof input.preference !== 'string' || !LOCALE_ID.test(input.preference))) {
-          result = { ok: false, reason: 'invalid' }
-          return
+      const task = tail.then(async () => {
+        if (!isLocaleUpdate(input)) {
+          return { ok: false, reason: 'invalid' }
         }
         if (input.expectedRevision !== value.revision) {
-          result = { ok: false, reason: 'conflict', snapshot: { ...value } }
-          return
+          return { ok: false, reason: 'conflict', snapshot: { ...value } }
         }
-        value = { revision: value.revision + 1, preference: input.preference }
-        await writeFile(file + '.next', JSON.stringify(value), { mode: 0o600 })
+        const next = { revision: value.revision + 1, preference: input.preference }
+        await writeFile(file + '.next', JSON.stringify(next), { mode: 0o600 })
         await rename(file + '.next', file)
-        result = { ok: true, snapshot: { ...value } }
+        value = next
+        return { ok: true, snapshot: { ...value } }
       })
-      return tail.then(() => result)
+      tail = task.then(() => {}, () => {})
+      return task
     },
   }
 }

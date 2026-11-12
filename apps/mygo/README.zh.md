@@ -42,6 +42,8 @@ Cordis 插件接受以下配置：
 
 MyGO!!!! 仅在服务端状态目录保存 DSH 启动令牌和绑定 authority 的 Cookie。浏览器只获得 MyGO!!!! 会话与实例范围的代理路由。上游调用仍由 DSH admission 与 RemoteAccess 授权；本地插件设置不会修改 Host 插件状态。
 
+Root 语言遵循 DSH locale 模型。用户明确选择语言前，浏览器语言仅提供临时值；选择后，MyGO!!!! 将 `{ revision, preference }` 保存到私有状态文件 `locale-settings.json`。经过认证的同源 `GET` 与 `PUT /mygo-local/locale` 端点为本地 locale 插件提供带 revision 限制的读写；冲突会返回最新已接受快照，持久化失败不会改变已接受 revision。连接实例后仍使用该实例原有的 DSH locale 设置。
+
 <a id="further-exploration"></a>
 ## 进一步阅读
 

@@ -22,6 +22,7 @@
     "bootstrap.js",
     "index.html",
     "instance-route.js",
+    "locale-settings.js",
     "dist/index.html",
     "dist/assets/**/*",
     "!dist/**/*.map",
