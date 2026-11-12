@@ -84,7 +84,7 @@ const appPackageFiles: Readonly<Record<string, readonly string[]>> = {
     'lib/index.js', 'lib/cli.js',
   ],
   '@deepseek-ai/dsh-mygo-app': [
-    'cordis.patch.yml', 'bootstrap.js', 'index.html', 'instance-route.js',
+    'bin.mjs', 'cordis.patch.yml', 'bootstrap.js', 'index.html', 'instance-route.js',
     'dist/index.html', 'dist/assets/**/*', '!dist/**/*.map',
     'local/**/*.js', 'local/**/*.json', 'runtime/apply-injections.js',
     'scripts/dsh-authenticated-carrier.mjs', 'scripts/dsh-carrier-trust.mjs',

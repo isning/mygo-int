@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概要
 
-`dsh-mygo-app` 是随发行提供的 `mygo` profile。它启动一棵本地 Cordis 客户端树，通过持有凭据的反向代理连接显式配置的 DSH 实例，并原样渲染各实例的客户端插件。
+`dsh-mygo-app` 是独立的 mygo 客户端。它启动一棵本地 Cordis 客户端树，通过持有凭据的反向代理连接显式配置的 DSH 实例，并原样渲染各实例的客户端插件。
 
 ## 目录
 
@@ -25,17 +25,17 @@ kind: "package-reference"
 <a id="use-this-package"></a>
 ## 使用此包
 
-运行 `dsh --profile mygo`。进程会输出一个权限为 `0600` 的私有 bearer 启动链接路径。打开链接后会创建 mygo 浏览器会话；该链接在 mygo 进程重启前一直有效。匿名 HTTP 与 WebSocket 请求会在附加任何已保存的 DSH 凭据之前被拒绝。
+运行 `mygo`。进程会输出一个权限为 `0600` 的私有 bearer 启动链接路径。打开链接后会创建 mygo 浏览器会话；该链接在 mygo 进程重启前一直有效。匿名 HTTP 与 WebSocket 请求会在附加任何已保存的 DSH 凭据之前被拒绝。
 
 Cordis 插件接受以下配置：
 
-| 字段 | 默认值 | 用途 |
+| 参数 | 默认值 | 用途 |
 | --- | --- | --- |
-| `port` | `4178` | mygo HTTP 监听端口。 |
-| `bindHost` | `127.0.0.1` | 监听地址。非回环地址必须设置 `publicOrigin`。 |
-| `publicOrigin` | 空 | 公共监听器允许的精确浏览器 origin。 |
-| `stateDirectory` | `.dsh-build/mygo/state` | 私有实例目录、DSH 凭据、客户端偏好和启动链接。 |
-| `startupConfig` | `local/single-root.json` | 在本包内解析的本地 Cordis 组合。 |
+| `--port` | `4178` | mygo HTTP 监听端口。 |
+| `--bind-host` | `127.0.0.1` | 监听地址。非回环地址必须设置 `--public-origin`。 |
+| `--public-origin` | 空 | 公共监听器允许的精确浏览器 origin。 |
+| `--state-directory` | `.dsh-build/mygo/state` | 私有实例目录、DSH 凭据、客户端偏好和启动链接。 |
+| `--startup-config` | `local/single-root.json` | 在本包内解析的本地 Cordis 组合。 |
 
 <a id="understand-the-implementation"></a>
 ## 理解实现

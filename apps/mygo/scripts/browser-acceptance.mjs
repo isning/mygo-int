@@ -1,5 +1,5 @@
 /**
- * Real-browser acceptance for the shipped mygo profile and a real DSH Host.
+ * Real-browser acceptance for the standalone mygo executable and a real DSH Host.
  * Set MYGO_TEST_DSH_ORIGIN and MYGO_TEST_DSH_TOKEN to a disposable fixed Host.
  */
 import { spawn } from 'node:child_process'
@@ -14,7 +14,7 @@ if (!origin || !token) throw Error('MYGO_TEST_DSH_ORIGIN and MYGO_TEST_DSH_TOKEN
 const address = new URL(origin).origin
 const launchFile = resolve(root, '.dsh-build/mygo/state/client-launch-url')
 const previousLaunch = await readFile(launchFile, 'utf8').catch(() => '')
-const child = spawn(process.execPath, ['apps/cli/lib/bin.js', '--profile', 'mygo', '--no-open'], {
+const child = spawn(process.env.MYGO_TEST_NODE || process.execPath, ['apps/mygo/bin.mjs'], {
   cwd: root, stdio: ['ignore', 'inherit', 'inherit'],
 })
 const stop = () => child.kill('SIGTERM')

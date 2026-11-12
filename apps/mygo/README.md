@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`dsh-mygo-app` is the shipped `mygo` profile. It starts one local Cordis client, connects it to explicitly configured DSH instances through a credential-holding reverse proxy, and renders each instance's unchanged client plugins.
+`dsh-mygo-app` is the standalone mygo client. It starts one local Cordis client, connects it to explicitly configured DSH instances through a credential-holding reverse proxy, and renders each instance's unchanged client plugins.
 
 ## Table of Contents
 
@@ -24,17 +24,17 @@ English | [中文](README.zh.md)
 
 ## Use this package
 
-Run `dsh --profile mygo`. The process prints the path to a mode-`0600` private bearer launch URL. Opening that URL creates a mygo browser session; the link remains valid until the mygo process restarts. Anonymous HTTP and WebSocket requests are rejected before any saved DSH credential is attached.
+Run `mygo`. The process prints the path to a mode-`0600` private bearer launch URL. Opening that URL creates a mygo browser session; the link remains valid until the mygo process restarts. Anonymous HTTP and WebSocket requests are rejected before any saved DSH credential is attached.
 
 The Cordis plugin accepts these configuration fields:
 
-| Field | Default | Purpose |
+| Option | Default | Purpose |
 | --- | --- | --- |
-| `port` | `4178` | mygo HTTP listener port. |
-| `bindHost` | `127.0.0.1` | Listener address. A non-loopback value requires `publicOrigin`. |
-| `publicOrigin` | empty | Exact browser origin admitted by the public listener. |
-| `stateDirectory` | `.dsh-build/mygo/state` | Private instance catalog, DSH credentials, client preferences, and launch URL. |
-| `startupConfig` | `local/single-root.json` | Local Cordis composition, resolved inside this package. |
+| `--port` | `4178` | mygo HTTP listener port. |
+| `--bind-host` | `127.0.0.1` | Listener address. A non-loopback value requires `--public-origin`. |
+| `--public-origin` | empty | Exact browser origin admitted by the public listener. |
+| `--state-directory` | `.dsh-build/mygo/state` | Private instance catalog, DSH credentials, client preferences, and launch URL. |
+| `--startup-config` | `local/single-root.json` | Local Cordis composition, resolved inside this package. |
 
 ## Understand the implementation
 

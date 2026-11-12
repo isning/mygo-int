@@ -12,7 +12,7 @@ import { createClientAuth } from './dsh-client-auth.mjs'
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const workspace = resolve(appRoot, '../..')
 const upstream = workspace
-/** Build or serve mygo inside the owning Cordis profile lifecycle. */
+/** Build or serve mygo inside the owning Cordis lifecycle. */
 export async function runMygo(command, options = {}) {
   const localStartup = await readLocalStartup(appRoot, options.startupConfig ?? 'local/single-root.json')
   const dist = resolve(appRoot, 'dist')

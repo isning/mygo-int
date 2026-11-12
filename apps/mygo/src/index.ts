@@ -1,4 +1,4 @@
-/** The mygo browser application mounted by the supported dsh profile launcher. */
+/** The mygo browser application mounted by its standalone executable. */
 
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'

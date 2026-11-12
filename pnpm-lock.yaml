@@ -411,9 +411,6 @@ importers:
       '@deepseek-ai/dsh-mcp-resources':
         specifier: workspace:*
         version: link:../../packages/mcp/mcp-resources
-      '@deepseek-ai/dsh-mygo-app':
-        specifier: workspace:*
-        version: link:../mygo
       '@deepseek-ai/dsh-official-bundles':
         specifier: workspace:*
         version: link:../../packages/util/official-bundles
@@ -936,9 +933,15 @@ importers:
       '@deepseek-ai/cordis-plugin-loader':
         specifier: workspace:~
         version: link:../../vendor/loader
+      '@deepseek-ai/dsh':
+        specifier: workspace:*
+        version: link:../cli
       '@deepseek-ai/dsh-api-remotes':
         specifier: workspace:*
         version: link:../../packages/api/remotes
+      '@deepseek-ai/dsh-app-boot':
+        specifier: workspace:*
+        version: link:../../packages/boot/app-boot
       '@deepseek-ai/dsh-client-connection':
         specifier: workspace:*
         version: link:../../packages/client/connection

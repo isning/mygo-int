@@ -5,6 +5,9 @@
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
+  "bin": {
+    "mygo": "bin.mjs"
+  },
   "exports": {
     ".": {
       "types": "./lib/types/index.d.ts",
@@ -14,6 +17,7 @@
     "./package.json": "./package.json"
   },
   "files": [
+    "bin.mjs",
     "cordis.patch.yml",
     "bootstrap.js",
     "index.html",
@@ -40,7 +44,7 @@
   },
   "scripts": {
     "build": "node scripts/build.mjs && tsc -b && tsdown --config-loader native",
-    "start": "node ../cli/lib/bin.js --profile mygo",
+    "start": "node bin.mjs",
     "test": "cd ../.. && node --test apps/mygo/scripts/test/*.test.mjs",
     "test:browser": "node scripts/browser-acceptance.mjs",
     "test:packed": "node scripts/packed-install-smoke.mjs"
@@ -49,6 +53,8 @@
     "@deepseek-ai/cordis": "workspace:~",
     "@deepseek-ai/cordis-plugin-loader": "workspace:~",
     "@deepseek-ai/schemastery": "workspace:~",
+    "@deepseek-ai/dsh": "workspace:*",
+    "@deepseek-ai/dsh-app-boot": "workspace:*",
     "@deepseek-ai/dsh-api-remotes": "workspace:*",
     "@deepseek-ai/dsh-client-connection": "workspace:*",
     "@deepseek-ai/dsh-client-locale": "workspace:*",
