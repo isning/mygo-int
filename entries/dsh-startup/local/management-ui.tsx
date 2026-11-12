@@ -6,19 +6,11 @@ export { registerInstanceNavigation } from './instance-navigation'
 // The injected face below is local only; no Host PluginManagerController/ConfigForms.
 import { useClientText, clientError } from './i18n'
 import React, { useEffect, useState } from 'react'
-import { Button, ConnectionIndicator, IconPlusOutlineRegular, IconTrashOutlineRegular, Modal, StateDot, Tag, closeTopModal } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, IconPlusOutlineRegular, IconTrashOutlineRegular, Modal, StateDot, closeTopModal } from '@deepseek-ai/dsh-client-ui-primitives'
 import generalCSS from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-settings-general/src/client/GeneralSection.module.css'
 import rowCSS from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-settings-general/src/client/DesktopChannelRow.module.css'
 import modelsCSS from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-settings-models/src/client/ModelsSection.module.css'
 import deviceCSS from './device-ui.module.css'
-
-export function registerLocalNote(ctx, label) {
-  ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register({
-    name: 'sidebar.footer.action', id: 'mygo-local-note', order: 100,
-  }, ({ wide }) => wide ? <aside className={deviceCSS.note} data-mygo-local-plugin="marker">
-    <Tag tone="neutral"><span className={deviceCSS.noteText}>{label}</span></Tag>
-  </aside> : null))
-}
 
 class LocalUIBoundary extends React.Component {
   state = { error: '' }
@@ -89,17 +81,18 @@ function InstanceEditor({ ctx, service, target, onClose }) {
   </label>
   return <form className={modelsCSS.editor} data-instance-editor="" onSubmit={async event => {
     event.preventDefault(); setSaving(true); setError('')
-    try { await service.save(draft, target.id); onClose() }
+    try { await service.save(draft, target.original); onClose() }
     catch (error) { setError(clientError(ctx, error)) }
     finally { setSaving(false) }
   }}>
-    <div className={modelsCSS.editorHeader}><span className={modelsCSS.editorTitle}>{target.id ? t('Edit instance') : t('Add instance')}</span></div>
+    <div className={modelsCSS.editorHeader}><span className={modelsCSS.editorTitle}>{target.original ? t('Edit instance') : t('Add instance')}</span></div>
     {field('name', t('Name'))}
     {field('address', t('Address'))}
     <details className={modelsCSS.customized}>
       <summary className={modelsCSS.customizedSummary}>{t('Advanced')}</summary>
       <div className={modelsCSS.customizedBody}>
-        {field('id', t('Instance ID'), !!target.id)}
+        {field('id', t('Instance ID'), !!target.original)}
+        {field('authenticationViewId', t('Authentication view'), !!target.original)}
       </div>
     </details>
     {error && <p className={modelsCSS.error} role="alert">{error}</p>}
@@ -128,7 +121,7 @@ export function Instances({ ctx, run }) {
     <p className={modelsCSS.intro}>{t('Manage your instance connections.')}</p>
     {snapshot.diagnostic && <p className={modelsCSS.error} role="alert">{snapshot.diagnostic}</p>}
     <ul className={modelsCSS.rows}>
-      {snapshot.catalog.map(row => <li key={row.id} className={`${modelsCSS.rowCard} ${deviceCSS.instanceCard}`} data-instance-id={row.id}>
+      {snapshot.catalog.map(row => { const identity = `${row.id}:${row.authenticationViewId}`; return <li key={identity} className={`${modelsCSS.rowCard} ${deviceCSS.instanceCard}`} data-instance-id={row.id} data-authentication-view={row.authenticationViewId}>
         <div className={`${modelsCSS.rowHead} ${deviceCSS.instanceHead}`}>
           <span className={`${modelsCSS.rowIdentity} ${deviceCSS.instanceIdentity}`}>
             <span className={modelsCSS.rowName}>{row.name}</span>
@@ -137,10 +130,10 @@ export function Instances({ ctx, run }) {
           <span className={modelsCSS.rowActions}>
             {!isCurrent(row) && <button type="button" className={modelsCSS.secondaryButton}
               aria-label={t('Connect {name}', { name: row.name })} disabled={selecting} onClick={() => run(async () => {
-                setSelecting(true); try { await service.select(row.id) } finally { setSelecting(false) }
+                setSelecting(true); try { await service.select(row) } finally { setSelecting(false) }
               })}>{t('Connect')}</button>}
             <button type="button" className={modelsCSS.secondaryButton} aria-label={t('Edit {name}', { name: row.name })}
-              onClick={() => setEditing(editing?.id === row.id ? null : { id: row.id, draft: { ...row } })}>{t('Edit')}</button>
+              onClick={() => setEditing(editing?.key === identity ? null : { key: identity, original: row, draft: { ...row } })}>{t('Edit')}</button>
             {!isCurrent(row) && <button type="button" className={modelsCSS.secondaryButton} aria-label={t('Remove {name}', { name: row.name })}
               disabled={removing} onClick={() => setConfirmRemove(row)}><IconTrashOutlineRegular size={13} />{t('Remove')}</button>}
           </span>
@@ -154,13 +147,13 @@ export function Instances({ ctx, run }) {
         </div>
         {isCurrent(row) && snapshot.connectionStatus === 'unavailable' && snapshot.connectionDiagnostic
           && <p className={modelsCSS.error} role="alert">{t('Connection failed: {reason}', { reason: snapshot.connectionDiagnostic })}</p>}
-        {editing?.id === row.id && <InstanceEditor ctx={ctx} key={row.id} service={service} target={editing} onClose={() => setEditing(null)} />}
-      </li>)}
+        {editing?.key === identity && <InstanceEditor ctx={ctx} key={identity} service={service} target={editing} onClose={() => setEditing(null)} />}
+      </li>})}
     </ul>
     <div className={modelsCSS.addBlock}>
-      {editing?.id === null ? <InstanceEditor ctx={ctx} key="new-instance" service={service} target={editing} onClose={() => setEditing(null)} />
+      {editing?.key === null ? <InstanceEditor ctx={ctx} key="new-instance" service={service} target={editing} onClose={() => setEditing(null)} />
         : <div className={modelsCSS.addActions}><button type="button" className={modelsCSS.addButton}
-            disabled={snapshot.catalog.length >= 32} onClick={() => setEditing({ id: null, draft: {
+            disabled={snapshot.catalog.length >= 32} onClick={() => setEditing({ key: null, original: null, draft: {
               id: 'instance-' + Array.from(crypto.getRandomValues(new Uint8Array(12)), value => value.toString(16).padStart(2, '0')).join(''), name: '', address: '', authenticationViewId: snapshot.currentProfile?.authenticationViewId ?? 'owner',
             } })}><IconPlusOutlineRegular size={14} />{t('Add instance')}</button></div>}
     </div>
@@ -173,7 +166,7 @@ export function Instances({ ctx, run }) {
           if (!target) return
           void run(async () => {
             setRemoving(true)
-            try { await service.remove(target.id); setEditing(null); setConfirmRemove(null) }
+            try { await service.remove(target); setEditing(null); setConfirmRemove(null) }
             finally { setRemoving(false) }
           })
         }}>{t('Remove')}</Button>

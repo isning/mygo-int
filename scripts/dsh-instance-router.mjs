@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import { createAuthenticatedCarrier } from './dsh-authenticated-carrier.mjs'
 import { createCarrierTrust } from './dsh-carrier-trust.mjs'
+import { connectionProfileKey } from '../entries/dsh-startup/local/profile-identity.js'
 
 export function validateConnectionProfile(value) {
   if (!value || !['id', 'authenticationViewId'].every(key => typeof value[key] === 'string' && /^[\w-]{1,128}$/.test(value[key]))
@@ -29,8 +30,8 @@ export function createInstanceRouter({ publicOrigins = [], profiles = [], onRegi
   function register(value) {
     const profile = validateConnectionProfile(value)
     const id = createHash('sha256').update(JSON.stringify(profile)).digest('hex')
-    const profileKey = JSON.stringify([profile.id, profile.authenticationViewId])
-    const credentialId = digest(JSON.stringify([profile.id, profile.authenticationViewId]))
+    const profileKey = connectionProfileKey(profile)
+    const credentialId = digest(profileKey)
     if (routes.has(id)) return routes.get(id)
     if (routes.size + aliases.size >= 256) throw Error('Instance route limit reached')
     const namespace = JSON.stringify([profile.id, profile.address, profile.authenticationViewId])
@@ -83,8 +84,8 @@ export function createInstanceRouter({ publicOrigins = [], profiles = [], onRegi
       }
       if (req.method === 'DELETE') {
         const removed = validateConnectionProfile(value)
-        const key = JSON.stringify([removed.id, removed.authenticationViewId])
-        const activeKey = route && JSON.stringify([route.profile.id, route.profile.authenticationViewId])
+        const key = connectionProfileKey(removed)
+        const activeKey = route && connectionProfileKey(route.profile)
         if (key === activeKey) { res.writeHead(409, { 'cache-control': 'no-store' }).end(); return }
         const target = current.get(key)
         if (target) {
@@ -94,7 +95,7 @@ export function createInstanceRouter({ publicOrigins = [], profiles = [], onRegi
           target.carrier.close()
         }
         const entries = structuredClone(savedCredentials.entries)
-        delete entries[digest(JSON.stringify([removed.id, removed.authenticationViewId]))]
+        delete entries[digest(key)]
         savedCredentials = { version: 2, entries }
         await onCredentials?.(savedCredentials)
         await onRegister?.([...routes.values()].map(route => route.profile))

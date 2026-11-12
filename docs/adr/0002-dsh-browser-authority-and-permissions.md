@@ -1,25 +1,17 @@
-# DSH browser authority and permissions
+# Preserve DSH browser authority and permissions
 
-Status: accepted for the extracted official Web composition, 2026-11-10.
+Status: accepted, amended by ADRs 0007 and 0008, 2026-11-12.
 
-The scoped demonstration carrier refused legitimate original UI calls such as
-`session/create`. Extending endpoint allowlists would duplicate DSH policy, while
-removing them with a server owner cookie would grant owner access anonymously.
+Mygo forwards one profile's stored native DSH credential only on that profile's
+explicit route. It preserves the public Host, Origin and Fetch metadata at the
+edge, then uses the selected DSH authority upstream. Original DSH admission,
+Peer, Gateway and RemoteAccess checks remain authoritative.
 
-Use a fixed-target, authority-preserving transport and original DSH browser login.
-Preserve Host/Origin through the original trusted-host admission. Transport only
-the browser's authority-bound DSH cookie; never fall back to launcher credentials.
-DSH decides Peer/principal, Remote action/resource permissions and exact-route
-access. The carrier owns topology, transport bounds and shutdown, not business
-method authorization. Keep original protocol envelopes and socket streams intact.
+The reverse proxy owns topology, transport bounds, credential custody and normal
+shutdown. It does not add a business-method allowlist, mint principals, bypass
+TLS, expose credentials to browser JavaScript or treat Host/Origin as identity.
+Mygo user authentication is a separate outer boundary.
 
-The current pinned browser login exposes the owner authentication view only.
-Independent operators from `/connect` are also owner. Non-owner browser admission
-requires a separately supported identity mechanism, not a local owner substitution.
-The original public in-process Peer interfaces remain useful for permission tests.
-
-This serves one selected instance/authentication view per browser composition and
-retains local Cordis shell/entry ownership. Multi-instance authority domains and
-non-owner browser login remain separate integration work. Historical scoped
-carriers stay as fixtures, excluded from the active startup path. See
-[the operational contract](../upstream/dsh-browser-auth-validation.md).
+The pinned browser launch flow grants the native owner role. `/connect` also
+creates an owner operator. Restricted browser identities require a supported
+identity mechanism and must not be simulated with an owner credential.

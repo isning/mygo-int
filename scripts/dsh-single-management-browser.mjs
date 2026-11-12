@@ -21,7 +21,7 @@ export async function checkSharedManagement({ evaluate, until, apiRequests }) {
   await evaluate(`${tab('/^(Instances|实例)$/')}.click()`)
   await until(() => evaluate('!!document.querySelector("[data-mygo-instances]")'))
   const current = await evaluate(`(() => {
-    const card = document.querySelector('[data-mygo-instances] [data-instance-id]')
+    const card = document.querySelector('[data-mygo-instances] [data-instance-id="local-test-dsh"][data-authentication-view="owner"]')
     return card && { id: card.dataset.instanceId, text: card.innerText }
   })()`)
   assert.equal(current?.id, 'local-test-dsh', 'the active route appears in the shared instance catalog')

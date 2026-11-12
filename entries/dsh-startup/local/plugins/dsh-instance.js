@@ -3,7 +3,6 @@ import { protectLocalEntryModules } from '../../local-entry-boundary.js'
 import { assertEntriesActive } from '../../../../.scratch/upstream/deepseek-harness/packages/client/web/src/boot-client.ts'
 import { mountClient } from '../../../../.scratch/upstream/deepseek-harness/packages/client/web/src/mount.ts'
 import { BootPage } from '../../../../.scratch/upstream/deepseek-harness/packages/client/web/src/boot-page.ts'
-import { createSharedRuntimeDiagnostics } from './shared-runtime-diagnostics.js'
 import { installInstanceRoute, partitionRemoteStorage } from '../../instance-route.js'
 import '../../../../.scratch/upstream/deepseek-harness/packages/client/web/src/base.css'
 import '@deepseek-ai/dsh-client-ui-theme/brand-font.css'
@@ -15,11 +14,7 @@ export function apply(scope) {
   const { root: ctx, container, configuration, modules: staticModules, localEntries } = scope.clientHost
   const bootContainer = document.createElement('div')
   const page = new BootPage(bootContainer)
-  const { Context } = staticModules['@deepseek-ai/cordis']
-  const React = staticModules.react
-  const diagnosticName = '@mygo/single-client-contribution'
   let modules
-  staticModules[diagnosticName] = createSharedRuntimeDiagnostics({ React, Context, getConfiguration: () => configuration })
   ctx.reflect.provide('mygoPlatform', Object.freeze({ modules: staticModules }))
   ctx.provide('mygoStartup', Object.freeze({
     configuration, FiberState, sharedClient: true,
@@ -50,12 +45,12 @@ export function apply(scope) {
       })
       const manifest = modules.manifest
       const configured = [...(configuration.bootstrap ?? []), ...configuration.entries]
-      const releaseBoundary = protectLocalEntryModules(modules, [...configured.map(entry => entry.name), diagnosticName])
+      const releaseBoundary = protectLocalEntryModules(modules, configured.map(entry => entry.name))
       scope.effect(() => releaseBoundary, 'mygo: local module ownership boundary')
       for (const { id, name } of configured) {
         if (manifest.modules.some(row => row.id === name) || id === 'mygo-single-client') throw Error(`Local startup identity conflicts with client entry: ${id} (${name})`)
       }
-      page.setTotal(manifest.plugins.length + configuration.entries.filter(entry => !entry.disabled).length + 1)
+      page.setTotal(manifest.plugins.length + configuration.entries.filter(entry => !entry.disabled).length)
       await Promise.all(manifest.plugins.filter(row => row.immediately).map(row => modules.prefetch(row.id).catch(() => {})))
       // Original managed roster, attached to the base's existing Loader. Calling
       // bootClient here would install a Loader; the base already owns that step.
@@ -69,8 +64,6 @@ export function apply(scope) {
       await assertEntriesActive(ctx, modules)
     },
     async mount() {
-      await ctx.loader.create({ id: 'mygo-single-client', name: diagnosticName })
-      await ctx.loader.await()
       await assertEntriesActive(ctx, modules)
       ctx.localShell?.handoff()
       await mountClient(ctx, container)

@@ -13,8 +13,8 @@ test('the shipped composition is local-only and starts without an instance', asy
 })
 
 test('startup rejects remote entries, traversal, duplicate ids and unsupported schema', () => {
-  const valid = { id: 'marker', name: './plugins/marker.js' }
-  for (const name of ['https://remote.invalid/plugin.js', '../plugins/marker.js', './plugins/../marker.js', './plugins/marker.js?remote=1']) {
+  const valid = { id: 'touch', name: './plugins/touch-feedback.js' }
+  for (const name of ['https://remote.invalid/plugin.js', '../plugins/touch-feedback.js', './plugins/../touch-feedback.js', './plugins/touch-feedback.js?remote=1']) {
     assert.throws(() => validateLocalStartup({ schemaVersion: 1, entries: [{ ...valid, name }] }))
   }
   assert.throws(() => validateLocalStartup({ schemaVersion: 1, entries: [valid, valid] }))

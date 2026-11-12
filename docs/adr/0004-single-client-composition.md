@@ -26,7 +26,7 @@ Host's original controller and permissions. Local enablement and configuration
 do not implicitly issue Host management writes. Trusted plugin code retains its
 declared RPC behavior; ownership attribution is not a security sandbox.
 
-The persistence, runtime-first commit, rollback and admission decisions in
+The persistence, runtime-first commit and rollback decisions in
 [ADR 0003](0003-local-management-and-device-startup-overlays.md) remain in force.
 Invalid saved overrides expose recovery to the operator baseline rather than
 silently reinterpreting entries.

@@ -57,13 +57,13 @@ test('saving an instance writes the mygo proxy catalog', async t => {
   assert.deepEqual(requests[0].body, other)
 
   const renamed = { ...other, name: 'Renamed' }
-  await service.save(renamed, other.id)
+  await service.save(renamed, other)
   assert.deepEqual(service.snapshot().catalog, [first, renamed])
 })
 
 test('selecting an instance registers its current profile and navigates to its route', async t => {
   const { service, requests, navigations } = fixture(t, { selectedInstance: first, instances: [first, other] })
-  await service.select(other.id)
+  await service.select(other)
   assert.deepEqual(requests[0].body, other)
   assert.deepEqual(navigations, ['/mygo-instance/' + 'a'.repeat(64) + '/'])
   assert.equal(service.snapshot().currentProfile.id, first.id)
@@ -71,13 +71,22 @@ test('selecting an instance registers its current profile and navigates to its r
 
 test('removing an instance deletes it from the proxy while protecting the current route', async t => {
   const { service, requests } = fixture(t, { selectedInstance: first, instances: [first, other] })
-  await service.remove(other.id)
+  await service.remove(other)
   assert.equal(requests[0].options.method, 'DELETE')
   assert.deepEqual(service.snapshot().catalog, [first])
-  await assert.rejects(service.remove(first.id), /current instance/)
+  await assert.rejects(service.remove(first), /current instance/)
 })
 
 test('invalid server catalogs fail closed', t => {
   assert.throws(() => fixture(t, { instances: [{ ...first, address: 'file:///tmp/dsh' }] }), /HTTP\(S\) origin/)
-  assert.throws(() => fixture(t, { instances: [first, { ...other, id: first.id }] }), /Invalid instance catalog/)
+  assert.throws(() => fixture(t, { instances: [first, { ...first }] }), /Invalid instance catalog/)
+})
+
+test('authentication views of one instance remain independent profiles', async t => {
+  const restricted = { ...first, name: 'First restricted', address: 'https://restricted.example', authenticationViewId: 'restricted' }
+  const { service, requests } = fixture(t, { instances: [first, restricted] })
+  assert.deepEqual(service.snapshot().catalog, [first, restricted])
+  await service.remove(restricted)
+  assert.deepEqual(requests[0].body, restricted)
+  assert.deepEqual(service.snapshot().catalog, [first])
 })

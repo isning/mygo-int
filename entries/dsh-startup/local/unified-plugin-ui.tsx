@@ -10,12 +10,16 @@ import { PackageCard, PackageDetail, ItemCard, ItemDetail, RowDetail } from '../
 import type { PackageRow, PackageView } from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-plugin-manager/src/client/manager-store.ts'
 import type { PluginManagerPageProps } from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-plugin-manager/src/client/PluginManagerPage.tsx'
 import css from '../../../.scratch/upstream/deepseek-harness/packages/client/ui-plugin-manager/src/client/PluginManagerPage.module.css'
-import { LocalPluginActions, hasLocalPluginConfiguration, type LocalCompositionService } from './unified-local-actions'
 import { installPluginSideBadges, type PluginRuntimeFacts } from './plugin-side-badges'
 import { installRuntimeDetails, RuntimeDetails } from './plugin-runtime-details'
 
 type ClientContext = Context & {
-  clientComposition: LocalCompositionService
+  clientComposition: {
+    rows(): InspectRow[]
+    status(): { revision: number; busy: boolean; diagnostic: string }
+    subscribe(listener: () => void): () => void
+    change(id: string, patch: { disabled?: boolean }, revision?: number): Promise<void>
+  }
   mygoStartup: {
     admit(): Promise<void>
     ownsEntry(entry: unknown): boolean
@@ -32,7 +36,6 @@ const localPluginInfo: Record<string, { title: string; description: string; grou
   './plugins/local-navigation.js': { title: 'Instance switcher', description: 'Shows the instance selector in the sidebar.', group: 'basic' },
   './plugins/ui-client-manager.js': { title: 'Settings integration', description: 'Adds device preferences and instance profiles to Settings.', group: 'basic' },
   './plugins/touch-feedback.js': { title: 'Touch feedback', description: 'Removes the browser’s tap highlight while preserving keyboard focus indicators.', group: 'extensions' },
-  './plugins/marker.js': { title: 'Example note', description: 'Displays a sample note in the sidebar.', group: 'extensions' },
 }
 
 type LocalNavigation = {
@@ -87,7 +90,7 @@ function LocalPlugins({ ctx, t, facts, navigation, renderConfiguration }: { ctx:
     if (key === 'plugins.bundle.config' || key === 'plugins.row.config') return renderConfiguration(key, owner, options)
     if (key !== 'plugins.item') return null
     if (owner.view === 'summary') return localPluginInfo[row.moduleName]?.description ? clientT(localPluginInfo[row.moduleName].description) : null
-    return <LocalPluginActions ctx={ctx} row={row} onChanged={() => refresh(value => value + 1)} />
+    return null
   }
   const back = () => select(undefined)
   if (row) {
@@ -128,14 +131,6 @@ function LocalPlugins({ ctx, t, facts, navigation, renderConfiguration }: { ctx:
 export function register(ctx: ClientContext) {
   const facts = installPluginSideBadges(ctx, entry => ctx.mygoStartup.ownsEntry(entry))
   installRuntimeDetails(ctx, facts)
-  // This local example contributes configuration through the same contract as
-  // official bundle plugins. The page only projects the configuration ledger.
-  ctx.slots.inject('plugins.bundle.config', () => ctx.slots.register({
-    name: 'plugins.bundle.config', key: './plugins/marker.js',
-  }, function LocalNoteConfiguration() {
-    const row = ctx.clientComposition.rows().find(hasLocalPluginConfiguration)
-    return row ? <LocalPluginActions ctx={ctx} row={row} onChanged={() => {}} /> : null
-  }))
   // The original main entry owns the page and its child-slot declarations.
   // Contributions use those declarations rather than replacing the page or
   // duplicating its controller, navigation state, header, CSS or dialogs.

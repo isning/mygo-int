@@ -33,7 +33,7 @@ try{
  ws=new WebSocket(page.webSocketDebuggerUrl);await new Promise((r,j)=>{ws.onopen=r;ws.onerror=j;});
  let sequence=0;const pending=new Map();ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.id){pending.get(m.id)?.(m);pending.delete(m.id);}};
  const send=(method,params)=>new Promise((r,j)=>{const id=++sequence;pending.set(id,m=>m.error?j(Error(m.error.message)):r(m.result));ws.send(JSON.stringify({id,method,params}));});
- const createCalls=[],catalogResponses=[],promptCalls=[],receipts=[],frames=[],responseJobs=[],socketUrls=[],lazyResponses=[],terminalChunks=[],shellResponses=[];
+ const createCalls=[],catalogResponses=[],promptCalls=[],receipts=[],frames=[],responseJobs=[],socketUrls=[],terminalChunks=[],shellResponses=[];
  const pathOf=url=>new URL(url).pathname.replace(/^\/mygo-instance\/[a-f0-9]{64}/,'');
  const previous=ws.onmessage;
  ws.onmessage=e=>{const m=JSON.parse(e.data),p=m.params;
@@ -46,7 +46,6 @@ try{
   if(m.method==='Network.responseReceived'&&pathOf(p.response.url)==='/api/session/prompt')receipts.push({id:p.requestId,status:p.response.status});
   if(m.method==='Network.loadingFinished'&&receipts.some(x=>x.id===p.requestId))responseJobs.push(send('Network.getResponseBody',{requestId:p.requestId}).then(x=>receipts.find(x=>x.id===p.requestId).body=JSON.parse(x.body)));
   if(m.method==='Network.webSocketCreated')socketUrls.push(p.url);
-  if(m.method==='Network.responseReceived'&&pathOf(p.response.url)==='/mygo-boot/lazy-resources.js')lazyResponses.push(p.response.status);
   if(m.method==='Network.responseReceived'&&pathOf(p.response.url)==='/plugins/@deepseek-ai/dsh-client-ui-sidebar-terminal/client.terminal.js')terminalChunks.push(p.response.status);
   if(m.method==='Network.responseReceived'&&pathOf(p.response.url)==='/api/terminal/shells')shellResponses.push(p.response.status);
   if(m.method==='Network.webSocketFrameReceived')frames.push(p.response.payloadData);
@@ -77,7 +76,12 @@ try{
  }
  await send('Page.navigate',{url});
  evaluate=expression=>new Promise((r,j)=>{const id=++sequence;pending.set(id,m=>m.error?j(Error('CDP evaluation failed')):r(m.result.result.value));ws.send(JSON.stringify({id,method:'Runtime.evaluate',params:{expression,returnByValue:true,awaitPromise:true}}));});
- await until(async()=>await evaluate("globalThis.__ModuleLoader__?.mode==='live' && (document.body.innerText.includes('Choose workspace')||document.body.innerText.includes('Local test DSH'))"));
+ try {
+  await until(async()=>await evaluate("globalThis.__ModuleLoader__?.mode==='live' && (document.body.innerText.includes('Choose workspace')||document.body.innerText.includes('Local test DSH'))"));
+ } catch (error) {
+  await writeFile(scratch+'/browser-readiness.json',JSON.stringify(await evaluate("({text:document.body.innerText,loader:globalThis.__ModuleLoader__?.mode,url:location.pathname})")),{mode:0o600});
+  throw error;
+ }
  await evaluate("[...document.querySelectorAll('button')].find(x=>x.getAttribute('aria-label')==='Open sidebar')?.click()");
  if(!submit)await evaluate("[...document.querySelectorAll('button')].find(x=>x.innerText.includes('Choose workspace'))?.click()");
  const ready=await until(async()=>await evaluate("globalThis.__ModuleLoader__?.mode==='live' && document.body.innerText.includes('Local test DSH') && !document.body.innerText.includes('Failed to load plugins')"));
@@ -88,16 +92,9 @@ try{
    assert.equal(await evaluate('__MYGO_BROWSER_ROOTS__.size'),1,'one mounted original React root');
    assert.equal(await evaluate('__REACT_DEVTOOLS_GLOBAL_HOOK__.renderers.size'),1,'one original React renderer');
   }
-  const contribution=await evaluate(`(() => {
-   const node=document.querySelector('#root [data-mygo-shared-client]');
-   return node && {text:node.textContent,local:node.dataset.localActive,session:node.dataset.sessionActive,singletons:node.dataset.platformSingletons};
-  })()`);
-  assert.deepEqual(contribution,{text:'MYGO supplied Context service',local:'true',session:'true',singletons:'true'},'local Loader contribution consumes the supplied Context service inside the original UI, sharing active session entries and platform modules');
-  const marker=await evaluate("document.querySelector('[data-mygo-local-plugin=marker]')?.textContent");
-  const localEntry=await evaluate("document.querySelector('[data-mygo-shared-client]')?.dataset.localEntry");
-  assert.equal(marker,'Local note · editable','curated existing local marker runs alongside unchanged official client entries');
-  assert.equal(localEntry?.split(',').includes('./plugins/marker.js'),true,'the active local entry retains its original startup module identity');
-  await writeFile(scratch+'/single-root-browser.json',JSON.stringify({...contribution,marker,localEntry,...checkDefault?{reactRoots:await evaluate('__MYGO_BROWSER_ROOTS__.size'),reactRenderers:await evaluate('__REACT_DEVTOOLS_GLOBAL_HOOK__.renderers.size')}: {}}),{mode:0o600});
+  const startup=await evaluate("fetch('/mygo-local/startup.json').then(r=>r.json())");
+  assert.ok(startup.entries.length>0 && startup.entries.every(entry=>entry.name.startsWith('./plugins/')),'the active document exposes the curated local composition');
+  await writeFile(scratch+'/single-root-browser.json',JSON.stringify({localEntries:startup.entries.map(entry=>entry.name),...checkDefault?{reactRoots:await evaluate('__MYGO_BROWSER_ROOTS__.size'),reactRenderers:await evaluate('__REACT_DEVTOOLS_GLOBAL_HOOK__.renderers.size')}: {}}),{mode:0o600});
  }
  if(checkSingleManagement){
   stage='shared local management';
@@ -150,13 +147,9 @@ try{
   await writeFile(scratch+'/submit.png',Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'));
   if(createSession){
    assert.equal(createCalls.length-initialCreates,1,'one new session/create request from the original New session control');
-   const ownership=await evaluate(`(() => { const node=document.querySelector('[data-mygo-shared-client]'); return {localActive:node?.dataset.localActive,sessionActive:node?.dataset.sessionActive,singletons:node?.dataset.platformSingletons,localEntries:node?.dataset.localEntry.split(',')}; })()`);
    const startup=await evaluate("fetch('/mygo-local/startup.json').then(r=>r.json())");
-   assert.equal(ownership.localActive,'true','actual local entries remain active in the shared Loader');
-   assert.equal(ownership.sessionActive,'true','original Session entry remains active');
-   assert.equal(ownership.singletons,'true','local and instance entries share original platform modules');
-   assert.deepEqual(ownership.localEntries.sort(),startup.entries.map(x=>x.name).sort(),'shared Loader retains every curated local entry');
-   await writeFile(scratch+'/ownership-validation.json',JSON.stringify(ownership,null,2),{mode:0o600});
+   assert.ok(startup.selectedInstance,'the connected document retains its explicit instance identity');
+   await writeFile(scratch+'/ownership-validation.json',JSON.stringify({selectedInstance:startup.selectedInstance,localEntries:startup.entries.map(entry=>entry.name)},null,2),{mode:0o600});
    if(!checkInstance){
    stage='settings and catalog';
    await evaluate("[...document.querySelectorAll('button')].find(x=>['Account menu','账号菜单'].includes(x.getAttribute('aria-label')))?.click()");

@@ -19,7 +19,7 @@ test('all official languages contain the same nonempty copy and interpolation pa
 })
 
 test('default local surfaces and plugin metadata only request registered copy', async () => {
-  const files = ['local-shell-ui.tsx','management-ui.tsx','instance-navigation.tsx','unified-plugin-ui.tsx','unified-local-actions.tsx','plugin-runtime-details.tsx','plugin-side-badges.ts']
+  const files = ['local-shell-ui.tsx','management-ui.tsx','instance-navigation.tsx','unified-plugin-ui.tsx','plugin-runtime-details.tsx','plugin-side-badges.ts']
   for (const file of files) {
     const source = await readFile(new URL('../../entries/dsh-startup/local/' + file, import.meta.url), 'utf8')
     for (const match of source.matchAll(/(?:\bt|clientT|\.text)\('([^']+)'/g)) assert.ok(Object.hasOwn(dictionaries.en, match[1]), `${file}: ${match[1]}`)

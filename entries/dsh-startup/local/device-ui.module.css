@@ -1,7 +1,5 @@
-/* Local content can contain arbitrary profile names, origins and note text.
- * Preserve upstream control chrome; only allow those values to fit the outlet. */
-.instanceCard,
-.note {
+/* Preserve upstream chrome while arbitrary profile names and origins fit. */
+.instanceCard {
   min-width: 0;
 }
 
@@ -14,8 +12,7 @@
   overflow-wrap: anywhere;
 }
 
-.address,
-.noteText {
+.address {
   overflow-wrap: anywhere;
   white-space: normal;
 }

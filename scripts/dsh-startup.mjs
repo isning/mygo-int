@@ -11,7 +11,6 @@ import { createInstanceRouter } from './dsh-instance-router.mjs'
 
 const workspace = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const upstream = resolve(workspace, '.scratch/upstream/deepseek-harness')
-if (process.env.DSH_COOKIE_FILE) throw new Error('Server-side DSH_COOKIE_FILE is retired; use original browser login')
 const localStartup = await readLocalStartup(workspace,
   process.env.MYGO_STARTUP_CONFIG ?? 'entries/dsh-startup/local/single-root.json')
 const dist = resolve(workspace, '.scratch/dsh-single-client/dist')
@@ -146,17 +145,18 @@ if (command === 'serve') {
       } else if (path === '/mygo-local/startup.json') {
         data = JSON.stringify({ ...localStartup, instances: router.profiles(), ...(route ? { selectedInstance: route.profile } : {}) })
         extension = '.json'
+      } else if (path === '/mygo-local/profile-identity.js') {
+        data = await readFile(resolve(workspace, 'entries/dsh-startup/local/profile-identity.js'))
+        extension = '.js'
       } else if (/^\/mygo-local\/plugins\/[a-zA-Z0-9_-]+\.js$/.test(path)) {
         const localRoot = await realpath(resolve(workspace, 'entries/dsh-startup/local/plugins'))
         const file = await realpath(resolve(localRoot, path.split('/').at(-1)))
         if (!file.startsWith(localRoot + sep)) throw Error('Outside local plugins')
         data = await readFile(file)
         extension = '.js'
-      } else if (['/mygo-boot/instance-route.js', '/mygo-boot/lazy-resources.js', '/mygo-boot/dsh-carrier-trust.mjs', '/mygo-boot/session-assets.js', '/mygo-boot/bootstrap.js', '/mygo-boot/apply-injections.js', '/mygo-boot/bundle-references.js'].includes(path)) {
-        data = await readFile(path.endsWith('/lazy-resources.js') ? resolve(workspace, 'entries/dsh-startup/lazy-resources.js') : path.endsWith('/dsh-carrier-trust.mjs') ? resolve(workspace, 'scripts/dsh-carrier-trust.mjs') : path.endsWith('/session-assets.js') ? resolve(workspace, 'entries/dsh-startup/session-assets.js') : path.endsWith('/bootstrap.js')
+      } else if (['/mygo-boot/instance-route.js', '/mygo-boot/bootstrap.js', '/mygo-boot/apply-injections.js'].includes(path)) {
+        data = await readFile(path.endsWith('/bootstrap.js')
           ? resolve(workspace, 'entries/dsh-startup/bootstrap.js') : path.endsWith('/instance-route.js') ? resolve(workspace, 'entries/dsh-startup/instance-route.js')
-          : path.endsWith('/bundle-references.js')
-            ? resolve(workspace, 'scripts/dsh-bootstrap-carrier.mjs')
             : resolve(upstream, 'packages/client/web/lib/apply-injections.js'))
         extension = '.js'
       } else if (path.startsWith('/assets/')) {

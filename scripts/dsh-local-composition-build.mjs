@@ -26,7 +26,7 @@ await build({
       if (['single-client.js', 'web-platform.js', 'local/plugins/dsh-instance.js', 'local/plugins/plugin-manager-override.js', 'local/plugins/local-shell.js', 'local/plugins/client-i18n.js'].some(name => importer === resolve(root, 'entries/dsh-startup', name)) && source.startsWith('@deepseek-ai/')) {
         return source === '@deepseek-ai/cordis-plugin-loader' ? loader : require.resolve(source)
       }
-      if (['i18n.ts', 'local-shell-ui.tsx', 'instance-navigation.tsx', 'management-ui.tsx', 'unified-plugin-ui.tsx', 'unified-local-actions.tsx', 'unified-instance-actions.tsx', 'unified-host-actions.tsx', 'plugin-runtime-details.tsx'].some(name => importer?.startsWith(resolve(root, 'entries/dsh-startup/local', name))) && !source.startsWith('.')) {
+      if (['i18n.ts', 'local-shell-ui.tsx', 'instance-navigation.tsx', 'management-ui.tsx', 'unified-plugin-ui.tsx', 'plugin-runtime-details.tsx'].some(name => importer?.startsWith(resolve(root, 'entries/dsh-startup/local', name))) && !source.startsWith('.')) {
         return require.resolve(source)
       }
     },

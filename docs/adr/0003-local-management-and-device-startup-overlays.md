@@ -1,37 +1,22 @@
-# Local management and device startup overlays
+# Local management and startup overlays
 
-Status: accepted for the current single-carrier implementation, 2026-11-11.
+Status: accepted, amended by ADRs 0007–0009, 2026-11-12.
 
-Local plugin management operates over the original local Cordis Loader tree.
-The connected Host's plugin manager remains a different authority. Reusing its
-UI does not authorize routing local actions to its Remote controller.
+Local plugin management operates on the original local Cordis Loader. The
+connected Host's plugin manager is a separate authority; reusing its UI never
+routes local actions to its Remote controller.
 
-Use three replaceable local plugin roles: composition/lifecycle management,
-instance catalog, and management presentation. The presentation adapts the
-pinned original DSH Settings panel, manager rows and public form primitives.
-It uses ordinary React, SlotCore and Loader identities. The base offers startup
-middleware/error notification and platform modules; it owns no product page.
+Mygo has replaceable composition, instance-catalog and management-presentation
+plugins. Presentation reuses the pinned DSH Settings and Plugins primitives.
+The base provides startup middleware, platform modules and recovery only.
 
-Persist accepted local config/enablement overrides in browser device storage,
-scoped by presentation origin and configured instance/authentication-view ids.
-Keep the operator startup JSON as the explicit base, and bind overrides to its
-exact composition. Do not implement another configuration schema for plugins:
-original Loader and plugin activation validate their JSON config. Reconcile
-runtime first, commit accepted desired state second, and report rollback and
-startup recovery separately from ACTIVE. Protect the management service entries
-against accidental self-disable; operator configuration can replace them.
+Accepted local enablement and configuration overrides live in mygo's private
+server-side configuration and bind to the exact operator composition. Runtime
+activation is validated before desired state is committed. Failed changes roll
+back and surface diagnostics. Protected management entries can only be replaced
+through the operator composition.
 
-Gate local mutations with original DSH browser admission through a fixed-target
-read-only probe. Do not add anonymous server writes, filesystem paths, launcher
-cookie fallbacks, Host Origin trust as authentication, or local actions on the
-Host's generated Remote. Device storage is not an isolation boundary against
-trusted same-realm code or the browser owner.
-
-Keep explicit stable instance/profile ids and authentication views in a durable
-catalog without credentials. Only the operator-bound carrier is connectable.
-Catalog selection of an external target is a desired preference, shown as
-unavailable while the actual connected outlet remains unchanged. No catalog
-address is used as a proxy target. Concurrent multi-instance connections and
-independent authority domains remain unimplemented.
-
-See [implementation and validation](../upstream/dsh-local-management.md).
+Mygo's future outer authority governs mygo-local mutations. DSH admission is
+specific to an explicit instance route and does not authorize local management.
+Instance catalogs and credentials follow ADRs 0007 and 0008: all profiles are
+equal, use explicit reverse-proxy routes and have no fixed carrier or seed.
