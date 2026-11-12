@@ -111,9 +111,9 @@ export default {
   "Sign in to this instance": "Bei dieser Instanz anmelden",
   "This instance refused access": "Diese Instanz hat den Zugriff verweigert",
   "The selected instance is unavailable": "Die ausgewählte Instanz ist nicht verfügbar",
-  "This instance does not support the MyGO client adapter": "Diese Instanz unterstützt den MyGO-Clientadapter nicht",
+  "This instance does not support the MyGO!!!! client adapter": "Diese Instanz unterstützt den MyGO!!!!-Clientadapter nicht",
   "Unable to save this instance": "Diese Instanz kann nicht gespeichert werden",
   "Unable to remove this instance": "Diese Instanz kann nicht entfernt werden",
-  "Unable to load the MyGO plugin configuration": "Die MyGO-Plugin-Konfiguration kann nicht geladen werden",
-  "Unable to save the MyGO plugin configuration": "Die MyGO-Plugin-Konfiguration kann nicht gespeichert werden"
+  "Unable to load the MyGO!!!! plugin configuration": "Die MyGO!!!!-Plugin-Konfiguration kann nicht geladen werden",
+  "Unable to save the MyGO!!!! plugin configuration": "Die MyGO!!!!-Plugin-Konfiguration kann nicht gespeichert werden"
 }

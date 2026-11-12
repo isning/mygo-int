@@ -1,5 +1,5 @@
 /**
- * Real-browser acceptance for the standalone MyGO executable and a real DSH Host.
+ * Real-browser acceptance for the standalone MyGO!!!! executable and a real DSH Host.
  * Set MYGO_TEST_DSH_ORIGIN and MYGO_TEST_DSH_TOKEN to a disposable fixed Host.
  */
 import { spawn } from 'node:child_process'
@@ -29,7 +29,7 @@ try {
     catch { await new Promise(resolveWait => setTimeout(resolveWait, 100)) }
     await new Promise(resolveWait => setTimeout(resolveWait, 100))
   }
-  if (!launch) throw Error('MyGO did not publish its private launch URL')
+  if (!launch) throw Error('MyGO!!!! did not publish its private launch URL')
   const requireWeb = createRequire(resolve(root, 'apps/web/package.json'))
   const { chromium } = requireWeb('playwright')
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, headless: true })
@@ -49,8 +49,8 @@ try {
     })
     await page.goto(launch)
     await page.locator('[data-mygo-local-shell]').waitFor()
-    if (await page.title() !== 'MyGO') throw Error('MyGO document title is missing')
-    await page.getByText('MyGO', { exact: true }).waitFor()
+    if (await page.title() !== 'MyGO!!!!') throw Error('MyGO!!!! document title is missing')
+    await page.getByText('MyGO!!!!', { exact: true }).waitFor()
     const route = await page.evaluate(async profile => {
       const response = await fetch('/mygo-local/connection', {
         method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(profile),
@@ -60,7 +60,7 @@ try {
     }, { id: 'browser-acceptance', name: 'Browser acceptance', address, authenticationViewId: 'owner' })
     await page.goto(new URL(`${route}?token=${encodeURIComponent(token)}`, launch).href)
     await page.waitForFunction(() => !document.querySelector('[data-mygo-local-shell]'), undefined, { timeout: 30_000 })
-    if (/Failed to load plugins|MyGO boot:/.test(await page.locator('body').innerText())) throw Error('The real DSH client did not activate')
+    if (/Failed to load plugins|MyGO!!!! boot:/.test(await page.locator('body').innerText())) throw Error('The real DSH client did not activate')
     await page.locator('[data-mygo-navigation]').waitFor()
     await page.getByRole('button', { name: 'Continue', exact: true }).click({ timeout: 500 }).catch(() => {})
     await page.getByRole('button', { name: 'Open sidebar', exact: true }).click({ timeout: 500 }).catch(() => {})

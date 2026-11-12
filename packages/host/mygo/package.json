@@ -1,6 +1,6 @@
 {
   "name": "@deepseek-ai/dsh-host-mygo",
-  "description": "Host plugin for DSH instances connected through MyGO",
+  "description": "Host plugin for DSH instances connected through MyGO!!!!",
   "version": "0.2.2-rc.1",
   "type": "module",
   "main": "lib/index.js",

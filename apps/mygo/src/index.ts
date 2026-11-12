@@ -1,4 +1,4 @@
-/** The MyGO browser application mounted by its standalone executable. */
+/** The MyGO!!!! browser application mounted by its standalone executable. */
 
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
@@ -23,7 +23,7 @@ export const Config: z<Config> = z.object({
   startupConfig: z.string().default('local/single-root.json'),
 })
 
-/** Start MyGO inside the profile lifecycle and release its listener on disposal. */
+/** Start MyGO!!!! inside the profile lifecycle and release its listener on disposal. */
 export function apply(ctx: Context, config: Config): void {
   ctx.effect(async () => runMygo('serve', config))
 }

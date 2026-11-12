@@ -1,5 +1,5 @@
 ---
-description: "供 MyGO 连接的 DSH 实例 Host 插件。"
+description: "供 MyGO!!!! 连接的 DSH 实例 Host 插件。"
 kind: "package-reference"
 ---
 
@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-`dsh-host-mygo` 是供 MyGO 连接的 DSH 实例 Host 插件。它实现 MyGO 连接协议，目前通过 `GET /mygo/index-injections` 暴露实例有序的客户端启动注入表，让 MyGO 无需解析 HTML 页面即可加载实例提供的 client 插件。该插件复用 DSH admission、实际通过认证的 owner Peer、WebServer 注册表和 Cordis 卸载生命周期。
+`dsh-host-mygo` 是供 MyGO!!!! 连接的 DSH 实例 Host 插件。它实现 MyGO!!!! 连接协议，目前通过 `GET /mygo/index-injections` 暴露实例有序的客户端启动注入表，让 MyGO!!!! 无需解析 HTML 页面即可加载实例提供的 client 插件。该插件复用 DSH admission、实际通过认证的 owner Peer、WebServer 注册表和 Cordis 卸载生命周期。
 
 ## 目录
 
@@ -25,7 +25,7 @@ kind: "package-reference"
 <a id="use-this-package"></a>
 ## 使用此包
 
-在每个需要支持 MyGO 的远端 DSH 实例中，将此 Host 插件挂载在 `connection` 与 `webServer` 之后。它目前没有配置项。插件通过 `ctx.connection.admit` 认证请求，要求 owner principal，并原样返回 `ctx.webServer.collectIndexInjections(peer)`，不解释或重排任何条目。
+在每个需要支持 MyGO!!!! 的远端 DSH 实例中，将此 Host 插件挂载在 `connection` 与 `webServer` 之后。它目前没有配置项。插件通过 `ctx.connection.admit` 认证请求，要求 owner principal，并原样返回 `ctx.webServer.collectIndexInjections(peer)`，不解释或重排任何条目。
 
 <a id="understand-the-implementation"></a>
 ## 理解实现
@@ -36,7 +36,7 @@ kind: "package-reference"
 ## 进一步阅读
 
 - [Host 包映射](../README.zh.md)
-- [MyGO 应用](../../../apps/mygo/package.json)
+- [MyGO!!!! 应用](../../../apps/mygo/package.json)
 
 <a id="model-experience"></a>
 ## 模型体验

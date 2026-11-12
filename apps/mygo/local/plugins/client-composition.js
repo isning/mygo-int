@@ -13,27 +13,27 @@ export async function apply(ctx) {
   const notify = () => { for (const listener of listeners) listener() }
   try {
     const response = await fetch('/mygo-local/client-config', { cache: 'no-store' })
-    if (!response.ok) throw Error((await response.text()).trim() || 'Unable to load the MyGO plugin configuration')
+    if (!response.ok) throw Error((await response.text()).trim() || 'Unable to load the MyGO!!!! plugin configuration')
     const saved = await response.json()
     if (saved.version !== 1 || !Number.isSafeInteger(saved.revision) || saved.revision < 0
       || saved.base !== null && typeof saved.base !== 'string' || !saved.overrides
-      || typeof saved.overrides !== 'object' || Array.isArray(saved.overrides)) throw Error('Invalid MyGO client configuration')
-    if (saved.base !== null && saved.base !== base) throw Error('Operator composition changed; reset the saved MyGO plugin configuration')
+      || typeof saved.overrides !== 'object' || Array.isArray(saved.overrides)) throw Error('Invalid MyGO!!!! client configuration')
+    if (saved.base !== null && saved.base !== base) throw Error('Operator composition changed; reset the saved MyGO!!!! plugin configuration')
     for (const [id, value] of Object.entries(saved.overrides)) {
       const original = boot.configuration.entries.find(entry => entry.id === id)
       if (!original || protectedNames.has(original.name) || !value || Object.keys(value).some(k => !['config', 'disabled'].includes(k))
-        || typeof value.disabled !== 'boolean' || !value.config || typeof value.config !== 'object' || Array.isArray(value.config)) throw Error(`Saved override ${id} no longer matches the MyGO composition`)
+        || typeof value.disabled !== 'boolean' || !value.config || typeof value.config !== 'object' || Array.isArray(value.config)) throw Error(`Saved override ${id} no longer matches the MyGO!!!! composition`)
     }
     overrides = saved.overrides
     revision = saved.revision
-  } catch (error) { diagnostic = `Saved MyGO plugin configuration ignored: ${error.message}` }
+  } catch (error) { diagnostic = `Saved MyGO!!!! plugin configuration ignored: ${error.message}` }
   async function persist(candidate) {
     const response = await fetch('/mygo-local/client-config', { method: 'PUT', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ expectedRevision: revision, base, overrides: candidate }) })
     if (!response.ok) throw Error(response.status === 409 ? 'Mygo plugin configuration changed; reload before saving'
-      : (await response.text()).trim() || 'Unable to save the MyGO plugin configuration')
+      : (await response.text()).trim() || 'Unable to save the MyGO!!!! plugin configuration')
     const saved = await response.json()
-    if (saved.version !== 1 || saved.revision !== revision + 1) throw Error('Invalid MyGO plugin configuration response')
+    if (saved.version !== 1 || saved.revision !== revision + 1) throw Error('Invalid MyGO!!!! plugin configuration response')
     revision = saved.revision
   }
   const desiredEntry = entry => ({ ...clone(entry), ...clone(overrides[entry.id] || {}) })
@@ -96,7 +96,7 @@ export async function apply(ctx) {
         await ctx.loader.await()
         if (!previous.disabled && entry.fiber?.state !== boot.FiberState.ACTIVE) throw Error('previous entry is not ACTIVE')
         diagnostic += '; previous configuration restored'
-      } catch (rollback) { diagnostic += `; rollback failed: ${rollback.message}. Reload or reset the MyGO plugin configuration.` }
+      } catch (rollback) { diagnostic += `; rollback failed: ${rollback.message}. Reload or reset the MyGO!!!! plugin configuration.` }
       throw Error(diagnostic)
     } finally { busy = false; notify() }
   }
@@ -149,7 +149,7 @@ export async function apply(ctx) {
     await ctx.loader.update(entry.id, { config: original.config ?? {}, disabled: Boolean(original.disabled) })
     await ctx.loader.await()
     if (original.disabled || entry.fiber?.state === boot.FiberState.ACTIVE) {
-      diagnostic = `Saved startup for ${entry.id} failed; operator configuration is running instead. Edit the desired config or reset the MyGO plugin configuration.`
+      diagnostic = `Saved startup for ${entry.id} failed; operator configuration is running instead. Edit the desired config or reset the MyGO!!!! plugin configuration.`
       notify()
     }
   })

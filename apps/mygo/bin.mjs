@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** Command-line entry for the standalone MyGO client. */
+/** Command-line entry for the standalone MyGO!!!! client. */
 
 import { createHash } from 'node:crypto'
 import { copyFileSync, existsSync, mkdirSync, symlinkSync, writeFileSync } from 'node:fs'

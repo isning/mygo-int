@@ -1,4 +1,4 @@
-/** Build or serve MyGO; serving resolves with a Cordis-compatible disposer. */
+/** Build or serve MyGO!!!!; serving resolves with a Cordis-compatible disposer. */
 export interface MygoRuntimeOptions {
   port?: number
   bindHost?: string

@@ -8,7 +8,7 @@ export { INDEX_INJECTIONS_PATH } from './connection.ts'
 export const name = 'mygo-host'
 export const inject = ['webServer', 'connection']
 
-/** Install the MyGO Host plugin. */
+/** Install the MyGO!!!! Host plugin. */
 export function apply(ctx: Context): void {
   installConnection(ctx)
 }

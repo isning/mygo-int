@@ -3,26 +3,26 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/host/mygo/README.md
 /:
-  en: 7ae698d83c80ba67
-  zh: acc33263ad8312ac
+  en: c99b63411a25b84e
+  zh: a37dc099bfde8dff
 /deepseek-ai-dsh-host-mygo:
   en: 3f554795ce580bf4
   zh: 45d7afd9e1b0fbb7
 /deepseek-ai-dsh-host-mygo/summary:
-  en: b334e03f2ef09c4a
-  zh: 3b31097e905342bb
+  en: f4d6a07f9a3e7e26
+  zh: cfa17a7212b09d39
 /deepseek-ai-dsh-host-mygo/table-of-contents:
   en: 4d5ec89f7a524c33
   zh: ab42975cd55c9073
 /deepseek-ai-dsh-host-mygo/use-this-package:
-  en: 72fd97bbf79cd52b
-  zh: e491c725db8fa1ed
+  en: 8d54ed4b47674888
+  zh: 4b3e89207628f00e
 /deepseek-ai-dsh-host-mygo/understand-the-implementation:
   en: afe0a1646f9d78b3
   zh: 40fb30bf1fff2141
 /deepseek-ai-dsh-host-mygo/further-exploration:
-  en: f2d2f8cdbd898c6c
-  zh: e8ace37642427520
+  en: ffcc3ca441a6705e
+  zh: db2c3881e6a93177
 /deepseek-ai-dsh-host-mygo/model-experience:
   en: 10dcb6c95e58efb1
   zh: 623dced0683ce3bd

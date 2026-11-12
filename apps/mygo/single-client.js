@@ -3,7 +3,7 @@ import { createWebPlatform } from './web-platform.js'
 
 export async function startSingleClient() {
   const container = document.getElementById('root')
-  if (!container) throw Error('MyGO client: missing #root')
+  if (!container) throw Error('MyGO!!!! client: missing #root')
   return startClient({
     ...createWebPlatform(), container,
     async readConfiguration() {
