@@ -28,7 +28,6 @@ test('mygo starts without a privileged default instance and registers every prof
   const origin = await listen(server)
   router = createInstanceRouter({ publicOrigins: [origin] })
   try {
-    assert.equal(router.connected, undefined)
     assert.equal(router.resolve({ url: '/' }), undefined)
     const profile = { id: 'first', name: 'First', address: 'http://127.0.0.1:4001', authenticationViewId: 'owner' }
     const response = await call(origin + '/mygo-local/connection', { method: 'POST', headers: { origin, 'content-type': 'application/json' }, body: JSON.stringify(profile) })
@@ -55,12 +54,15 @@ test('instance routing isolates credentials, tabs and original authority while r
   let router
   const server = createServer(async (req, res) => {
     const route = router.resolve(req)
-    if (!route) { res.writeHead(410).end(); return }
-    if (['/mygo-local/connection', '/mygo-local/login'].includes(req.url)) await router.control(req, res, route)
+    if (req.url === '/mygo-local/connection') await router.control(req, res, route)
+    else if (!route) { res.writeHead(410).end(); return }
+    else if (req.url === '/mygo-local/login') await router.control(req, res, route)
     else route.carrier.handle(req, res)
   })
   const origin = await listen(server)
-  router = createInstanceRouter({ connectedProfile: { id: 'a', name: 'A', address: originA, authenticationViewId: 'owner' }, publicOrigins: [origin] })
+  const profileA = { id: 'a', name: 'A', address: originA, authenticationViewId: 'owner' }
+  const prefixA = '/mygo-instance/' + createHash('sha256').update(JSON.stringify(profileA)).digest('hex')
+  router = createInstanceRouter({ profiles: [profileA], publicOrigins: [origin] })
   let upstreamClosed
   const closed = new Promise(resolve => { upstreamClosed = resolve })
   a.on('upgrade', (req, socket) => {
@@ -73,12 +75,12 @@ test('instance routing isolates credentials, tabs and original authority while r
   server.on('upgrade', (req, socket, head) => router.resolve(req).carrier.upgrade(req, socket, head))
   const post = (path, value, cookie) => call(origin + path, { method: 'POST', headers: { origin, 'content-type': 'application/json', ...(cookie ? { cookie } : {}) }, body: JSON.stringify(value) })
   try {
-    const loginA = await post('/mygo-local/login', { token: 'test-A' })
+    const loginA = await post(prefixA + '/mygo-local/login', { token: 'test-A' })
     assert.equal(loginA.status, 204)
     assert.equal(loginA.headers['set-cookie'], undefined, 'DSH credentials stay in the mygo proxy')
-    assert.equal((await post('/mygo-local/login', { token: 'unsupported-cookie-test' })).status, 502, 'a redirect without the native credential is not a successful login')
+    assert.equal((await post(prefixA + '/mygo-local/login', { token: 'unsupported-cookie-test' })).status, 502, 'a redirect without the native credential is not a successful login')
     assert.equal((await call(origin + '/api/proof')).status, 410, 'unscoped remote paths never fall back to an implicit instance')
-    const proofA = await call(origin + router.connected.prefix + '/api/proof')
+    const proofA = await call(origin + prefixA + '/api/proof')
     assert.equal(proofA.text, 'A', JSON.stringify({ status: proofA.status, upstream: seen.at(-1) }))
     const next = await post('/mygo-local/connection', { id: 'b', name: 'B', address: originB, authenticationViewId: 'owner' })
     assert.equal(next.status, 200)
@@ -91,7 +93,7 @@ test('instance routing isolates credentials, tabs and original authority while r
     assert.equal((await call(origin + path + 'api/proof', { headers: { origin } })).text, 'B')
     assert.equal(seen.at(-1).headers.host, new URL(originB).host)
     assert.equal(seen.at(-1).headers.origin, originB)
-    assert.equal((await call(origin + router.connected.prefix + '/api/proof')).text, 'A', 'other tab remains on A')
+    assert.equal((await call(origin + prefixA + '/api/proof')).text, 'A', 'other tab remains on A')
     const removalBody = JSON.stringify({ id: 'b', name: 'B', address: originB, authenticationViewId: 'owner' })
     const removed = await call(origin + '/mygo-local/connection', { method: 'DELETE', headers: { origin, 'content-type': 'application/json', 'content-length': Buffer.byteLength(removalBody) }, body: removalBody })
     assert.equal(removed.status, 204, removed.text)
@@ -106,7 +108,7 @@ test('instance routing isolates credentials, tabs and original authority while r
     const wire = createConnection({ host: '127.0.0.1', port: new URL(origin).port })
     await new Promise((resolve, reject) => { wire.once('connect', resolve); wire.once('error', reject) })
     const handshake = new Promise(resolve => wire.once('data', data => resolve(data.toString())))
-    wire.write(`GET ${router.connected.prefix}/api/remote.mux HTTP/1.1\r\nHost: ${new URL(origin).host}\r\nOrigin: ${origin}\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n\r\n`)
+    wire.write(`GET ${prefixA}/api/remote.mux HTTP/1.1\r\nHost: ${new URL(origin).host}\r\nOrigin: ${origin}\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n\r\n`)
     assert.match(await handshake, /^HTTP\/1.1 101/)
     wire.destroy()
     let timer
@@ -128,9 +130,9 @@ test('mygo stores a launch token per instance and restores the reverse proxy aft
   })
   const upstream = await listen(host)
   const profile = { id: 'saved', name: 'Saved', address: upstream, authenticationViewId: 'owner' }
-  let savedCredentials = { version: 1, entries: {} }
+  let savedCredentials = { version: 2, entries: {} }
   const start = async () => {
-    const router = createInstanceRouter({ connectedProfile: profile, credentials: savedCredentials, onCredentials(value) { savedCredentials = structuredClone(value) } })
+    const router = createInstanceRouter({ profiles: [profile], credentials: savedCredentials, onCredentials(value) { savedCredentials = structuredClone(value) } })
     const server = createServer(async (req, res) => {
       const route = router.resolve(req)
       if (!route) { res.writeHead(410).end(); return }
@@ -142,8 +144,8 @@ test('mygo stores a launch token per instance and restores the reverse proxy aft
   }
   let running = await start()
   try {
-    const post = (origin, value, cookie) => call(origin + '/mygo-local/login', { method: 'POST', headers: { origin, 'content-type': 'application/json', ...(cookie ? { cookie } : {}) }, body: JSON.stringify(value) })
-    const first = await call(running.origin + '/?token=durable-token')
+    const prefix = '/mygo-instance/' + createHash('sha256').update(JSON.stringify(profile)).digest('hex')
+    const first = await call(running.origin + prefix + '/?token=durable-token')
     assert.equal(first.status, 303)
     assert.match(first.headers.location, /^\/mygo-instance\/[a-f0-9]{64}\/$/)
     assert.equal(first.headers['set-cookie'], undefined, 'the browser never receives the upstream DSH credential')
@@ -152,8 +154,8 @@ test('mygo stores a launch token per instance and restores the reverse proxy aft
     await new Promise(resolve => running.server.close(resolve))
 
     running = await start()
-    assert.equal((await call(running.origin + running.router.connected.prefix + '/proof')).text, 'authenticated')
-    const restored = await post(running.origin, {})
+    assert.equal((await call(running.origin + prefix + '/proof')).text, 'authenticated')
+    const restored = await call(running.origin + prefix + '/mygo-local/login', { method: 'POST', headers: { origin: running.origin, 'content-type': 'application/json' }, body: '{}' })
     assert.equal(restored.status, 204, 'the stored launch token can refresh the native upstream credential')
   } finally {
     running.router.close()
@@ -174,7 +176,7 @@ test('a stale route for the same instance identity follows the current connectio
   const current = { ...stale, address: currentOrigin }
   const staleId = createHash('sha256').update(JSON.stringify(stale)).digest('hex')
   const credentialId = createHash('sha256').update(JSON.stringify([stale.id, stale.authenticationViewId])).digest('hex')
-  const router = createInstanceRouter({ connectedProfile: current, profiles: [stale], credentials: { version: 2, entries: {
+  const router = createInstanceRouter({ profiles: [stale, current], credentials: { version: 2, entries: {
     [credentialId]: { address: stale.address, token: 'stable-token', cookie: 'dsh-auth-old=stale' },
   } } })
   const req = { url: `/mygo-instance/${staleId}/proof` }

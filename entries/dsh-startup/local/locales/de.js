@@ -22,7 +22,6 @@ export default {
   "Retry connection": "Verbindung erneut versuchen",
   "Language": "Sprache",
   "Manage your instance connections.": "Verwalten Sie Ihre Instanzverbindungen.",
-  "The selected profile is saved. Your active connection has not changed.": "Profil gespeichert. Die aktive Verbindung bleibt unverändert.",
   "Current": "Aktuell",
   "Configured": "Konfiguriert",
   "Selected": "Ausgewählt",

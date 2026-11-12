@@ -33,7 +33,5 @@ page is compatibility debt. It must stay isolated and pin-checked until DSH
 exports an equivalent tab-navigation/configuration face; it must not spread into
 other DSH packages.
 
-Legacy two-root fixtures and historical validation scripts are evidence, not the
-product architecture. ADR 0009 removes their selectable build and launcher path.
-They can be removed after their retained migration fixtures are converted to
-focused tests.
+ADR 0009 removes the legacy two-root fixtures, their selectable build path and
+their historical browser scenarios.

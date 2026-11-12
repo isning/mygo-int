@@ -22,7 +22,6 @@ export default {
   "Retry connection": "接続を再試行",
   "Language": "言語",
   "Manage your instance connections.": "インスタンスへの接続を管理します。",
-  "The selected profile is saved. Your active connection has not changed.": "選択を保存しました。現在の接続は変わりません。",
   "Current": "現在",
   "Configured": "設定済み",
   "Selected": "選択済み",

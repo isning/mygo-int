@@ -11,8 +11,8 @@ second SDK or serialized remote UI protocol is required by this integration.
 
 Local plugins contribute navigation, Settings and a unified Plugins page through
 original Slots. The default path has no outer shell or independently mounted
-floating settings application. Historical legacy startup is available only by
-explicit selection; startup failure never selects it as a fallback.
+floating settings application. There is no alternative product composition or
+startup fallback.
 
 The Host manifest controls only its managed client entries. Configured local
 module identities are protected before reconciliation; conflicting graphs fail
@@ -28,13 +28,12 @@ declared RPC behavior; ownership attribution is not a security sandbox.
 
 The persistence, runtime-first commit, rollback and admission decisions in
 [ADR 0003](0003-local-management-and-device-startup-overlays.md) remain in force.
-Only exact known legacy compositions migrate retained entry preferences.
-Unrecognized or invalid overlays retain their saved data and expose recovery to
-the operator baseline rather than silently reinterpreting entries.
+Invalid saved overrides expose recovery to the operator baseline rather than
+silently reinterpreting entries.
 
-This implementation binds one instance and authentication view. Catalog selection
-does not switch its carrier. Concurrent instance isolation, native renderers and
-non-owner browser provisioning require further work. Original browser authority
+Instance routing and switching are defined by [ADR 0007](0007-explicit-instance-routes.md)
+and [ADR 0008](0008-zero-instance-base-and-dsh-adapter-seams.md). Native renderers
+and non-owner browser provisioning remain future work. Original browser authority
 from [ADR 0002](0002-dsh-browser-authority-and-permissions.md) remains unchanged.
 
 See the [specification](../specs/mygo-single-client-composition.md) and

@@ -36,12 +36,6 @@ function validateInstanceAddress(address) {
   return url.origin
 }
 
-// Deployment metadata describes the fixed carrier target, never the UI origin.
-export function bindLocalStartup(value, remoteOrigin) {
-  if (!value.selectedInstance) throw Error('Cannot bind a startup configuration without selectedInstance')
-  return { ...value, selectedInstance: { ...value.selectedInstance, address: validateInstanceAddress(remoteOrigin) } }
-}
-
 export async function readLocalStartup(workspace, path) {
   const file = await realpath(resolve(workspace, path))
   if (!file.startsWith(workspace + sep)) throw Error('Local startup configuration must be inside the workspace')

@@ -26,15 +26,15 @@ function fixture(t) {
 }
 
 test('an empty client has no implicit instance and treats the first saved profile like every later profile', async t => {
-  const { start } = fixture(t)
+  const { start, values, key } = fixture(t)
   const service = start(null)
   assert.deepEqual(service.snapshot().catalog, [])
-  assert.equal(service.snapshot().connectedProfile, null)
+  assert.equal(service.snapshot().currentProfile, null)
   assert.equal(service.snapshot().connectionStatus, 'idle')
   await service.save({ id: 'first', name: 'First', address: 'https://first.example', authenticationViewId: 'owner' })
   assert.equal(service.snapshot().catalog.length, 1)
-  assert.equal(service.snapshot().selectedId, 'first')
-  assert.equal(service.isConnectedProfile(service.snapshot().catalog[0]), false)
+  assert.equal(service.isCurrentProfile(service.snapshot().catalog[0]), false)
+  assert.deepEqual(JSON.parse(values.get(key)), { version: 3, revision: 1, catalog: service.snapshot().catalog })
 })
 
 test('connection checks expose success and the original failure diagnostic', async t => {
@@ -54,13 +54,13 @@ test('connected and added profiles are equally editable; changed profiles do not
   const { start, values, key } = fixture(t)
   let service = start()
   const connected = service.snapshot().catalog[0]
-  assert.equal(service.isConnectedProfile(connected), true)
+  assert.equal(service.isCurrentProfile(connected), true)
   const edited = { ...connected, name: 'Personal DSH', address: 'https://personal.example' }
   await service.save(edited, connected.id)
-  assert.equal(service.isConnectedProfile(service.snapshot().catalog[0]), false)
-  assert.equal(service.snapshot().connectedProfile.address, connected.address)
+  assert.equal(service.isCurrentProfile(service.snapshot().catalog[0]), false)
+  assert.equal(service.snapshot().currentProfile.address, connected.address)
   await service.save({ ...edited, id: 'other', name: 'Other DSH' })
-  assert.equal(JSON.parse(values.get(key)).version, 2)
+  assert.equal(JSON.parse(values.get(key)).version, 3)
   service = start(location.origin)
   assert.equal(service.snapshot().catalog.find(row => row.id === connected.id).address, edited.address)
   assert.equal(service.snapshot().catalog.find(row => row.id === 'other').address, edited.address)
@@ -74,11 +74,11 @@ test('explicit profile edits survive reload', async t => {
   service = start(location.origin)
   assert.equal(service.snapshot().catalog.find(row => row.id === 'first').address, location.origin)
   assert.equal(service.snapshot().catalog.find(row => row.id === 'first').name, 'Renamed')
-  assert.equal(service.snapshot().catalog.some(row => service.isConnectedProfile(row)), true)
+  assert.equal(service.snapshot().catalog.some(row => service.isCurrentProfile(row)), true)
 })
 
 test('select registers an explicit route before navigation; refusal leaves current connection unchanged', async t => {
-  const { start } = fixture(t)
+  const { start, values, key } = fixture(t)
   const navigations = []
   location.assign = url => navigations.push(url)
   const service = start()
@@ -92,7 +92,8 @@ test('select registers an explicit route before navigation; refusal leaves curre
   })
   await service.select('other')
   assert.deepEqual(navigations, [path])
-  assert.equal(service.snapshot().connectedProfile.id, 'first')
+  assert.equal(service.snapshot().currentProfile.id, 'first')
+  assert.equal(JSON.parse(values.get(key)).catalog.find(row => row.id === 'other').name, 'Other')
   t.mock.method(globalThis, 'fetch', async () => ({ ok: false, status: 403 }))
   await assert.rejects(service.select('other'), /HTTP 403/)
   assert.deepEqual(navigations, [path])
@@ -101,7 +102,7 @@ test('select registers an explicit route before navigation; refusal leaves curre
 test('removing a saved instance deletes its route and keeps the connected instance', async t => {
   const { start } = fixture(t)
   const service = start()
-  const connected = service.snapshot().connectedProfile
+  const connected = service.snapshot().currentProfile
   const other = { ...connected, id: 'other', name: 'Other', address: 'https://other.example' }
   await service.save(other)
   t.mock.method(globalThis, 'fetch', async (url, options) => {
@@ -112,5 +113,5 @@ test('removing a saved instance deletes its route and keeps the connected instan
   })
   await service.remove('other')
   assert.deepEqual(service.snapshot().catalog, [connected])
-  await assert.rejects(service.remove(connected.id), /connected instance/)
+  await assert.rejects(service.remove(connected.id), /current instance/)
 })

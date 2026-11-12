@@ -22,7 +22,6 @@ export default {
   "Retry connection": "重试连接",
   "Language": "语言",
   "Manage your instance connections.": "管理你的实例连接。",
-  "The selected profile is saved. Your active connection has not changed.": "所选配置已保存，当前连接未改变。",
   "Current": "当前",
   "Configured": "已配置",
   "Selected": "已选择",

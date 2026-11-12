@@ -112,7 +112,6 @@ try {
       await until(() => evaluate("!document.querySelector('[data-instance-editor]')"))
     }
     await editProfile('Personal DSH','https://personal.example')
-    assert.equal(await evaluate("document.querySelector('[data-mygo-instances]').innerText.includes('Your active connection has not changed')"),true,'saving a new address is not misreported as a connection switch')
     await send('Page.reload',{ignoreCache:true})
     await until(() => evaluate("!!document.querySelector('[data-mygo-open-settings]')"))
     await evaluate("document.querySelector('[data-mygo-open-settings]').click()")
@@ -296,12 +295,9 @@ try {
   await instanceSave()
   await until(() => evaluate(`!!document.querySelector('[data-instance-id="${addedInstance}"]') && !document.querySelector('[data-instance-editor]')`))
   assert.equal(await evaluate(`(() => {
-    const saved=Object.keys(localStorage).filter(key=>key.startsWith('mygo.instances.v1:')).map(key=>JSON.parse(localStorage.getItem(key))).find(value=>value.catalog.some(row=>row.id==='${addedInstance}'));
+    const saved=Object.keys(localStorage).filter(key=>key.startsWith('mygo.instances.v2:')).map(key=>JSON.parse(localStorage.getItem(key))).find(value=>value.catalog.some(row=>row.id==='${addedInstance}'));
     return saved.catalog.find(row=>row.id==='${addedInstance}').authenticationViewId === saved.catalog.find(row=>row.id==='${boundInstance}').authenticationViewId;
   })()`),true,'new profiles inherit the current authentication context without asking for a role')
-  await evaluate("document.querySelector('[data-mygo-instances] [aria-label=\"Select Work PC\"]').click()")
-  await until(() => evaluate("document.querySelector('[data-mygo-instances]').innerText.includes('Your active connection has not changed')"))
-  assert.equal(await evaluate(`document.querySelector('[data-instance-id="${boundInstance}"]').innerText.includes('Current')`),true,'selecting an external profile never claims the active connection switched')
   await evaluate("document.querySelector('[aria-label=\"Edit Work PC\"]').click()")
   await fillInstance('Address','https://example.invalid/path')
   await instanceSave()
@@ -340,8 +336,6 @@ try {
   await until(() => evaluate("!!document.querySelector('[data-shortcut-modal=settings] [data-mygo-instances]')"))
   assert.equal(await evaluate("!!document.querySelector('[data-mygo-instances] [aria-label=\"Edit Workstation\"]')"),true,'Manage instances opens the original Settings instance section')
 
-  await evaluate("document.querySelector('[data-mygo-instances] [aria-label=\"Select Local test DSH\"]').click()")
-  await until(() => evaluate("!document.querySelector('[data-mygo-instances]').innerText.includes('Your active connection has not changed')"))
   await evaluate("[...document.querySelectorAll('[data-shortcut-modal=settings] nav button')].find(x=>x.innerText==='Client').click()")
 
   await evaluate("[...document.querySelectorAll('[data-mygo-client-settings] button')].find(x=>x.innerText==='Manage plugins').click()")

@@ -12,27 +12,20 @@ export function validateConnectionProfile(value) {
 
 const digest = value => createHash('sha256').update(value).digest('hex')
 
-export function createInstanceRouter({ connectedProfile, publicOrigins = [], profiles = [], onRegister, credentials = { version: 2, entries: {} }, onCredentials }) {
+export function createInstanceRouter({ publicOrigins = [], profiles = [], onRegister, credentials = { version: 2, entries: {} }, onCredentials }) {
   const trusted = createCarrierTrust({ publicOrigins })
   const routes = new Map()
   const aliases = new Map()
   const current = new Map()
-  if (![1, 2].includes(credentials?.version) || !credentials.entries || typeof credentials.entries !== 'object' || Array.isArray(credentials.entries)) throw Error('Invalid instance credentials')
+  if (credentials?.version !== 2 || !credentials.entries || typeof credentials.entries !== 'object' || Array.isArray(credentials.entries)) throw Error('Invalid instance credentials')
   for (const [credentialId, value] of Object.entries(credentials.entries)) {
     if (!/^[a-f0-9]{64}$/.test(credentialId) || !value || typeof value !== 'object' || Array.isArray(value)
       || typeof value.token !== 'string' || !value.token || value.token.length > 4096
       || typeof value.cookie !== 'string' || !/^dsh-auth-[A-Za-z0-9_-]+=[^;\r\n]+$/.test(value.cookie)
-      || credentials.version === 2 && (typeof value.address !== 'string' || new URL(value.address).origin !== value.address)
+      || typeof value.address !== 'string' || new URL(value.address).origin !== value.address
       || Object.keys(value).some(key => !['address', 'token', 'cookie'].includes(key))) throw Error('Invalid instance credentials')
   }
-  let savedCredentials = credentials.version === 2 ? structuredClone(credentials) : { version: 2, entries: {} }
-  if (credentials.version === 1) {
-    for (const candidate of [...profiles, connectedProfile].filter(Boolean).map(validateConnectionProfile)) {
-      const legacyId = digest(JSON.stringify([candidate.id, candidate.address, candidate.authenticationViewId]))
-      const credentialId = digest(JSON.stringify([candidate.id, candidate.authenticationViewId]))
-      if (credentials.entries[legacyId]) savedCredentials.entries[credentialId] = { address: candidate.address, ...credentials.entries[legacyId] }
-    }
-  }
+  let savedCredentials = structuredClone(credentials)
   function register(value) {
     const profile = validateConnectionProfile(value)
     const id = createHash('sha256').update(JSON.stringify(profile)).digest('hex')
@@ -55,10 +48,6 @@ export function createInstanceRouter({ connectedProfile, publicOrigins = [], pro
     return route
   }
   for (const saved of profiles) register(saved)
-  // The deployment-provided profile is authoritative for its stable identity.
-  // Historical explicit routes remain aliases so open tabs recover after a
-  // local Host restart changes its ephemeral address.
-  const connected = connectedProfile === undefined ? undefined : register(connectedProfile)
   async function authenticate(req, res, route, token, options) {
     await route.carrier.login(req, res, token, {
       ...options,
@@ -121,18 +110,9 @@ export function createInstanceRouter({ connectedProfile, publicOrigins = [], pro
     }
   }
   return {
-    connected,
     resolve(req) {
       const path = new URL(req.url, 'http://localhost').pathname
-      if (!path.startsWith('/mygo-instance/')) {
-        // The presentation shell and its local control/static endpoints use the
-        // connected route as context. Remote DSH paths must always name an
-        // instance; silently sending /api or a socket to an implicit Host would
-        // merge unrelated profiles and make a mygo address alias that Host.
-        if (!connected) return undefined
-        return path === '/' || path === '/index.html' || path.startsWith('/assets/')
-          || path.startsWith('/mygo-local/') || path.startsWith('/mygo-boot/') ? connected : undefined
-      }
+      if (!path.startsWith('/mygo-instance/')) return undefined
       const match = /^\/mygo-instance\/([a-f0-9]{64})(\/.*)$/.exec(req.url)
       const route = match && (routes.get(match[1]) ?? aliases.get(match[1]))
       if (!route) return undefined

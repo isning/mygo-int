@@ -22,7 +22,6 @@ export default {
   "Retry connection": "Повторить подключение",
   "Language": "Язык",
   "Manage your instance connections.": "Управление подключениями к экземплярам.",
-  "The selected profile is saved. Your active connection has not changed.": "Профиль сохранён. Текущее подключение не изменилось.",
   "Current": "Текущий",
   "Configured": "Настроен",
   "Selected": "Выбран",

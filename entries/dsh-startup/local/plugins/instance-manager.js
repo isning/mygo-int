@@ -6,7 +6,7 @@ export function apply(ctx) {
   const key = `mygo.instances.v2:${location.origin}`
   const binding = bound && { id: bound.id, name: bound.name ?? bound.id, address: bound.address, authenticationViewId: bound.authenticationViewId }
   let catalog = binding ? [binding] : []
-  let selectedId = binding?.id ?? null, diagnostic = '', revision = 0, connectionStatus = binding ? 'checking' : 'idle', connectionDiagnostic = ''
+  let diagnostic = '', revision = 0, connectionStatus = binding ? 'checking' : 'idle', connectionDiagnostic = ''
   const listeners = new Set(), notify = () => { for (const fn of listeners) fn() }
   function validate(row) {
     if (!row || !/^[\w-]{1,128}$/.test(row.id) || typeof row.name !== 'string' || !row.name.trim() || row.name.length > 128 || !/^[\w-]{1,128}$/.test(row.authenticationViewId)) throw Error('Expected stable id, name and authentication view')
@@ -19,10 +19,9 @@ export function apply(ctx) {
   try {
     const saved = JSON.parse(storage.getItem(key) || 'null')
     if (saved) {
-      if (![1, 2].includes(saved.version) || !Number.isSafeInteger(saved.revision) || !Array.isArray(saved.catalog) || saved.catalog.length > 32) throw Error('Invalid catalog')
+      if (saved.version !== 3 || !Number.isSafeInteger(saved.revision) || !Array.isArray(saved.catalog) || saved.catalog.length > 32) throw Error('Invalid catalog')
       const rows = saved.catalog.map(validate)
-      if (new Set(rows.map(r => r.id)).size !== rows.length
-        || saved.selectedId !== null && !rows.some(r => r.id === saved.selectedId)) throw Error('Invalid catalog identities')
+      if (new Set(rows.map(r => r.id)).size !== rows.length) throw Error('Invalid catalog identities')
       if (binding && !rows.some(row => row.id === binding.id)) {
         if (rows.length >= 32) throw Error('Catalog limit reached')
         rows.push(binding)
@@ -30,12 +29,12 @@ export function apply(ctx) {
       catalog = rows; revision = saved.revision
     }
   } catch (error) { diagnostic = `Saved catalog ignored: ${error.message}` }
-  async function persist(rows, selection) {
+  async function persist(rows) {
     const expectedRevision = revision
     const saved = JSON.parse(storage.getItem(key) || 'null')
     if (expectedRevision !== revision || (saved?.revision ?? 0) !== revision) throw Error('Catalog changed during this edit; reload before saving')
-    storage.setItem(key, JSON.stringify({ version: 2, revision: revision + 1, catalog: rows, selectedId: selection }))
-    catalog = rows; selectedId = selection; revision++; notify()
+    storage.setItem(key, JSON.stringify({ version: 3, revision: revision + 1, catalog: rows }))
+    catalog = rows; revision++; notify()
   }
   async function refresh() {
     if (!binding) { connectionStatus = 'idle'; connectionDiagnostic = ''; notify(); return }
@@ -45,12 +44,12 @@ export function apply(ctx) {
     notify()
   }
   if (binding) void refresh()
-  const isConnectedProfile = row => binding !== undefined && row?.id === binding.id && row.address === binding.address
+  const isCurrentProfile = row => binding !== undefined && row?.id === binding.id && row.address === binding.address
     && row.authenticationViewId === binding.authenticationViewId
   ctx.provide('instanceManager', {
-    snapshot: () => ({ catalog, selectedId, connectedId: binding?.id ?? null, connectedProfile: binding ?? null, diagnostic, connectionStatus, connectionDiagnostic }),
-    isConnectedProfile,
-    availability: row => isConnectedProfile(row) ? connectionStatus : 'saved',
+    snapshot: () => ({ catalog, currentId: binding?.id ?? null, currentProfile: binding ?? null, diagnostic, connectionStatus, connectionDiagnostic }),
+    isCurrentProfile,
+    availability: row => isCurrentProfile(row) ? connectionStatus : 'saved',
     refresh,
     async save(row, editingId) {
       if (editingId && editingId !== row.id) throw Error('Stable instance id cannot be changed')
@@ -58,7 +57,7 @@ export function apply(ctx) {
       const value = validate(row)
       if (!editingId && catalog.some(r => r.id === value.id)) throw Error('Instance id already exists')
       if (catalog.length >= 32 && !editingId) throw Error('Catalog limit reached')
-      await persist([...catalog.filter(r => r.id !== value.id), value], selectedId ?? value.id)
+      await persist([...catalog.filter(r => r.id !== value.id), value])
     },
     async select(id) {
       const profile = catalog.find(row => row.id === id)
@@ -67,17 +66,16 @@ export function apply(ctx) {
       if (!response.ok) throw Error(`Instance connection HTTP ${response.status}`)
       const { url } = await response.json()
       if (typeof url !== 'string' || !/^\/mygo-instance\/[a-f0-9]{64}\/$/.test(url)) throw Error('Invalid instance route')
-      await persist(catalog, id)
       location.assign(url)
     },
     async remove(id) {
       const profile = catalog.find(row => row.id === id)
       if (!profile) throw Error('Unknown instance')
-      if (isConnectedProfile(profile)) throw Error('Cannot remove the connected instance')
+      if (isCurrentProfile(profile)) throw Error('Cannot remove the current instance')
       const response = await fetch('/mygo-local/connection', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify(profile) })
       if (!response.ok) throw Error(`Instance removal HTTP ${response.status}`)
       const rows = catalog.filter(row => row.id !== id)
-      await persist(rows, selectedId === id ? rows[0]?.id ?? null : selectedId)
+      await persist(rows)
     },
     subscribe: fn => { listeners.add(fn); return () => listeners.delete(fn) },
   })

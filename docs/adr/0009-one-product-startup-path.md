@@ -20,11 +20,9 @@ The product has one startup path:
 3. Register every harness through the instance interface.
 4. Load a DSH client graph only inside that instance's explicit route.
 
-The launcher and build no longer interpret `MYGO_CLIENT_COMPOSITION`, build a
-second output directory, accept an implicit `DSH_ORIGIN`, or provision a special
-connected profile. Historical two-root sources and scenario scripts may remain as
-read-only migration evidence until they are deleted, but product code must not
-import or select them.
+The launcher and build do not interpret `MYGO_CLIENT_COMPOSITION`, build a second
+output directory, accept an implicit `DSH_ORIGIN`, or provision a special connected
+profile. The historical two-root sources and scenario scripts have been removed.
 
 ## DSH seams
 

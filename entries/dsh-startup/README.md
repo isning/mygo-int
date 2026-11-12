@@ -8,7 +8,7 @@ No composition opt-in or `DSH_ORIGIN` is required. mygo starts with its local
 Cordis composition and an empty instance catalog. Each DSH Host is registered
 through `/mygo-local/connection`, and only its explicit instance route loads the
 remote client graph. Original Host authentication remains in charge; startup
-failure never selects a legacy fallback.
+failure stays on the local shell with an explicit diagnostic.
 
 The product build has one startup path. Historical two-root fixtures remain only
 as archived regression evidence and are not selectable by the launcher.
@@ -63,14 +63,10 @@ real bootstrap; application bundles, RPC and event transport remain later ticket
 These historical issue 28/31 results do not establish a connected session.
 The current authenticated mode additionally supports the scoped issue 35
 list/open flow documented below.
-Authenticated startup now prepends a trusted local Cordis composition to the
-official entry using the upstream Vite configuration; see
-[tickets 42–43 validation and ownership interface](../../docs/upstream/dsh-local-composition-validation.md).
-The default Workbench plugin places a local rail beside the original instance UI;
-`MYGO_STARTUP_CONFIG=entries/dsh-startup/local/alternate.json` selects the Focus
-plugin's top bar after a carrier restart. Both preserve the original instance Root.
-Its entry bundle is rebuilt, not byte-identical to the original diagnostic
-bundle. Official Web library, framework identities and remote bundles are reused.
+Authenticated startup uses the one local Cordis composition and the original DSH
+Loader. Instance routes supply remote client entries to that same runtime. Its
+entry bundle is rebuilt; official Web libraries, framework identities and remote
+bundles are reused.
 
 For distribution, retain upstream LICENSE/THIRD_PARTY_NOTICES and selected asset
 licenses (including `assets/fonts/Montserrat-OFL.txt`) and inspect the selected

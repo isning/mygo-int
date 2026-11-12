@@ -22,7 +22,6 @@ export default {
   "Retry connection": "Retry connection",
   "Language": "Language",
   "Manage your instance connections.": "Manage your instance connections.",
-  "The selected profile is saved. Your active connection has not changed.": "The selected profile is saved. Your active connection has not changed.",
   "Current": "Current",
   "Configured": "Configured",
   "Selected": "Selected",

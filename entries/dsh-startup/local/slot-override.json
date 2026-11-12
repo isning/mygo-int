@@ -1,9 +1,0 @@
-{
-  "schemaVersion": 1,
-  "selectedInstance": { "id": "local-test-dsh", "authenticationViewId": "owner" },
-  "entries": [
-    { "id": "local-note", "name": "./plugins/marker.js", "inject": ["modules"], "config": { "label": "Local note · editable" } },
-    { "id": "local-workspace-override", "name": "./plugins/workspace-override.js" },
-    { "id": "slot-override-controls", "name": "./plugins/slot-override-controls.js" }
-  ]
-}

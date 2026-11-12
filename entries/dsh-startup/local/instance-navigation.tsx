@@ -24,28 +24,28 @@ export function registerInstanceNavigation(ctx) {
     const trigger = useRef<HTMLButtonElement>(null)
     const [error, setError] = useState('')
     const [switching, setSwitching] = useState(false)
-    const bound = snapshot.catalog.find(row => row.id === snapshot.connectedId)
+    const bound = snapshot.catalog.find(row => row.id === snapshot.currentId)
     // At this pin the original shell explicitly exposes its shared instance
     // through store.create(); no second settings store or DOM clicks are used.
     const settings = ctx.slots.entries('sidebar.settings').find(entry => typeof entry.store?.create === 'function')?.store
     const dot = state === 'connected' ? 'done' : state === 'connecting' ? 'ongoing' : 'error'
     const status = state === 'connected' ? t('Connected') : state === 'connecting' ? t('Connecting…') : t('Disconnected')
-    const name = bound?.name ?? snapshot.connectedId
+    const name = bound?.name ?? snapshot.currentId
     return <div className={css.root} data-mygo-navigation="">
       <Menu open={open} onClose={() => setOpen(false)} portal side="top" autoFocus
         className={css.anchor} listClassName={css.signedOutMenu}
         anchor={<button ref={trigger} type="button" className={css.trigger} data-signed-out="true" data-collapsed={!wide}
-          aria-label={t('Instances')} aria-haspopup="menu" aria-expanded={open} title={`${name} · ${status} · ${snapshot.connectedProfile.address}`}
+          aria-label={t('Instances')} aria-haspopup="menu" aria-expanded={open} title={`${name} · ${status} · ${snapshot.currentProfile.address}`}
           onClick={() => setOpen(value => !value)}>
           <IconDatabaseOutlineRegular size={16} />
           {wide && <><span className={css.label}>{name}</span><StateDot state={dot} size={8} /><IconChevronDownOutlineRegular size={12} /></>}
         </button>}>
-        {snapshot.catalog.map(row => <MenuItemButton key={row.id} current={manager.isConnectedProfile(row)}
-          icon={<StateDot state={manager.isConnectedProfile(row) ? dot : 'idle'} size={8} />}
+        {snapshot.catalog.map(row => <MenuItemButton key={row.id} current={manager.isCurrentProfile(row)}
+          icon={<StateDot state={manager.isCurrentProfile(row) ? dot : 'idle'} size={8} />}
           disabled={switching}
           onSelect={() => {
             setOpen(false)
-            if (manager.isConnectedProfile(row)) return
+            if (manager.isCurrentProfile(row)) return
             setSwitching(true)
             void manager.select(row.id).catch(failure => { setSwitching(false); setError(clientError(ctx, failure)) })
           }}>{row.name}</MenuItemButton>)}
