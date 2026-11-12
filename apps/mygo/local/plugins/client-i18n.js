@@ -5,7 +5,7 @@ export const inject = ['clientHost']
 export function apply(ctx) { installClientI18n(ctx) }
 function installClientI18n(ctx) {
   const storage = localStorage
-  const key = `mygo.locale.v2:${location.origin}`
+  const key = `mygo.locale:${location.origin}`
   let preference = null
   try { const saved = storage.getItem(key); if (saved && Object.hasOwn(dictionaries, saved)) preference = saved } catch {}
   const offline = new LocaleRuntime(ctx, undefined, { languages: navigator.languages, preference })
