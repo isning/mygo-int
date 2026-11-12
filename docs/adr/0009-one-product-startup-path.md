@@ -35,7 +35,7 @@ The pinned DSH checkout remains unmodified. Integration is limited to:
   DSH admission and Remote authorization;
 - the thin `dsh-host-status` Host plugin for authenticated boot metadata;
 - one isolated, pin-checked Plugins compatibility adapter that exposes pinned
-  presentation functions and `openTab`; the original page and tab behaviour are
+  presentation functions; the original page, navigation and tab behaviour are
   unchanged.
 
 Direct imports from pinned DSH source are compatibility dependencies, not edits to

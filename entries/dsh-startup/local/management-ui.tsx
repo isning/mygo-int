@@ -32,7 +32,7 @@ export function ClientSettings({ ctx, run }) {
     let live = true
     const fiber = ctx.inject(['pluginNavigation'], scope => {
       if (live) setOpenPlugins(() => () => {
-        scope.pluginNavigation.openTab('mygo-local')
+        scope.pluginNavigation.openList()
         closeTopModal(document)
       })
       scope.effect(() => () => { if (live) setOpenPlugins(null) })

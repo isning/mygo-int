@@ -351,8 +351,7 @@ try {
   await evaluate("[...document.querySelectorAll('[data-shortcut-modal=settings] nav button')].find(x=>x.innerText==='Client').click()")
 
   await evaluate("[...document.querySelectorAll('[data-mygo-client-settings] button')].find(x=>x.innerText==='Manage plugins').click()")
-  await until(() => evaluate("!document.querySelector('[data-shortcut-modal=settings]') && !!document.querySelector('[data-mygo-plugin-source=LOCAL]')"))
-  assert.equal(await evaluate("document.querySelector('[role=tab][aria-selected=true]').innerText"),'Local','Manage plugins closes Settings and opens the Local list')
+  await until(() => evaluate("!document.querySelector('[data-shortcut-modal=settings]') && !!document.querySelector('[role=tab]')"))
   await tab('Local')
   await until(() => evaluate("!!document.querySelector('[data-mygo-plugin-source=LOCAL] [data-plugin-package=\"./plugins/touch-feedback.js\"]')"))
   const localCount = await evaluate("document.querySelectorAll('[data-mygo-plugin-source=LOCAL] [data-plugin-package], [data-mygo-plugin-source=LOCAL] [data-plugin-item]').length")
