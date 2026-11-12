@@ -86,7 +86,7 @@ try {
  process.on('SIGUSR1',async()=>{
   if(checking||stopping)return;checking=true;
   try{
-   const browser=spawn(process.execPath,[root+'/scripts/dsh-test-browser.mjs',process.env.DSH_BROWSER_CHECK==='check-remove'?'check-remove':process.env.MYGO_CLIENT_COMPOSITION==='legacy'?'check-create':'check-default'],{stdio:'inherit',env:process.env});
+   const browser=spawn(process.execPath,[root+'/scripts/dsh-test-browser.mjs',process.env.DSH_BROWSER_CHECK==='check-remove'?'check-remove':'check-default'],{stdio:'inherit',env:process.env});
    assert.equal(await new Promise(r=>browser.once('exit',r)),0,'browser composer assertions');
    const browserEvidence=JSON.parse(await readFile(scratch+'/submit-browser.json','utf8'));
    const submittedSession=browserEvidence.promptCalls[0].payload.args.request.sessionId;

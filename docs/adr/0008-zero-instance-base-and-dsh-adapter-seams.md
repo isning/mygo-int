@@ -34,6 +34,6 @@ exports an equivalent tab-navigation/configuration face; it must not spread into
 other DSH packages.
 
 Legacy two-root fixtures and historical validation scripts are evidence, not the
-product architecture. New product behavior must not add branches to them. They
-can be removed after their retained migration fixtures are converted to focused
-tests.
+product architecture. ADR 0009 removes their selectable build and launcher path.
+They can be removed after their retained migration fixtures are converted to
+focused tests.

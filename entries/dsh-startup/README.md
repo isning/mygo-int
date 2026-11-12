@@ -10,12 +10,10 @@ through `/mygo-local/connection`, and only its explicit instance route loads the
 remote client graph. Original Host authentication remains in charge; startup
 failure never selects a legacy fallback.
 
-Explicit `MYGO_CLIENT_COMPOSITION=legacy` retains the historical two-root fixture
-and its unchanged `local/startup.json` snapshot for regression/migration checks.
-The single-root operator configuration remains `local/single-root.json`.
+The product build has one startup path. Historical two-root fixtures remain only
+as archived regression evidence and are not selectable by the launcher.
 
-The following records describe the earlier diagnostic and legacy modes. For the
-static diagnostic commands below, explicitly select `MYGO_CLIENT_COMPOSITION=legacy`.
+The following records describe the earlier diagnostic modes.
 
 The diagnostic mode of this mygo-owned document loads the **unchanged original Web entry bundle** from
 DSH `fcc0ad462172522aaf5c93a7b2e01f6b9f0b0159`. That entry constructs the real

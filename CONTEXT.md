@@ -27,7 +27,9 @@ _Avoid_: Features necessarily hard-coded into the base
 
 **Startup configuration**:
 The local selection of plugin entries and configuration used to start a client
-composition; the shipped default can be replaced.
+composition; the shipped default can be replaced. The product has one startup
+architecture: an empty local base followed by explicit instance registration.
+Historical composition fixtures are not selectable product modes. See ADR 0009.
 _Avoid_: A hard-coded set of mandatory client-product features
 
 **Local plugin**:
