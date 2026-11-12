@@ -2,17 +2,13 @@
 import assert from 'node:assert/strict'
 import { verifyInstanceSwitch } from './dsh-instance-switch-scenario.mjs'
 import { capturePluginOverride, restorePluginOverride } from './dsh-client-config-fixture.mjs'
-import { spawn } from 'node:child_process'
-import { readFile, mkdir, writeFile } from 'node:fs/promises'
-import { openSync } from 'node:fs'
+import { readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
+import { connectChromium, launchChromium } from './chromium-cdp.mjs'
 const uiAudit = process.argv.includes('--ui-audit')
 const i18nOnly = process.argv.includes('--i18n-only') || uiAudit
 const scratch = resolve('.scratch/test-dsh')
-const profile = scratch + '/browser-unified-' + Date.now()
-await mkdir(profile, { recursive: true, mode: 0o700 })
-const log = openSync(scratch + '/unified-browser.log', 'a', 0o600)
-const browser = spawn('nix', ['shell', 'nixpkgs#chromium', '-c', 'chromium', '--headless', '--disable-gpu', '--no-first-run', '--no-default-browser-check', '--remote-debugging-port=0', '--user-data-dir=' + profile, 'about:blank'], { stdio: ['ignore', log, log] })
+const { browser, profile } = await launchChromium({ scratch, profileName: 'browser-unified-' + Date.now(), logName: 'unified-browser.log' })
 const pause = ms => new Promise(r => setTimeout(r, ms))
 async function until(fn) {
   for (let i = 0; i < 240; i++) {
@@ -27,33 +23,19 @@ let ws, evaluate, restoreBadgeFixture, restoreTouchFixture, stage = 'login'
 const errors = [];
 const mutations = []
 try {
-  const port = await until(async () => Number((await readFile(profile + '/DevToolsActivePort', 'utf8')).split('\n')[0]))
-  const page = await fetch('http://127.0.0.1:' + port + '/json/new?about:blank', { method: 'PUT' }).then(r => r.json())
-  ws = new WebSocket(page.webSocketDebuggerUrl)
-  await new Promise((r, j) => { ws.onopen = r; ws.onerror = j })
-  let sequence = 0
-  const pending = new Map()
-  ws.onmessage = event => {
-    const message = JSON.parse(event.data), p = message.params
+  const cdp = await connectChromium({ profile, until })
+  ws = cdp.socket
+  const { send } = cdp
+  evaluate = cdp.evaluate
+  cdp.onMessage(message => {
+    const p = message.params
     if (message.method === 'Runtime.exceptionThrown') errors.push(p.exceptionDetails)
     if (message.method === 'Runtime.consoleAPICalled' && p.type === 'error') errors.push(p.args)
-    if (message.id) { pending.get(message.id)?.(message); pending.delete(message.id) }
     if (message.method === 'Network.requestWillBeSent') {
       const path = new URL(p.request.url).pathname.replace(/^\/mygo-instance\/[a-f0-9]{64}(?=\/)/, '')
       if (/^\/api\/(settings|dynamicCordisRunner|pluginManager)\//.test(path) && !/\/(get|list|inventory|schema|snapshot|describe|listBundles|listPlugins|registries|fastest|syncInspectManifest)$/.test(path)) mutations.push(path)
     }
-
-  }
-  const send = (method, params = {}) => new Promise((r, j) => {
-    const id = ++sequence
-    pending.set(id, m => m.error ? j(Error(m.error.message)) : r(m.result))
-    ws.send(JSON.stringify({ id, method, params }))
   })
-  evaluate = async expression => {
-    const result = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true })
-    if (result.exceptionDetails) throw Error(result.exceptionDetails.text)
-    return result.result.value
-  }
   await send('Runtime.enable'); await send('Network.enable'); await send('Page.enable')
   await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false })
   const selectOfflineLanguage = async id => {

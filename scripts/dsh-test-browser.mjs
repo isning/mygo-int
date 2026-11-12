@@ -1,9 +1,8 @@
 // Private original-owner login and official UI readiness via Nix Chromium/CDP.
 import assert from 'node:assert/strict';
-import {spawn} from 'node:child_process';
-import {readFile,mkdir,writeFile} from 'node:fs/promises';
-import {openSync} from 'node:fs';
+import {readFile,writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
+import {connectChromium,launchChromium} from './chromium-cdp.mjs';
 const checkInstance=process.argv[2]==='check-instance';
 const checkSingleManagement=['check-single-management','check-management'].includes(process.argv[2]);
 const checkDefault=process.argv[2]==='check-default';
@@ -13,9 +12,7 @@ const submit=process.argv[2]==='check-submit'||createSession||checkSingleRoot;
 const scratch=resolve('.scratch/test-dsh'),interactive=['open','open-management'].includes(process.argv[2]),authenticated=process.argv[2]==='check-auth';
 const profileName='browser-'+Date.now();
 assert.match(profileName,/^browser-\d+$/);
-const profile=scratch+'/'+profileName;await mkdir(profile,{recursive:true,mode:0o700});
-const log=openSync(scratch+'/browser.log','a',0o600);
-const child=spawn('nix',['shell','nixpkgs#chromium','-c','chromium',...interactive?[]:['--headless','--disable-gpu'],'--no-first-run','--no-default-browser-check','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'],{stdio:['ignore',log,log]});
+const {browser:child,profile}=await launchChromium({scratch,profileName,logName:'browser.log',interactive});
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
 async function until(fn){for(let i=0;i<240;i++){if(child.exitCode!==null)throw Error('Chromium exited; inspect private browser.log');if(stage==='local-management'&&evaluate){const failure=await evaluate("document.querySelector('[data-local-management] [role=alert]')?.textContent");if(failure?.startsWith('Local settings failed'))throw Error(failure)}try{const x=await fn();if(x)return x;}catch{}await pause(250);}throw Error('Browser readiness timed out');}
 let ws,evaluate,stage='boot',initialCreates=0;
@@ -23,20 +20,12 @@ const apiResponses=[];
 const apiRequests=[];
 const browserErrors=[];
 try{
- const port=await until(async()=>{
-  const value=Number((await readFile(profile+'/DevToolsActivePort','utf8')).split('\n')[0]);
-  await fetch('http://127.0.0.1:'+value+'/json/version');
-  return value;
- });
  const url=await readFile(scratch+(authenticated?'/launch-url':'/client-launch-url'),'utf8');
- const page=await fetch('http://127.0.0.1:'+port+'/json/new?about:blank',{method:'PUT'}).then(r=>r.json());
- ws=new WebSocket(page.webSocketDebuggerUrl);await new Promise((r,j)=>{ws.onopen=r;ws.onerror=j;});
- let sequence=0;const pending=new Map();ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.id){pending.get(m.id)?.(m);pending.delete(m.id);}};
- const send=(method,params)=>new Promise((r,j)=>{const id=++sequence;pending.set(id,m=>m.error?j(Error(m.error.message)):r(m.result));ws.send(JSON.stringify({id,method,params}));});
+ const cdp=await connectChromium({profile,until});
+ ws=cdp.socket;const {send}=cdp;evaluate=cdp.evaluate;
  const createCalls=[],catalogResponses=[],promptCalls=[],receipts=[],frames=[],responseJobs=[],socketUrls=[],terminalChunks=[],shellResponses=[];
  const pathOf=url=>new URL(url).pathname.replace(/^\/mygo-instance\/[a-f0-9]{64}/,'');
- const previous=ws.onmessage;
- ws.onmessage=e=>{const m=JSON.parse(e.data),p=m.params;
+ cdp.onMessage(m=>{const p=m.params;
   if(m.method==='Network.requestWillBeSent'&&pathOf(p.request.url)==='/api/session/create')createCalls.push(JSON.parse(p.request.postData));
   if(m.method==='Network.requestWillBeSent'&&pathOf(p.request.url).startsWith('/api/'))apiRequests.push(pathOf(p.request.url));
   if(m.method==='Runtime.exceptionThrown')browserErrors.push(p.exceptionDetails.exception?.description ?? p.exceptionDetails.text);
@@ -49,8 +38,7 @@ try{
   if(m.method==='Network.responseReceived'&&pathOf(p.response.url)==='/plugins/@deepseek-ai/dsh-client-ui-sidebar-terminal/client.terminal.js')terminalChunks.push(p.response.status);
   if(m.method==='Network.responseReceived'&&pathOf(p.response.url)==='/api/terminal/shells')shellResponses.push(p.response.status);
   if(m.method==='Network.webSocketFrameReceived')frames.push(p.response.payloadData);
-  previous(e);
- };
+ });
  await send('Network.enable',{});
  await send('Runtime.enable',{});
  await send('Page.enable',{});
@@ -75,7 +63,6 @@ try{
   await writeFile(scratch+'/browser-admission.json',JSON.stringify({origin:cleanOrigin,unscopedRemoteHTTP:410,specialPortOverride:false}),{mode:0o600});
  }
  await send('Page.navigate',{url});
- evaluate=expression=>new Promise((r,j)=>{const id=++sequence;pending.set(id,m=>m.error?j(Error('CDP evaluation failed')):r(m.result.result.value));ws.send(JSON.stringify({id,method:'Runtime.evaluate',params:{expression,returnByValue:true,awaitPromise:true}}));});
  try {
   await until(async()=>await evaluate("globalThis.__ModuleLoader__?.mode==='live' && (document.body.innerText.includes('Choose workspace')||document.body.innerText.includes('Local test DSH'))"));
  } catch (error) {
