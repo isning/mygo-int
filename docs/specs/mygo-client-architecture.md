@@ -40,12 +40,12 @@ mygo 应以 Cordis 的服务、依赖和生命周期思想组织整个客户端�
 20. As an existing DSH plugin author, I want my React registration and service contracts to keep working, so that compatibility does not require adopting a new SDK.
 21. As a plugin author, I want package source, execution location and owner distinguished, so that a remote-delivered client package is not mistaken for a remote backend.
 22. As a plugin author, I want original module identities and compatible framework singletons preserved, so that hooks and shared services behave correctly.
-23. As a plugin author, I want one Slot registration with several rendering faces, so that Web and native presentation share ownership and lifecycle.
+23. As a plugin author, I want one Slot registration with several concrete renderer faces, so that React and GPUIX presentation share ownership and lifecycle.
 24. As a plugin author, I want unsupported faces filtered before Slot election, so that an unusable contribution does not hide a usable one.
 25. As a plugin author, I want real React components, hooks and effects, so that the authoring model is not merely JSX-shaped descriptors.
 26. As a plugin author, I want explicit state and service bridges between independent surfaces, so that shared behavior has a clear authority and lifetime.
-27. As a plugin author, I want semantic page and section components supplied by plugins, so that the base does not dictate product navigation.
-28. As a user, I want desktop layouts and Android navigation to adapt the same semantic structure, so that required operations remain available on each device.
+27. As an official UI plugin author, I want each concrete renderer face to implement the same Slot contract as the React face, so that the product has one feature definition without inventing a generic native UI framework.
+28. As a user, I want desktop and Android renderers to preserve official navigation and feature behavior, so that platform controls do not create a different product.
 29. As a user, I want layout changes to preserve declared page and business state, so that resizing or switching views does not reset my work.
 30. As a user, I want Web history and application back behavior coordinated, so that embedded content remains navigable.
 31. As a user, I want React/Web and native presentation supported in the complete architecture, so that legacy content and platform-specific experiences can coexist.
@@ -89,7 +89,7 @@ mygo 应以 Cordis 的服务、依赖和生命周期思想组织整个客户端�
 - **客户端补丁。** 统一 Slot 是兼容的客户端扩展，不是假定已有的上游能力。跟踪最小补丁和受影响消费者；上游未采纳时明确维护成本，不另建第二套原生贡献注册体系。远端薄适配与客户端补丁分开。
 - **真实 React。** 标准组件/hooks/effects 由兼容的真实 renderer 执行。Web 面保留实际浏览器，native 面通过真实 React host renderer 和平台桥到达预编译原生控件。单独调用组件函数或自定义 JSX 描述器不满足要求。
 - **跨环境呈现。** 原生父布局可挂载有明确入口的 Web 内容，各 renderer 的 context/hooks/refs/事件祖先局限于自身环境。共享模型经明确状态/服务桥协作，不序列化任意闭包、ReactNode 或 DOM 引用。Web fallback 的可挂载边界必须符合实际 props、状态和平台能力。
-- **导航。** 页面/分区/列表详情/操作由插件的语义组件表达，本地导航插件决定桌面分栏/窗口及 Android 栈。页面/occurrence 与布局分开；布局与实例切换保留声明的状态。Web 历史、应用返回、IME、焦点、关闭和 dirty-state 通过明确归属协调。
+- **导航。** 官方 UI 插件继续拥有页面、分区、列表详情、操作与导航语义；`native` 仅是同一 Slot 注册的第二渲染面。桌面与 Android renderer 实现官方契约的物理布局、返回、IME、焦点和关闭行为，不新建导航模型。
 - **平台与顺序。** Linux、Windows、macOS、Android 都属完整目标，React 与原生都要支持。先实现原 React 客户端，PC 原生之后做，各平台分别实现载体。SwiftUI/Tauri 是未来候选，不锁定全平台 Compose/RN、某个 JS 引擎或每实例进程；浏览器载体不自动等于原生 Slot renderer。
 - **状态。** 远端保有业务真相，本地插件管理声明的草稿、缓存及可选 outbox，平台提供持久化原语。区分排队、发送中、接受、完成、失败及结果未知；本地队列收据不能伪装为远端成功。
 - **重放。** 仅对有实际幂等键/回执/排序与时效保证的方法启用自动重放，保持原操作身份，未知结果先核对。过期审批和已替代问题不重放。附件需覆盖本地内容、上传及 receipt/提交依赖；无保证时保留明确恢复路径。原 Remote 元数据不被假定已有通用离线策略。
@@ -106,7 +106,7 @@ mygo 应以 Cordis 的服务、依赖和生命周期思想组织整个客户端�
 - 该接缝和完成标准已在对话中确认；本规格不再重复访谈。客户端入口、原连接服务、真实 Remote 和 UI 共同参与，避免另测一套仿制状态管理器。
 - 好的检查观察外部行为：能否启动、是否接入正确远端、是否能完成会话交互。不要把内部函数调用次数、私有数据结构或实现镜像测试当作业务成功。
 - 已有先例包括官方客户端整树测试/启动接缝、现有模块与 Slot 行为检查；按实际变更复用适用检查，不先复制上游全部测试基础设施。既有传输 hooks 可在需要时替换底层，不新增平行业务接口。
-- 插件归属、认证资源、多实例、native face、离线与更新功能实现到哪里，就针对改动补基本行为检查。保留原 React 行为，避免把“网页转发成功”作为独立客户端启动通过。
+- 插件归属、认证资源、多实例、renderer face、离线与更新功能实现到哪里，就针对改动补基本行为检查。保留原 React 行为，避免把“网页转发成功”作为独立客户端启动通过。
 - 报告实际运行环境、尝试内容、结果和已知问题。未实现/未尝试的原生后端、平台和社区插件不能被记为已验证。
 - 当前仓库尚无客户端实现；此前工作只有源码阅读、设计与文档检查，没有构建或运行结果可继承为通过证据。
 

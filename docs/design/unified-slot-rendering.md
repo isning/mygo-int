@@ -6,35 +6,38 @@ API patch, renderer or experiment has been implemented.
 
 ## Decision and scope
 
-Extend the existing Slot contract rather than introducing an independent native
-contribution registry. One registration can expose several rendering faces. The
+Extend the existing Slot contract rather than introducing an independent renderer
+contribution registry. One registration can expose several renderer-specific faces. The
 original component registration is the React face by default. Old plugins keep their
 module names, registration form, React behavior and service contracts.
 
-Page/Section/collection-detail vocabulary and adaptive layout remain plugin-defined.
-Unifying the presentation interface does not move page or navigation semantics into
-the base. The application Root and instance Root can use the same Slot machinery in
-different authority domains; neither a face nor priority crosses that boundary.
+Page, navigation and feature semantics remain owned by the official UI plugin that
+already defines the React contribution. GPUIX support does not introduce another
+vocabulary or a presentation plugin: the same official contribution gains another
+renderer face. Neither a face nor priority changes an authority boundary.
 
 ## One registration, several faces
 
-The registration owns identity, cell/key, priority/order, children declarations,
+The official registration owns identity, cell/key, priority/order, children declarations,
 store declaration, injected domain services, locale and lifetime. Faces provide the
 renderer-specific components and requirements for that one registration. A plugin
-can be React-only, native-only or expose both. Registering a second face must not
-re-run its business plugin, redeclare children or duplicate subscriptions.
+can remain React-only or expose several faces. MyGO's desktop migration adds `gpuix` beside
+the existing official `react` face; it does not create another contribution.
+Registering a second face must not re-run its business plugin, redeclare children or
+duplicate subscriptions.
 
 Keep the old `register(options, Component)` form unchanged. A new, unambiguously
 identified multi-face argument or overload belongs to the original ui-slots package.
-For example, an exported branded `faces({ react: WebComponent, native: NativeComponent })`
+For example, an exported branded `faces({ react: WebComponent, gpuix: GpuixComponent })`
 helper could distinguish the new form from ordinary React memo/lazy component objects.
 This spelling is illustrative, not a chosen API. Do not infer a face map merely
-because a component is an object or contains a property called `native`.
+because a component is an object or contains a property matching a face ID.
 
-A native face is evaluated by a real compatible React renderer, not by directly
-calling a function to collect descriptors. It can return semantic/native host
-components; the React DOM face retains actual DOM behavior. A component cannot
-assume every renderer supports its host element vocabulary.
+A GPUIX face is evaluated by `@gpuix/react`, not by directly calling a function to
+collect descriptors. It returns GPUIX host components while
+the React DOM face retains actual DOM behavior. Both implement the same official
+feature contract. A component cannot assume every renderer supports its host element
+vocabulary.
 
 ## Preserve ledger and election semantics
 
@@ -57,7 +60,7 @@ Chain routes use ordered selectors rather than ordinary cell shadowing; HOC entr
 compose compatible wrappers in their original nesting order.
 
 Filtering must precede cell election: a React-only overriding entry cannot hide an
-eligible native entry and then leave the native mount blank. Diagnostics retain all
+eligible GPUIX entry and then leave the GPUIX mount blank. Diagnostics retain all
 entries, exclusion reasons, the requested renderer, selected face and winner.
 
 ## Child-slot declaration and authority
@@ -88,7 +91,7 @@ HOC composition and component props in React terms. Audit all these consumers.
 Keep semantic owner values, observable sources, store actions and domain methods
 common where they are renderer-neutral. Bind hooks, render callbacks, child nodes,
 refs and renderer-specific component positions at the selected renderer. A React DOM
-node cannot become a native child merely by widening a type to unknown.
+node cannot become a GPUIX child merely by widening a type to unknown.
 
 A face/type map can express renderer-specific contracts while retaining the original
 React-facing exports and defaults. Existing compiled bundle ABI and declaration
@@ -110,13 +113,13 @@ Chain selectors keep domain routing separate from component host rendering. Do n
 serialize selector closures across runtimes. Evaluate through the owning authorized
 runtime or expose a declared service. Mixed-renderer HOC nesting is invalid unless
 an explicit surface adapter supplies the boundary; a React wrapper cannot consume
-an arbitrary native node object.
+an arbitrary renderer node object.
 
 ## Failure, removal and revision
 
 Current upstream abdication retires an entry through a global WeakSet. A multi-face
 extension must distinguish renderer-face failure from shared business/service failure.
-A failed native face should not automatically retire the still-working React face.
+A failed GPUIX face should not automatically retire the still-working React face.
 A truly invalid shared registration/service must not remain usable on another face.
 Choose failure keys that retain existing React-only behavior and avoid poisoning
 unrelated mount occurrences accidentally. Exact face-versus-occurrence granularity
@@ -127,23 +130,23 @@ and follows original recursive child/store cleanup. Changing renderer support or
 face revisions invalidates relevant eligibility/winner subscriptions. Diagnostics
 must not use the old renderer-agnostic winner projection as if it described all mounts.
 
-## Where React evaluates native faces
+## Where React evaluates GPUIX faces
 
 Evaluate a face in an authorized JS environment with the matching React instance,
-module graph, hook scheduler and domain service bindings. Native host widgets consume
+module graph, hook scheduler and domain service bindings. GPUIX host widgets consume
 renderer output; Kotlin/another native language does not call the component directly.
 A face and the renderer that invokes it must agree on executable identity and types.
 
-One possible realization runs both compatible React renderers in the domain's browser
-engine: the original React DOM renderer owns Web content, while a native host renderer
-emits native mount operations through a scoped bridge. Another realization uses a
-separate supported engine for native-capable entries. These are runtime choices,
-not reasons to serialize component closures into a different engine. A new engine
-would require coherent bundle loading and explicit service boundaries of its own.
+For the GPUIX desktop application, the `gpuix` face is evaluated in the application's JS
+runtime alongside the Cordis client tree, and GPUIX directly owns the operating-system
+window and drawing surface. There is no browser or Electron root. The original React DOM
+renderer runs only inside an explicitly mounted Web compatibility environment. That
+environment requires coherent bundle loading and explicit service boundaries; it is not
+a reason to serialize native component closures or duplicate the client tree.
 
 ## Web fallback is an explicit mount
 
-A native mount may use a declared Web compatibility alternative where supported.
+A GPUIX mount may use a declared Web compatibility alternative where supported.
 This is another rendering path of the same Slot system, not a second registration
 system. A chosen Web face runs in its own browser/React environment with explicit
 entry, state/service bridge and authority, preserving the previously confirmed
@@ -155,11 +158,11 @@ the compatible Web boundary must move to an ancestor that can own those interact
 or report unsupported composition. A face ID alone does not solve that problem.
 
 Do not promise one WebView per message, per inline token or unrestricted mixed HOCs.
-The eligible mount granularity, viewport, focus, scrolling and native/Web constraints
+The eligible mount granularity, viewport, focus, scrolling and GPUIX/Web constraints
 are part of renderer capabilities. Optional content may be omitted only by its Slot
 contract; required content needs an explicit unavailable state or supported alternative.
 
-Fallback preference between a lower-priority native face and a higher-priority Web
+Fallback preference between a lower-priority GPUIX face and a higher-priority Web
 compatibility face is a presentation policy that must be explicit. Do not add an
 automatic Web fallback and accidentally undo renderer-aware native election.
 
@@ -172,20 +175,18 @@ where appropriate. If upstream does not accept it, a maintained client patch rem
 a design option, with its maintenance cost visible.
 
 The remote adapter remains thin and need not change Host core. Old Host graphs and
-React-only plugins need not advertise native faces. Packaging/filtering native-only
+React-only plugins need not advertise GPUIX faces. Packaging/filtering GPUIX-only
 client bundles is a separate delivery capability; do not assume an unmodified Host
 will discover or selectively deliver new face metadata.
 
 ## End-to-end example
 
-A client plugin registers one layout contribution with shared children/data contracts
-and React/native faces. A native renderer elects an eligible face, binds its standard
-hooks and renders semantic sections through real React. A child Slot can select a
-native contribution or an explicit Web surface. Both observe a declared shared model,
-but each React environment owns its hooks. Selection events go through scoped services
-and the original generated Remote. Unloading the plugin disposes that registration,
-all faces and declared child bindings once. Switching visible instances leaves other
-instances' graphs/connections intact.
+An official UI plugin registers one contribution with shared children/data contracts
+and React/GPUIX faces. The GPUIX renderer elects the `gpuix` face and renders the same
+official page or control through real React. A child Slot can select another GPUIX
+face or an explicit Web compatibility surface. Both faces observe the same official
+model, services and generated Remote, while each renderer owns its hooks. Unloading
+the plugin disposes that one registration, all faces and declared child bindings once.
 
 ## Required conformance checks
 
@@ -193,7 +194,7 @@ instances' graphs/connections intact.
   HOCs and errors retain upstream behavior.
 - Eligibility precedes cell election and keeps original ascending priority/tie rules.
 - One multi-face registration declares children and owns effects once.
-- Native face failure, shared service failure and registration disposal differ.
+- GPUIX face failure, shared service failure and registration disposal differ.
 - Factories/occurrences and face switching preserve only declared state guarantees.
 - Web fallback rejects unsupported closure/node transfer and stale bridge handles.
 - Remote contributions cannot replace global Root or inherit other-instance authority.

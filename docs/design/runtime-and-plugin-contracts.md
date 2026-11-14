@@ -4,12 +4,16 @@ Status: proposed design, 2026-11-09. No implementation or runtime experiment.
 Read alongside `client-architecture.md` and `presentation-protocol.md`.
 For the resolved reference choices, prefer `design-resolution.md` and
 `protocol-specification.md` where this earlier exploration leaves alternatives open.
+Its presentation-plugin and descriptor language is superseded by
+[ADR 0010](../adr/0010-native-renderer-seam.md): official UI plugins own the React
+and renderer-specific faces of one Slot contribution.
 
 ## 1. Conditional feasibility
 
 mygo is a general-purpose Cordis client. Harness plugins supply integration logic;
-platform plugins supply OS services; presentation plugins provide device-adapted UI.
-DSH client services are reusable integration components, not a required universal model.
+platform plugins supply OS services; official UI plugins provide React and renderer-specific
+faces for the same features. DSH client services are reusable integration components,
+not a required universal model.
 
 The design is structurally feasible if compatible client logic can execute locally
 and UI uses explicit presentation contracts. This does not establish engine performance,
@@ -242,7 +246,7 @@ hooks. Check exact platform-singleton and Cordis ABI compatibility. Different re
 may require different Cordis versions; communicate through mygo contracts.
 
 Existing React plugins need a compatible Web host with their services, slots,
-singletons, assets, theme, and lifecycle. Native faces require authoring or explicit
+singletons, assets, theme, and lifecycle. GPUIX faces require authoring or explicit
 adapters. Neither compatibility direction is automatic.
 
 Proposed upstream improvements: non-HTML boot manifest, headless entry separation,

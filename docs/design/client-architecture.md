@@ -9,6 +9,10 @@ clarifications and takes precedence over earlier proposals below. The client is 
 local plugin composition on a minimal base; standard React authoring is required;
 this planning effort does not split scope into product releases.
 
+The semantic presentation-host proposal below is superseded by
+[ADR 0010](../adr/0010-native-renderer-seam.md). Official UI plugins own both faces
+of the same Slot contribution.
+
 The user has now fixed the starting implementation direction: extract DSH's React
 client with near-total code reuse, then establish client/remote plugin contracts and
 existing-plugin compatibility. Earlier native/headless designs are alternatives for
@@ -67,14 +71,13 @@ that do not fit those contracts.
 
 ## Presentation direction
 
-Plugins describe semantic pages, sections, actions, and detail relationships.
-The presentation host owns device-specific navigation and layout. Web content can
-occupy explicitly declared content surfaces; arbitrary DOM is not automatically
-converted to native controls.
+Official UI plugins retain their pages, sections, actions, navigation and detail
+relationships. Each registration can add a renderer-specific `gpuix` face beside its existing
+`react` face. GPUIX implements that desktop view directly; there is no generic cross-platform
+native control layer, separate MyGO semantic SDK or presentation host.
 
-Existing DSH React plugins and plugins adopting a future mygo semantic SDK have
-different compatibility expectations. Supporting one does not imply support for
-the other. The first-release Web fallback policy is still open.
+Existing React-only plugins keep the React face and use an explicit Web compatibility
+surface on native hosts. Arbitrary DOM is not automatically converted to native controls.
 
 ## Completed design coverage
 

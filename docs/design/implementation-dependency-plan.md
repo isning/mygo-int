@@ -107,21 +107,22 @@ Do not require one engine per instance unless the runtime decision selects it.
 
 ## F. Provide platform carriers and unified Slot rendering
 
-Depends on B's browser baseline and the selected platform/runtime/presentation
-contracts; native UI depends additionally on unified Slot faces, its component vocabulary and
-bridge. Extend the original ui-slots/renderer interface rather than adding a separate
-native registration system. Preserve old registration, ledger, child ownership and
-React behavior; adapt factories, scopes, hooks and error election coherently.
-Implement Linux, Windows, macOS and Android platform mechanisms independently under
-one shared carrier contract. Do not require one Compose/RN framework; Tauri is a
-candidate carrier, not an automatic native Slot renderer. Keep navigation,
-page vocabulary and rendering policy in local plugins. Preserve the full Web profile
-for legacy plugins; explicitly native-capable plugins use the native contract.
+Depends on B's browser baseline and the selected platform/runtime contracts. Renderer-specific
+UI depends on unified Slot faces and a concrete host renderer. Extend the original
+ui-slots/renderer interface rather than adding another registration system. Preserve old
+registration, ledger, child ownership and React behavior; adapt factories, scopes, hooks and error
+election coherently.
 
-Output: platform adapters and replaceable presentation plugins. Verify focus, IME,
-back/escape, accessibility, clipboard, file permissions, keyboard/layout changes,
-Web embedding and lifecycle restoration across chosen platforms. File/diff/terminal
-and notifications are integration scenarios, not base-owned applications.
+Implement the standalone GPUIX host for Linux, Windows and macOS with a concrete `gpuix` face.
+Official UI plugins retain navigation, page vocabulary and feature policy while adding that face
+to the same contribution. Preserve the full Web profile for legacy plugins. Android remains a
+separate renderer decision; this work does not create a generic native adapter or assume a
+React-to-Compose renderer.
+
+Output: the GPUIX renderer and GPUIX faces in official UI plugins. Verify focus, IME, back/escape,
+accessibility, clipboard, file permissions, keyboard/layout changes, Web embedding and lifecycle
+restoration across desktop platforms. File/diff/terminal and notifications are integration
+scenarios, not base-owned applications.
 
 Within F, keep these implementation boundaries explicit:
 
@@ -135,8 +136,8 @@ Within F, keep these implementation boundaries explicit:
 - F4 implements PC native carriers/backends after the initial React route. SwiftUI
   can be assessed for a suitable Apple platform; Windows/Linux require their own
   supported realization. Tauri remains a candidate carrier, not the renderer itself.
-- F5 composes semantic/layout plugins and eligible native/Web alternatives through
-  unified Slots, retaining original Web behavior and cross-environment state bridges.
+- F5 migrates official UI plugins package by package, retaining the exact React
+  feature contract and explicit Web compatibility for React-only contributions.
 
 F1 can establish React compatibility before F2–F5 are complete. That is an integration
 checkpoint, not a product release claim or removal of native scope. No native backend

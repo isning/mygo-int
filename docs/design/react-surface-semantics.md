@@ -39,7 +39,9 @@ clipboard, dialogs and file selection follow actual carrier rules.
 
 ## Lifecycle and presentation ownership
 
-The local presentation plugin decides placement, navigation and visibility. Mounting
+The official UI plugin owns placement and navigation semantics. Its React and native
+faces express the same contribution; the selected renderer implements physical layout,
+visibility and platform interaction without inventing another page model. Mounting
 binds a surface to an owner and channel lifetime; unmounting disposes that root,
 subscriptions and callbacks. Hiding can preserve a mounted root where supported,
 but must not be confused with unmounting or imply that an Android WebView survives

@@ -1,20 +1,21 @@
 # Navigation and page model
 
-Status: semantic structure separated from replaceable navigation policy is confirmed,
-2026-11-10. Detailed identifiers, arbitration and restoration below are proposals.
-No navigation implementation or fixed base page vocabulary is introduced.
+Status: superseded for native presentation by
+[ADR 0010](../adr/0010-native-renderer-seam.md). Detailed restoration and authority
+rules below remain useful where they do not imply a second navigation plugin.
 
 ## Domain ownership
 
-A replaceable local navigation/presentation plugin defines semantic components and
-routes through the unified Slot interface. Page, Section and collection/detail are
-that plugin's contracts. Base mechanisms expose mounts, platform back/focus/events
-and lifecycle without understanding a route or an instance.
+The official navigation and feature plugins define their components, destinations and
+routes through the existing Slot interface. Their GPUIX faces retain those exact
+contracts. Base mechanisms expose mounts, platform back/focus/events and lifecycle
+without redefining a route or an instance.
 
 A destination identifies a plugin-defined resource/view. An occurrence represents
 an open visit to that destination, potentially with its own draft/selection state.
-A presentation places occurrences in a desktop pane/window or Android page stack.
-Changing presentation is not a new visit and must not reset the authoritative model.
+The platform renderer maps an occurrence to desktop controls or an Android page stack
+as required by the official contract. Changing physical layout is not a new visit and
+must not reset the authoritative model.
 
 Instance and authentication-view qualification belongs to routes displaying private
 remote data. Display labels and path strings do not substitute for identity. A local
@@ -22,16 +23,14 @@ page can exist without any remote instance.
 
 ## Unified Slots and rendering faces
 
-The navigation plugin contributes layout Root and child Slots through the same
-registry used by feature plugins. Its native and Web faces share child declarations
-and model ownership, but may arrange content differently. Do not register the same
-children twice merely to expose two faces.
+The official navigation plugin contributes layout Root and child Slots. Its native
+and React faces share child declarations, navigation state and model ownership. Do
+not register the same children twice merely to expose two faces.
 
-A page can retain original Web UI as one authorized Slot surface. Native-aware
-pages can expose sections and detail relationships. Adapting the default layout
-must preserve required commands and selection relationships rather than hiding them
-when a sidebar becomes a menu. An opaque original Web page does not automatically
-provide semantic routes or native navigation to its internal controls.
+A page can retain original Web UI as one authorized Slot surface. Native-aware pages
+render the same official sections and detail relationships. Adapting physical layout
+must preserve required commands and selection relationships. An opaque original Web
+page does not automatically provide native navigation to its internal controls.
 
 ## State and restoration
 

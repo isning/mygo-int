@@ -1,10 +1,9 @@
 # Semantic presentation and mixed rendering
 
-Historical proposal. The current contract is [presentation contract](presentation-contract.md)
+Historical proposal. The current contract is [native renderer architecture](native-renderer-architecture.md)
 and [confirmed React boundary](react-surface-semantics.md). The descriptor-first
-proposal below is superseded by the standard React requirement. References below
-to a host owning navigation mean a replaceable presentation plugin under the current
-base boundary, not base-owned page semantics.
+proposal and its separate presentation host are superseded. Official UI plugins own
+the React and GPUIX faces of the same Slot contribution.
 
 Status: proposed design, 2026-11-09. No renderer or SDK is implemented.
 The resolved choices and concrete wire/limit proposal are in `design-resolution.md`
@@ -125,7 +124,7 @@ Fallback depends on the Slot contract:
 - Required content displays a host-owned unsupported/error view and alternatives.
 - Missing application root activates bundled recovery.
 
-An eligible native default can remain below an unsupported high-priority plugin.
+An eligible GPUIX default can remain below an unsupported high-priority plugin.
 An exception cannot silently authorize a less restricted operation. Remote connection
 plugins may replace only authorized parts of their connection subtree; Root being a
 Slot does not grant them application-wide replacement authority.

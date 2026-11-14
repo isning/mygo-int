@@ -58,6 +58,7 @@ provider 管环境创建、租约和回收，integration 管协议、会话和 U
 - [领域术语](../../CONTEXT.md)：概念定义，不承载实现规范。
 - [React 解耦](react-client-extraction.md)、[插件契约](client-remote-plugin-architecture.md)：初始代码与接缝。
 - [统一 Slot](unified-slot-rendering.md)、[呈现](presentation-contract.md)、[平台](platform-carrier-contract.md)：渲染接口与实现边界。
+- [GPUIX renderer-face 架构](native-renderer-architecture.md)：同一官方 Slot contribution 的 React 与 GPUIX 具体 renderer face，以及独立原生桌面宿主。
 - [默认组合](default-client-composition.md)、[状态](state-and-offline-contract.md)、[分发](plugin-delivery-contract.md)：客户端插件职责。
 - [集成](harness-integration-contract.md)、[执行提供方](execution-provider-boundaries.md)：扩展边界。
 - [维护承诺](distribution-and-maintenance.md)、[轻量验收](verification-and-evidence.md)、[实施计划](implementation-dependency-plan.md)：交付与证据。

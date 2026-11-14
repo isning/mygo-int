@@ -1,127 +1,95 @@
 # Presentation contract
 
-Status: unified original Slot interface confirmed, 2026-11-10. Native faces extend
-existing Slot registration; they are not an independent contribution registry.
-Detailed mechanics are in [unified Slot rendering](unified-slot-rendering.md).
+Status: revised by [ADR 0010](../adr/0010-native-renderer-seam.md). GPUIX is a second
+renderer face of the official UI contribution, not an independent presentation system.
 
-## Roles and authority
+## Ownership
 
-The base supplies mounting/update/event/platform mechanisms. It does not recognize
-Page, Section, instance navigation, chat or settings. A local presentation plugin
-provides those vocabularies and policy. A different local composition can replace
-it without changing the base's harness-neutral role.
+The official DSH UI plugin owns its page, navigation, Slot declaration, controller,
+state, services, Remote calls, actions, permissions, localization and lifecycle. MyGO
+does not introduce a presentation plugin that redefines those semantics.
 
-Trusted local Root composes the application. An instance compatibility environment
-can own its own official Root and Slots; that does not grant replacement of the
-application Root. Rendering authority follows the surface's mount owner and granted
-capabilities, not a plugin's priority value or a claimed slot name.
+The base supplies React rendering, platform surfaces and system capabilities. It does
+not invent Page, Section, chat, settings or instance semantics.
 
-## Original-compatible path
+## One contribution, two faces
 
-Run the reused official React DOM renderer with its original module/React identities,
-Cordis services, Slot component props, observables and Remote descriptors. Keep its
-existing plugin graph and lifecycle. A DOM-heavy legacy contribution can render
-inside that environment without adopting semantic components or a mygo SDK.
+An official Slot registration may expose renderer-specific faces:
 
-When embedded inside a different presentation shell, the original-compatible page
-is an explicit surface. Its document owns its DOM, CSS and browser event tree. A
-native parent does not reach into that document to relocate arbitrary DOM controls
-into native tabs or infer navigation by scraping its HTML.
+- `react`: the existing DOM component;
+- `gpuix`: a GPUIX component implementing the same official contract.
 
-## Unified Slot and semantic components
+The existing `register(options, Component)` form remains a React-only registration.
+An updated official UI package adds `gpuix` to that registration. It does not create a
+second plugin entry, Slot key, child declaration, store or subscription.
 
-A local plugin can publish semantic React components and a matching real renderer.
-The vocabulary can express a destination, peer sections, collection/detail, actions,
-transients and a bounded Web surface. These are plugin APIs, not universal base types
-or promises that every external harness uses the same session model.
+Both faces receive the same official props and use the same renderer-neutral model.
+They preserve the same Slot cell, priority, order, child ownership, commands, errors,
+navigation meaning and accessibility intent. Face eligibility is applied before the
+existing Slot election; election behavior is otherwise unchanged.
 
-A semantic contribution declares intent and stable ownership. It should not require
-a desktop Tab widget or Android bottom bar. The chosen local layout/navigation
-plugin maps that structure to device-appropriate UI. Native and Web representations
-may coexist, but only supported, authorized contributions are eligible for a mount.
+Renderer-neutral official code may be shared directly. A DOM-specific view gets
+a sibling GPUIX view inside the same official UI package and shares its controller or
+extracted model.
 
-Use one registration ledger and extend each entry with optional rendering faces.
-The legacy component argument remains the React face. Bind each renderer to supported
-faces, then elect entries with original cell/priority rules. Shared children, stores,
-services, locale and disposal stay with the one registration. Semantic components
-are optional plugin-provided vocabulary inside that unified interface.
+## GPUIX renderer
 
-The client ui-slots/renderer extension needs a tracked compatibility-preserving patch;
-upstream acceptance is not assumed. It does not require changing remote Host core.
-Old React plugins are not rewritten. Child ownership, factories, standard props,
-chains/HOCs and face-local errors must be adapted coherently, not just return types.
+GPUIX faces are ordinary React components evaluated by `@gpuix/react`.
+They are not JSON descriptions and are not produced by directly calling component
+functions.
 
-## Surface boundary
+The GPUIX adapter owns a standalone operating-system window and GPU surface. The desktop root is
+not a DOM document and is not hosted by Electron. Browser runtime costs are introduced only when a
+declared Web compatibility surface is actually mounted.
 
-A mount identifies its owner, render profile, executable entry, initial serializable
-values and granted service/resource channels. Its execution generation distinguishes
-current callbacks from stale ones. Exact field names and wire schemas are not fixed
-by this conceptual contract.
+GPUIX theme and control libraries may use renderer-specific types directly. They share official
+theme semantics and feature models without pretending to define a future Compose interface. Alma
+is a visual-quality reference for those desktop controls and the Settings surface only. The GPUIX
+UI does not add Alma features, navigation or information architecture.
 
-Within a surface, ordinary React controls rendering, hooks and effects. Across an
-independent Web surface, use explicit value snapshots/subscriptions and commands.
-No arbitrary closure, context object, ref or DOM node crosses as a live object.
-A bridge call binds authorization to the mounted channel; its payload cannot select
-an unauthorized instance merely by changing an identifier.
+## Web compatibility
 
-Visibility, focus, layout bounds, scale, locale/theme, keyboard/IME state and back
-requests have declared owners. Hide is distinct from unmount. A parent can preserve
-a surface while changing layout where the carrier supports it; process death still
-requires restoration from declared state, not reconstruction of a live JS heap.
+React-only plugins retain their original browser environment. A native host can mount
+that content through an explicit Web compatibility surface. The Web document owns its
+DOM, CSS, browser events, hooks and refs.
 
-## End-to-end example: native selection with a Web detail view
+That surface is a bounded compatibility child, never the desktop application shell.
 
-1. A trusted local integration supplies an instance/authentication view and services.
-2. A plugin registers a semantic collection/detail destination with an explicit Web
-   detail entry and a shared selection model. No business operation runs at render time.
-3. The local navigation plugin opens a destination occurrence. The presentation
-   plugin selects a split view or stacked view based on its own platform policy.
-4. A real React renderer evaluates semantic components. The platform mount maps
-   supported elements to precompiled native components and mounts the Web surface.
-5. A native selection event invokes a scoped command on the shared model. The model
-   publishes a revision; both roots observe that revision. React context is local.
-6. The Web detail can request an allowed operation through its scoped bridge. The
-   DSH integration uses its original generated Remote and connection recovery; it
-   does not translate the operation into an invented universal session protocol.
-7. Layout changes preserve destination/model identity where appropriate. Closing
-   the destination disposes surface handles, roots and owned subscriptions; switching
-   visible instances does not dispose unrelated instance connections.
+Across a native/Web boundary, state and operations use an explicit scoped bridge. Live
+closures, context values, refs and DOM nodes do not cross environments. A Web fallback
+does not acquire extra authority or change the owning instance.
 
-The original DSH chat can instead remain an entire compatible Web surface. This
-example describes an optional native-capable plugin, not a required chat rewrite.
+## Lifecycle and failure
 
-## Unsupported content and failure
+The single registration owns activation and disposal. Removing it removes both faces
+and its child/store ownership once. A face-specific render failure may retire that face
+without treating the shared model as failed; a shared service or lifecycle failure
+applies to the whole contribution.
 
-An unsupported renderer requirement is reported before mounting where possible.
-Optional decoration may be omitted by its contract; required content needs an
-explicit unavailable state or an authorized alternative, never silent loss of a
-required action. Legacy Web fallback mounts its own entry and scoped capabilities;
-it does not rerun arbitrary native callbacks in a remote page.
+Hide and unmount remain distinct. Platform process loss restores only declared model,
+navigation and draft state; it does not claim to preserve a live React heap.
 
-Surface failure is contained according to the chosen carrier. Preserve DSH's layered
-boot/entry diagnostics and the platform fatal-recovery boundary. Do not add a fixed
-product recovery UI or automatic disabling policy without a decision.
-
-## Protocol responsibilities left to implementation design
-
-A chosen remote renderer must define coherent commits/snapshots, revision ordering,
-stale-event rejection, bounded queues, resynchronization and disposal. List rendering
-must define stable keys and viewport/paging behavior rather than sending unbounded
-conversation trees. Input handling must preserve IME composition and local edit
-revisions. These constraints do not fix a custom wire protocol or numeric limits
-before choosing reusable renderer machinery.
+Unsupported required content must show an explicit unavailable or Web-compatible path.
+It is never silently omitted. Optional decorations may be absent only when their Slot
+contract allows it.
 
 ## Verification obligations
 
-Verify ordinary hooks/context within each root, shared-model behavior across roots,
-legacy Slot behavior, native parent/Web child composition, authorization and disposal,
-and focus/back/IME/accessibility across target carriers. Test unsupported contributions
-without losing required operations. No renderer or prototype has been implemented.
+For every migrated official feature, verify that React and GPUIX:
+
+- resolve the same logical Slot contribution;
+- observe the same model snapshot and perform the same mutations;
+- retain the same Remote and permission failures;
+- expose the same required actions and navigation destinations;
+- react to the same locale and theme inputs;
+- dispose the same owned resources exactly once.
+
+Also verify platform focus, IME, back/escape, accessibility, scrolling and Web surface
+lifecycle. The React face must remain behaviorally unchanged.
 
 ## Related design
 
-- [Confirmed project definition](project-definition.md)
+- [Native renderer architecture](native-renderer-architecture.md)
+- [Unified Slot rendering](unified-slot-rendering.md)
 - [React boundary semantics](react-surface-semantics.md)
-- [Trust policy](trust-and-execution-boundaries.md)
-- [Plugin contracts](client-remote-plugin-architecture.md)
-- [Source mechanisms](../research/react-ui-mechanisms.md)
+- [Platform carrier contract](platform-carrier-contract.md)

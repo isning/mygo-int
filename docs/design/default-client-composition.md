@@ -20,14 +20,15 @@ activation diagnostics when those requirements cannot be met.
 The default composition can supply these roles through one or more local plugins;
 this is not a mandatory package count or fixed public API list:
 
-- Application Root and navigation: global shell, instance selection, destinations
-  and presentation policy under the unified Slot contract.
+- Application services: instance selection, connection ownership and local management
+  contributions under the official Slot contracts.
 - Instance catalog and connection ownership: qualified targets/profiles/authentication
   views and consumers, independently of the currently visible view.
 - DSH integration: preserved official bootstrap/modules/Remote/state/UI plus the
   minimum transport/resource/admission adaptations.
-- Presentation/renderer adapters: original React DOM and unified Slot native-face
-  machinery when its selected platform backend is available.
+- Renderer adapters: original React DOM and unified Slot native-face machinery when
+  its selected platform backend is available. Official UI plugins retain Root,
+  navigation and page semantics.
 - State/delivery/diagnostics policy: local configuration/cache/drafts, capability-safe
   outboxes where declared, coherent package selection and owner-attributed diagnostics.
 - Platform adapters: scoped primitive storage/credentials/transport/mounts/OS services.

@@ -92,13 +92,23 @@ _Avoid_: Remote service plugin, globally trusted application plugin
 
 **Semantic page**:
 A plugin-declared page with meaningful sections, actions and navigation relationships
-whose platform-specific arrangement is chosen by the presentation composition.
+whose official identity and behavior are shared by its rendering faces. A renderer may
+adapt the physical arrangement without redefining the page or its navigation meaning.
 _Avoid_: A fixed desktop tab or mobile navigation widget
 
 **Rendering face**:
-A presentation implementation of a contribution for a particular rendering technology,
-such as native components or Web content.
-_Avoid_: Automatic conversion of arbitrary DOM into native controls
+A renderer-specific React component implementation on one Slot contribution. The
+official `react` and `gpuix` faces share contribution identity, election options,
+feature model, services and lifecycle; the renderer selects only the implementation.
+The face registry may grow when another concrete renderer actually exists.
+_Avoid_: A separate plugin or Slot tree, a generic cross-platform native widget layer,
+automatic conversion of arbitrary DOM into native controls
+
+**Native desktop host**:
+The desktop application host whose primary surface is an operating-system window drawn
+by the native renderer. A Web compatibility surface may be mounted for browser-only
+content, but it remains a child surface rather than the application shell.
+_Avoid_: Electron or a browser document treated as the desktop application's root
 
 **Web compatibility environment**:
 The browser-side host context needed to use an existing harness Web plugin, including

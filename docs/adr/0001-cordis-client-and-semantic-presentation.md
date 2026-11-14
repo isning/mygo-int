@@ -1,7 +1,8 @@
 # ADR 0001: Cordis client with semantic presentation
 
-Status: proposed, 2026-11-09. The general Cordis/harness direction is confirmed;
-the concrete reference-design recommendations below await adoption.
+Status: Superseded in its presentation model by
+[ADR 0010](0010-native-renderer-seam.md). The general Cordis/harness direction remains
+historical context; descriptor-first and host-adapted UI recommendations are not current.
 
 ## Context
 
